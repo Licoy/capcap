@@ -78,6 +78,8 @@ class OverlayWindowController {
     private let windowSnapshotLoader: WindowSnapshotLoader
     private let windowImageLoader: WindowImageLoader
     private let snapshotProvider: ScreenSnapshotProviding
+    private let eventTrackingStateProvider: () -> Bool
+    private let eventTrackingDismissal: () -> Void
     private let triggerContext: CaptureTriggerContext?
     private let onFirstFramePresented: (() -> Void)?
     private var screenSnapshots: [CGDirectDisplayID: CGImage] = [:]
@@ -108,6 +110,7 @@ class OverlayWindowController {
     /// snapshot/window-list callbacks cannot mutate a newer overlay session.
     private var presentationGeneration = 0
     private var sessionEnded = false
+    private var waitsForEventTrackingSnapshot = false
     private var firstFrameReported = false
     private var firstFrameTargetDisplayID: CGDirectDisplayID?
 
@@ -218,6 +221,12 @@ class OverlayWindowController {
                 pointSize: pointSize
             )
         },
+        eventTrackingStateProvider: @escaping () -> Bool = {
+            OverlayWindowController.isRunningEventTrackingMode
+        },
+        eventTrackingDismissal: @escaping () -> Void = {
+            OverlayWindowController.dismissActiveEventTrackingSurface()
+        },
         onFirstFramePresented: (() -> Void)? = nil,
         onRecordingSelection: ((NSRect, NSScreen) -> Void)? = nil,
         onRequestFocusReturn: (() -> Void)? = nil,
@@ -233,6 +242,8 @@ class OverlayWindowController {
         self.snapshotProvider = snapshotProvider
         self.windowSnapshotLoader = windowSnapshotLoader
         self.windowImageLoader = windowImageLoader
+        self.eventTrackingStateProvider = eventTrackingStateProvider
+        self.eventTrackingDismissal = eventTrackingDismissal
         self.onFirstFramePresented = onFirstFramePresented
         self.onRecordingSelection = onRecordingSelection
         self.onRequestFocusReturn = onRequestFocusReturn
@@ -262,6 +273,12 @@ class OverlayWindowController {
                 pointSize: pointSize
             )
         }
+        self.eventTrackingStateProvider = {
+            OverlayWindowController.isRunningEventTrackingMode
+        }
+        self.eventTrackingDismissal = {
+            OverlayWindowController.dismissActiveEventTrackingSurface()
+        }
         self.onFirstFramePresented = nil
         self.onRecordingSelection = nil
         self.onRequestFocusReturn = onRequestFocusReturn
@@ -289,6 +306,12 @@ class OverlayWindowController {
                 windowID: windowID,
                 pointSize: pointSize
             )
+        }
+        self.eventTrackingStateProvider = {
+            OverlayWindowController.isRunningEventTrackingMode
+        }
+        self.eventTrackingDismissal = {
+            OverlayWindowController.dismissActiveEventTrackingSurface()
         }
         self.onFirstFramePresented = nil
         self.onRecordingSelection = onRecordingSelection
@@ -339,11 +362,15 @@ class OverlayWindowController {
         expectedSnapshotDisplayIDs = Set(targets.map(\.displayID))
         firstFrameTargetDisplayID = Self.displayIDUnderPointer()
             ?? targets.first?.displayID
+        waitsForEventTrackingSnapshot = shouldCaptureSnapshots
+            && eventTrackingStateProvider()
         triggerContext?.mark(.backgroundPreparationStarted)
 
         startWindowEnumeration(generation: generation)
         startSnapshotCapture(targets: targets, generation: generation)
-        presentOverlay(generation: generation)
+        if !waitsForEventTrackingSnapshot {
+            presentOverlay(generation: generation)
+        }
     }
 
     private func startSnapshotCapture(
@@ -425,17 +452,55 @@ class OverlayWindowController {
                 )
             }
             resumePendingSelectionIfReady(displayID: displayID)
+            finishEventTrackingPresentationIfReady(
+                displayID: displayID,
+                generation: generation
+            )
         case .failure(let displayID, _):
             failedSnapshotDisplayIDs.insert(displayID)
             if pendingSelection?.displayID == displayID {
                 finishSelectionCaptureFailure()
             }
+            finishEventTrackingPresentationIfReady(
+                displayID: displayID,
+                generation: generation
+            )
         case .finished:
             snapshotCaptureFinished = true
             if let pendingSelection,
                screenSnapshots[pendingSelection.displayID] == nil {
                 finishSelectionCaptureFailure()
             }
+            finishEventTrackingPresentationIfReady(
+                generation: generation,
+                force: true
+            )
+        }
+    }
+
+    private func finishEventTrackingPresentationIfReady(
+        displayID: CGDirectDisplayID? = nil,
+        generation: Int,
+        force: Bool = false
+    ) {
+        guard waitsForEventTrackingSnapshot,
+              generation == presentationGeneration,
+              !sessionEnded else { return }
+        if !force,
+           let firstFrameTargetDisplayID,
+           displayID != firstFrameTargetDisplayID {
+            return
+        }
+
+        waitsForEventTrackingSnapshot = false
+        if eventTrackingStateProvider() {
+            eventTrackingDismissal()
+        }
+        MainRunLoopScheduler.performInDefaultMode { [weak self] in
+            guard let self,
+                  generation == self.presentationGeneration,
+                  !self.sessionEnded else { return }
+            self.presentOverlay(generation: generation)
         }
     }
 
@@ -618,6 +683,25 @@ class OverlayWindowController {
         return screen?.deviceDescription[
             NSDeviceDescriptionKey("NSScreenNumber")
         ] as? CGDirectDisplayID
+    }
+
+    private static var isRunningEventTrackingMode: Bool {
+        guard let mode = CFRunLoopCopyCurrentMode(CFRunLoopGetMain()) else {
+            return false
+        }
+        return mode.rawValue as String == RunLoop.Mode.eventTracking.rawValue
+    }
+
+    private static func dismissActiveEventTrackingSurface() {
+        NSApp.sendAction(#selector(NSResponder.cancelOperation(_:)), to: nil, from: nil)
+
+        let source = CGEventSource(stateID: .combinedSessionState)
+        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 53, keyDown: true)
+        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 53, keyDown: false)
+        keyDown?.flags = []
+        keyUp?.flags = []
+        keyDown?.post(tap: .cghidEventTap)
+        keyUp?.post(tap: .cghidEventTap)
     }
 
     private static var persistedSelectionAspectRatio: CGFloat? {
@@ -971,6 +1055,7 @@ class OverlayWindowController {
         expectedSnapshotDisplayIDs.removeAll()
         failedSnapshotDisplayIDs.removeAll()
         snapshotCaptureFinished = false
+        waitsForEventTrackingSnapshot = false
         firstFrameTargetDisplayID = nil
         activeSelectionView = nil
         activeScreen = nil

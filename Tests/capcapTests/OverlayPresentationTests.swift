@@ -45,6 +45,37 @@ final class OverlayPresentationTests: XCTestCase {
         XCTAssertEqual(provider.cancellationCount, 1)
     }
 
+    func testEventTrackingCaptureWaitsForSnapshotBeforeDismissingPopup() throws {
+        _ = NSApplication.shared
+        let provider = ControlledScreenSnapshotProvider()
+        var eventTrackingIsActive = true
+        var dismissalCount = 0
+        let controller = OverlayWindowController(
+            snapshotProvider: provider,
+            windowSnapshotLoader: { _ in .success([]) },
+            eventTrackingStateProvider: { eventTrackingIsActive },
+            eventTrackingDismissal: {
+                dismissalCount += 1
+                eventTrackingIsActive = false
+            },
+            onComplete: { _ in }
+        )
+
+        controller.activate()
+
+        XCTAssertFalse(controller.isOverlayPresented)
+        XCTAssertEqual(dismissalCount, 0)
+
+        let displayID = try XCTUnwrap(provider.targets.first?.displayID)
+        provider.emit(.image(displayID: displayID, image: makeImage()))
+        drainMainRunLoop()
+
+        XCTAssertEqual(dismissalCount, 1)
+        XCTAssertTrue(controller.isOverlayPresented)
+        XCTAssertEqual(controller.appliedSnapshotCount, 1)
+        controller.cancel()
+    }
+
     func testSelectionWaitsWithoutBlockingAndResumesWhenItsSnapshotArrives() throws {
         _ = NSApplication.shared
         let provider = ControlledScreenSnapshotProvider()
