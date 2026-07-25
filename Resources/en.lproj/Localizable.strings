@@ -208,6 +208,7 @@
 "tipLine" = "Line";
 "tipPen" = "Pen";
 "tipMarker" = "Marker";
+"tipSpotlight" = "Spotlight";
 "tipMosaic" = "Mosaic";
 "mosaicGranularity" = "Mosaic Granularity";
 "tipEraser" = "Eraser";

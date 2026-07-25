@@ -208,6 +208,7 @@
 "tipLine" = "직선";
 "tipPen" = "펜";
 "tipMarker" = "형광펜";
+"tipSpotlight" = "스포트라이트";
 "tipMosaic" = "모자이크";
 "mosaicGranularity" = "모자이크 입자 크기";
 "tipEraser" = "지우개";

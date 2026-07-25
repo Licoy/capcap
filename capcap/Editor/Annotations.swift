@@ -880,6 +880,65 @@ struct MosaicAnnotation: Annotation {
     }
 }
 
+// MARK: - Spotlight Annotation
+
+/// A transparent rectangular window surrounded by a dimming layer. Spotlight
+/// annotations are composited together by `EditCanvasView`, so several
+/// windows share one overlay instead of repeatedly darkening each other.
+struct SpotlightAnnotation: Annotation {
+    let rect: NSRect
+
+    static let dimmingAlpha: CGFloat = 0.52
+    static let cornerRadius: CGFloat = 6
+
+    var boundingRect: NSRect { rect }
+
+    func draw(in context: CGContext, bounds: NSRect) {
+        Self.drawDimmingOverlay(highlightRects: [rect], in: context, bounds: bounds)
+    }
+
+    static func drawDimmingOverlay(
+        highlightRects: [NSRect],
+        in context: CGContext,
+        bounds: NSRect
+    ) {
+        guard !highlightRects.isEmpty else { return }
+        let visibleRects = highlightRects
+            .map { $0.intersection(bounds) }
+            .filter { !$0.isNull && $0.width > 0 && $0.height > 0 }
+
+        context.saveGState()
+        context.beginTransparencyLayer(auxiliaryInfo: nil)
+        context.setFillColor(NSColor.black.withAlphaComponent(dimmingAlpha).cgColor)
+        context.fill(bounds)
+        context.setBlendMode(.clear)
+        for rect in visibleRects {
+            let radius = min(cornerRadius, rect.width / 2, rect.height / 2)
+            context.addPath(CGPath(
+                roundedRect: rect,
+                cornerWidth: radius,
+                cornerHeight: radius,
+                transform: nil
+            ))
+            context.fillPath()
+        }
+        context.endTransparencyLayer()
+        context.restoreGState()
+    }
+
+    func containsPoint(_ point: NSPoint) -> Bool {
+        rect.contains(point)
+    }
+
+    func translated(by delta: NSPoint) -> Annotation {
+        SpotlightAnnotation(rect: rect.offsetBy(dx: delta.x, dy: delta.y))
+    }
+
+    func withRect(_ rect: NSRect) -> SpotlightAnnotation {
+        SpotlightAnnotation(rect: rect)
+    }
+}
+
 // MARK: - Magnifier Annotation
 
 /// A circular magnifying-glass lens placed over the screenshot. The lens

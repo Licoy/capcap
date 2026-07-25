@@ -208,6 +208,7 @@
 "tipLine" = "Ligne";
 "tipPen" = "Stylo";
 "tipMarker" = "Surligneur";
+"tipSpotlight" = "Projecteur";
 "tipMosaic" = "Mosaïque";
 "mosaicGranularity" = "Granularité de la mosaïque";
 "tipEraser" = "Gomme";

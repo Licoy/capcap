@@ -471,6 +471,7 @@ class EditWindowController {
         case is LineAnnotation: return .line
         case is PenAnnotation: return .pen
         case is MarkerAnnotation: return .marker
+        case is SpotlightAnnotation: return .spotlight
         case is MosaicAnnotation: return .mosaic
         case is MagnifierAnnotation: return .magnifier
         case is NumberAnnotation: return .numbered
@@ -2767,7 +2768,7 @@ class ToolbarView: NSView {
         guard sender.tag >= 0, sender.tag < items.count else { return }
         let id = items[sender.tag]
         switch id {
-        case .rectangle, .ellipse, .arrow, .line, .pen, .marker, .mosaic, .eraser, .magnifier, .numbered, .text, .emoji:
+        case .rectangle, .ellipse, .arrow, .line, .pen, .marker, .spotlight, .mosaic, .eraser, .magnifier, .numbered, .text, .emoji:
             guard let tool = id.editTool else { return }
             // Click an already-selected tool to deselect it and enter adjust
             // mode (no tool, but existing marks remain draggable).

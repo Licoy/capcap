@@ -208,6 +208,7 @@
 "tipLine" = "Линия";
 "tipPen" = "Карандаш";
 "tipMarker" = "Маркер";
+"tipSpotlight" = "Прожектор";
 "tipMosaic" = "Мозаика";
 "mosaicGranularity" = "Зернистость мозаики";
 "tipEraser" = "Ластик";

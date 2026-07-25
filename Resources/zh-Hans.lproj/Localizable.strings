@@ -208,6 +208,7 @@
 "tipLine" = "直线";
 "tipPen" = "画笔";
 "tipMarker" = "高亮笔";
+"tipSpotlight" = "聚光灯";
 "tipMosaic" = "马赛克";
 "mosaicGranularity" = "马赛克颗粒度";
 "tipEraser" = "橡皮擦";

@@ -208,6 +208,7 @@
 "tipLine" = "直線";
 "tipPen" = "ペン";
 "tipMarker" = "マーカー";
+"tipSpotlight" = "スポットライト";
 "tipMosaic" = "モザイク";
 "mosaicGranularity" = "モザイク粒度";
 "tipEraser" = "消しゴム";

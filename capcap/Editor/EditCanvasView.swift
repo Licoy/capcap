@@ -4,6 +4,7 @@ enum EditTool {
     case none
     case pen
     case marker
+    case spotlight
     case mosaic
     case eraser
     case magnifier
@@ -926,6 +927,9 @@ class EditCanvasView: NSView {
         if let a = a as? MosaicAnnotation, let b = b as? MosaicAnnotation {
             return a.rect == b.rect && a.blockSize == b.blockSize
         }
+        if let a = a as? SpotlightAnnotation, let b = b as? SpotlightAnnotation {
+            return a.rect == b.rect
+        }
         if let a = a as? MagnifierAnnotation, let b = b as? MagnifierAnnotation {
             return a.center == b.center && a.radius == b.radius
                 && a.color == b.color && a.lineWidth == b.lineWidth
@@ -1085,7 +1089,7 @@ class EditCanvasView: NSView {
             shapeCurrent = point
             shapeRoughSeed = RoughShapeStyle.randomSeed()
 
-        case .arrow, .line, .mosaic:
+        case .arrow, .line, .spotlight, .mosaic:
             shapeStart = point
             shapeCurrent = point
             shapeRoughSeed = nil
@@ -1179,7 +1183,7 @@ class EditCanvasView: NSView {
             appendStrokePoint(point, to: &currentMarkerPoints)
             needsDisplay = true
 
-        case .rectangle, .ellipse, .arrow, .line, .mosaic, .magnifier:
+        case .rectangle, .ellipse, .arrow, .line, .spotlight, .mosaic, .magnifier:
             shapeCurrent = point
             needsDisplay = true
         }
@@ -1302,6 +1306,17 @@ class EditCanvasView: NSView {
                 ))
                 currentMarkerPoints = nil
             }
+
+        case .spotlight:
+            if let start = shapeStart, let end = shapeCurrent {
+                let rect = rectFromTwoPoints(start, end)
+                if rect.width > 2, rect.height > 2 {
+                    recordUndo()
+                    annotations.append(SpotlightAnnotation(rect: rect))
+                }
+            }
+            shapeStart = nil
+            shapeCurrent = nil
 
         case .mosaic:
             if let start = shapeStart, let end = shapeCurrent {
@@ -1467,10 +1482,20 @@ class EditCanvasView: NSView {
             image.draw(in: NSRect(origin: .zero, size: bounds.size))
         }
 
-        // Draw all committed annotations (rotation applied via helper)
-        for annotation in annotations {
-            annotation.drawApplyingTransforms(in: context, bounds: bounds)
-        }
+        let liveSpotlightRect: NSRect? = {
+            guard
+                activeTool == .spotlight,
+                let start = shapeStart,
+                let current = shapeCurrent
+            else { return nil }
+            let rect = rectFromTwoPoints(start, current)
+            return rect.width > 0 && rect.height > 0 ? rect : nil
+        }()
+        drawCommittedAnnotations(
+            in: context,
+            bounds: bounds,
+            additionalSpotlightRect: liveSpotlightRect
+        )
 
         drawActiveTextCalloutBackground(in: context)
 
@@ -1554,6 +1579,10 @@ class EditCanvasView: NSView {
                 let rect = rectFromTwoPoints(start, current)
                 context.setFillColor(NSColor.gray.withAlphaComponent(0.5).cgColor)
                 context.fill(rect)
+            case .spotlight:
+                // The preview is composited with committed spotlights above,
+                // so multiple highlight windows share one dimming layer.
+                break
             case .line:
                 context.setLineCap(.round)
                 context.move(to: start)
@@ -1678,6 +1707,29 @@ class EditCanvasView: NSView {
         enclosingScrollView?.scrollWheel(with: event)
     }
 
+    private func drawCommittedAnnotations(
+        in context: CGContext,
+        bounds: NSRect,
+        additionalSpotlightRect: NSRect? = nil
+    ) {
+        var spotlightRects: [NSRect] = []
+        for annotation in annotations {
+            if let spotlight = annotation as? SpotlightAnnotation {
+                spotlightRects.append(spotlight.rect)
+            } else {
+                annotation.drawApplyingTransforms(in: context, bounds: bounds)
+            }
+        }
+        if let additionalSpotlightRect {
+            spotlightRects.append(additionalSpotlightRect)
+        }
+        SpotlightAnnotation.drawDimmingOverlay(
+            highlightRects: spotlightRects,
+            in: context,
+            bounds: bounds
+        )
+    }
+
     // MARK: - Composite
 
     func compositeImage(
@@ -1723,9 +1775,7 @@ class EditCanvasView: NSView {
                 let scaleY = imageBounds.height / annotationBounds.height
                 context.scaleBy(x: scaleX, y: scaleY)
             }
-            for annotation in annotations {
-                annotation.drawApplyingTransforms(in: context, bounds: annotationBounds)
-            }
+            drawCommittedAnnotations(in: context, bounds: annotationBounds)
             context.restoreGState()
             graphicsContext.flushGraphics()
 
@@ -2732,6 +2782,7 @@ class EditCanvasView: NSView {
     private func isResizable(_ annotation: Annotation) -> Bool {
         annotation is RectAnnotation
             || annotation is EllipseAnnotation
+            || annotation is SpotlightAnnotation
             || annotation is MosaicAnnotation
             || annotation is MagnifierAnnotation
             || annotation is ImageAnnotation
@@ -2943,6 +2994,15 @@ class EditCanvasView: NSView {
                 )
                 guard r >= MagnifierAnnotation.minRadius else { return }
                 annotations[state.index] = magnifier.withRadius(r)
+            } else if let spotlight = state.original as? SpotlightAnnotation {
+                let newRect = resizedRect(
+                    from: spotlight.rect,
+                    anchor: anchor,
+                    currentMouse: currentMouse,
+                    minimumSize: 4
+                )
+                guard newRect.width >= 4, newRect.height >= 4 else { return }
+                annotations[state.index] = spotlight.withRect(newRect)
             } else if let mosaic = state.original as? MosaicAnnotation {
                 // Move only the edge(s) this grip owns; the opposite edge(s)
                 // stay pinned. min/abs keep the rect valid if the user drags a
