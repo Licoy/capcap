@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.15] - 2026-07-25
+
+### Added
+- Add a spotlight annotation tool (3358e20)
+
+### Fixed
+- Fix capture overlay presentation during event tracking (a8792b8)
+
 ## [1.6.14] - 2026-07-23
 
 ### Added
