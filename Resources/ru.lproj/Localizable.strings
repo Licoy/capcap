@@ -565,3 +565,13 @@
 "savePathReveal" = "Показать";
 "chooseRecordingSavePathTitle" = "Выберите путь для записей";
 "chooseScreenshotSavePathTitle" = "Выберите путь для снимков";
+
+/* Idle color lens */
+"idleLensCoordinates" = "Координаты: %@, %@";
+"idleLensHex" = "HEX: %@";
+"idleLensRgb" = "RGB: %@";
+"idleLensRgbString" = "rgb(%d, %d, %d)";
+"idleLensCopyHint" = "Нажмите ⌘+C, чтобы скопировать цвет";
+"idleLensShiftHint" = "Нажмите Shift для переключения на RGB";
+"settingsIdleColorLensTitle" = "Показывать лупу цвета в режиме ожидания";
+"settingsIdleColorLensHint" = "Перед выбором показывать у курсора лупу с RGB/HEX";

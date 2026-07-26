@@ -62,6 +62,16 @@ class OverlayWindowController {
 
     private var windows: [NSWindow] = []
     private var chipWindow: CursorChipWindow?
+    private var idleColorLens: IdleColorLensWindow?
+    private var idleColorLensFormat: IdleColorLensWindow.Format = .hex
+    private var mouseMovedLocalMonitor: Any?
+    private var mouseMovedGlobalMonitor: Any?
+    private var idleLensFlagsChangedLocalMonitor: Any?
+    private var idleLensFlagsChangedGlobalMonitor: Any?
+    private var idleLensKeyDownGlobalMonitor: Any?
+    private var lastIdleLensShiftDown: TimeInterval = 0
+    private var idleColorLensActive: Bool { idleColorLens != nil }
+    private var screenFramesByDisplayID: [CGDirectDisplayID: NSRect] = [:]
     private var escLocalMonitor: Any?
     private var escGlobalMonitor: Any?
     private var rightMouseLocalMonitor: Any?
@@ -507,6 +517,15 @@ class OverlayWindowController {
     private func presentOverlay(generation: Int) {
         guard windows.isEmpty else { return }
 
+        // Cache each screen's AppKit frame so the idle color lens can map a
+        // global mouse location onto the matching snapshot's pixel coords.
+        screenFramesByDisplayID.removeAll(keepingCapacity: true)
+        for screen in NSScreen.screens {
+            if let displayID = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID {
+                screenFramesByDisplayID[displayID] = screen.frame
+            }
+        }
+
         // The transparent selection shell is deliberately created without
         // waiting for frozen pixels. Until a snapshot arrives, AppKit simply
         // reveals the live desktop through the clear panel.
@@ -569,11 +588,22 @@ class OverlayWindowController {
         triggerContext?.mark(.overlayOrderedFront)
 
         chipWindow = CursorChipWindow(text: currentCursorChipText)
-        chipWindow?.show()
+        if presetImage == nil && suspendedDraft == nil && Defaults.idleColorLensEnabled {
+            // Lens replaces the drag-to-screenshot hint while the overlay is
+            // sitting in the idle state. Chip stays nil so its text doesn't
+            // double up with the lens.
+            chipWindow = nil
+            setupIdleColorLens()
+        } else {
+            chipWindow?.show()
+        }
 
         escLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if self?.editController?.isTextEditing == true {
                 return event
+            }
+            if self?.handleIdleLensCopyShortcut(for: event) == true {
+                return nil
             }
             if self?.editController?.confirmCropFromKeyboard(for: event) == true {
                 return nil
@@ -623,6 +653,27 @@ class OverlayWindowController {
             if event.keyCode == 53 {
                 self?.cancel()
             }
+        }
+        idleLensFlagsChangedLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            self?.handleIdleLensShiftFlagsChanged(event)
+            return event
+        }
+        // The overlay is a non-activating panel, so keyboard events routed
+        // to the foreground app never reach our local monitor. Mirror the
+        // Shift and ⌘+C handling with global monitors so they still fire
+        // when the user has Gemini (or any other app) focused underneath.
+        idleLensFlagsChangedGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            self?.handleIdleLensShiftFlagsChanged(event)
+        }
+        idleLensKeyDownGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            self?.handleIdleLensCopyShortcut(for: event)
+        }
+        mouseMovedLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .mouseMoved) { [weak self] event in
+            self?.refreshIdleColorLensContent()
+            return event
+        }
+        mouseMovedGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] _ in
+            self?.refreshIdleColorLensContent()
         }
         rightMouseLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .rightMouseDown) { [weak self] event in
             if self?.editController?.isTextEditing == true {
@@ -1040,8 +1091,18 @@ class OverlayWindowController {
         chipWindow?.dismiss()
         chipWindow = nil
 
+        idleColorLens?.dismiss()
+        idleColorLens = nil
+        idleColorLensFormat = .hex
+        lastIdleLensShiftDown = 0
+
         if let m = escLocalMonitor { NSEvent.removeMonitor(m); escLocalMonitor = nil }
         if let m = escGlobalMonitor { NSEvent.removeMonitor(m); escGlobalMonitor = nil }
+        if let m = idleLensFlagsChangedLocalMonitor { NSEvent.removeMonitor(m); idleLensFlagsChangedLocalMonitor = nil }
+        if let m = idleLensFlagsChangedGlobalMonitor { NSEvent.removeMonitor(m); idleLensFlagsChangedGlobalMonitor = nil }
+        if let m = idleLensKeyDownGlobalMonitor { NSEvent.removeMonitor(m); idleLensKeyDownGlobalMonitor = nil }
+        if let m = mouseMovedLocalMonitor { NSEvent.removeMonitor(m); mouseMovedLocalMonitor = nil }
+        if let m = mouseMovedGlobalMonitor { NSEvent.removeMonitor(m); mouseMovedGlobalMonitor = nil }
         if let m = rightMouseLocalMonitor { NSEvent.removeMonitor(m); rightMouseLocalMonitor = nil }
         if let m = rightMouseGlobalMonitor { NSEvent.removeMonitor(m); rightMouseGlobalMonitor = nil }
 
@@ -1082,6 +1143,88 @@ class OverlayWindowController {
             height: screenRect.height
         )
     }
+
+    // MARK: - Idle color lens
+
+    private func setupIdleColorLens() {
+        let lens = IdleColorLensWindow()
+        idleColorLens = lens
+        idleColorLensFormat = .hex
+        lens.setFormat(idleColorLensFormat)
+        lens.show()
+        refreshIdleColorLensContent()
+    }
+
+    private func refreshIdleColorLensContent() {
+        guard let lens = idleColorLens else { return }
+        let mouseLocation = NSEvent.mouseLocation
+        guard let screen = NSScreen.screens.first(where: { $0.frame.contains(mouseLocation) }),
+              let displayID = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID,
+              let snapshot = screenSnapshots[displayID],
+              let screenFrame = screenFramesByDisplayID[displayID] else {
+            lens.update(snapshot: nil, screenFrame: .zero, mouseLocation: mouseLocation, format: idleColorLensFormat)
+            return
+        }
+        lens.update(
+            snapshot: snapshot,
+            screenFrame: screenFrame,
+            mouseLocation: mouseLocation,
+            format: idleColorLensFormat
+        )
+    }
+
+    private func handleIdleLensShiftFlagsChanged(_ event: NSEvent) {
+        guard idleColorLensActive else { return }
+        // Shift left/right keyCode is 56 / 60. We accept either.
+        guard event.keyCode == 56 || event.keyCode == 60 else { return }
+        let shiftIsDown = event.modifierFlags.contains(.shift)
+        let now = event.timestamp
+        if shiftIsDown {
+            lastIdleLensShiftDown = now
+        } else if lastIdleLensShiftDown > 0 {
+            let duration = now - lastIdleLensShiftDown
+            lastIdleLensShiftDown = 0
+            // Tap detection: quick press-and-release of Shift without other keys.
+            // 500 ms is generous enough for a deliberate tap but short enough to
+            // ignore Shift+letter holds where Shift stays down longer.
+            if duration < 0.5 {
+                toggleIdleColorLensFormat()
+            }
+        }
+    }
+
+    private func toggleIdleColorLensFormat() {
+        idleColorLensFormat = (idleColorLensFormat == .hex) ? .rgb : .hex
+        idleColorLens?.setFormat(idleColorLensFormat)
+    }
+
+    /// Returns `true` when the event represents ⌘+C and the lens should claim it.
+    private func handleIdleLensCopyShortcut(for event: NSEvent) -> Bool {
+        guard idleColorLensActive else { return false }
+        guard event.keyCode == 8 else { return false } // kVK_ANSI_C
+        let mods = event.modifierFlags.intersection([.command, .option, .control])
+        guard mods == .command else { return false }
+        guard let lens = idleColorLens, let sample = lens.currentSample else { return false }
+        copyIdleLensColor(sample)
+        return true
+    }
+
+    private func copyIdleLensColor(_ sample: IdleColorLensWindow.Sample) {
+        let hex = String(format: "#%02X%02X%02X", sample.r, sample.g, sample.b)
+        let rgb = L10n.idleLensRgbString(r: sample.r, g: sample.g, b: sample.b)
+        let value: String
+        switch idleColorLensFormat {
+        case .hex:
+            value = hex
+            // Reuse the existing color-copy helper so history stays consistent.
+            ClipboardManager.copyColorToClipboard(hex: hex)
+        case .rgb:
+            value = rgb
+            ClipboardManager.copyToClipboard(text: rgb)
+        }
+        let toastScreen = NSScreen.screens.first(where: { $0.frame.contains(NSEvent.mouseLocation) }) ?? NSScreen.main
+        ToastWindow.show(message: L10n.colorCopied(value), on: toastScreen)
+    }
 }
 
 // MARK: - SelectionViewDelegate
@@ -1090,6 +1233,8 @@ extension OverlayWindowController: SelectionViewDelegate {
     func selectionDidStart() {
         chipWindow?.dismiss()
         chipWindow = nil
+        idleColorLens?.dismiss()
+        idleColorLens = nil
     }
 
     func selectionMaskDidDoubleClick(inView view: NSView) {

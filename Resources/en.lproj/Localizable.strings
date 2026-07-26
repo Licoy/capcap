@@ -565,3 +565,13 @@
 "savePathReveal" = "Reveal";
 "chooseRecordingSavePathTitle" = "Choose Recording Save Path";
 "chooseScreenshotSavePathTitle" = "Choose Screenshot Save Path";
+
+/* Idle color lens */
+"idleLensCoordinates" = "Coordinates: %@, %@";
+"idleLensHex" = "HEX: %@";
+"idleLensRgb" = "RGB: %@";
+"idleLensRgbString" = "rgb(%d, %d, %d)";
+"idleLensCopyHint" = "Press ⌘+C to copy color";
+"idleLensShiftHint" = "Press Shift to switch RGB";
+"settingsIdleColorLensTitle" = "Show color lens on idle";
+"settingsIdleColorLensHint" = "Display a magnifier with RGB/HEX readout next to the cursor before drawing";

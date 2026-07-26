@@ -71,6 +71,7 @@ class SettingsView: NSView {
     private var langPicker: NSPopUpButton!
     private var historyCacheSwitch: NSSwitch!
     private var clipboardTextCacheSwitch: NSSwitch!
+    private var idleColorLensSwitch: NSSwitch!
     private var historyCacheSlider: SettingsTickSlider!
     private var historyCacheValueLabel: NSTextField!
     private var clipboardTextHistoryLimitSlider: SettingsTickSlider!
@@ -1131,6 +1132,17 @@ class SettingsView: NSView {
         colorPickerShortcutRestoreButton = colorPickerShortcut.restoreButton
         stack.addArrangedSubview(colorPickerShortcut.card)
         colorPickerShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
+        // Idle color lens toggle (related to color-picker behavior)
+        let idleLensToggle = makeToggleRow(
+            title: L10n.settingsIdleColorLensTitle,
+            subtitle: L10n.settingsIdleColorLensHint,
+            isOn: Defaults.idleColorLensEnabled,
+            action: #selector(idleColorLensToggled(_:))
+        )
+        idleColorLensSwitch = idleLensToggle.toggle
+        stack.addArrangedSubview(idleLensToggle.row)
+        idleLensToggle.row.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
         // Edit selected image shortcut card
         let selectedImageEditShortcut = buildShortcutCard(
@@ -3027,6 +3039,10 @@ class SettingsView: NSView {
         Defaults.historyCacheEnabled = sender.state == .on
         updateHistoryCacheControlsEnabled()
         updateHistoryPanelModeControlsEnabled()
+    }
+
+    @objc private func idleColorLensToggled(_ sender: NSSwitch) {
+        Defaults.idleColorLensEnabled = sender.state == .on
     }
 
     @objc private func clipboardTextCacheToggled(_ sender: NSSwitch) {

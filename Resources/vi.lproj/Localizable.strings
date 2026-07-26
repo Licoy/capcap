@@ -565,3 +565,13 @@
 "savePathReveal" = "Hiện";
 "chooseRecordingSavePathTitle" = "Chọn đường dẫn lưu bản ghi";
 "chooseScreenshotSavePathTitle" = "Chọn đường dẫn lưu ảnh chụp";
+
+/* Idle color lens */
+"idleLensCoordinates" = "Tọa độ: %@, %@";
+"idleLensHex" = "HEX: %@";
+"idleLensRgb" = "RGB: %@";
+"idleLensRgbString" = "rgb(%d, %d, %d)";
+"idleLensCopyHint" = "Nhấn ⌘+C để sao chép màu";
+"idleLensShiftHint" = "Nhấn Shift để chuyển RGB";
+"settingsIdleColorLensTitle" = "Hiển thị kính lúp màu khi chờ";
+"settingsIdleColorLensHint" = "Trước khi chọn, hiển thị kính lúp với RGB/HEX cạnh con trỏ";

@@ -565,3 +565,13 @@
 "savePathReveal" = "表示";
 "chooseRecordingSavePathTitle" = "録画の保存先を選択";
 "chooseScreenshotSavePathTitle" = "スクリーンショットの保存先を選択";
+
+/* Idle color lens */
+"idleLensCoordinates" = "座標: %@, %@";
+"idleLensHex" = "HEX: %@";
+"idleLensRgb" = "RGB: %@";
+"idleLensRgbString" = "rgb(%d, %d, %d)";
+"idleLensCopyHint" = "⌘+C で色をコピー";
+"idleLensShiftHint" = "Shift で RGB に切替";
+"settingsIdleColorLensTitle" = "待機時に拡大カラーピッカーを表示";
+"settingsIdleColorLensHint" = "選択前にカーソル脇に RGB/HEX 表示の拡大鏡を表示";

@@ -192,6 +192,18 @@ enum L10n {
     static var colorPickerShortcutHeader: String { s("colorPickerShortcutHeader") }
     static var colorPickerShortcutDefaultDisplay: String { s("colorPickerShortcutDefaultDisplay") }
 
+    // Idle color lens (overlay idle magnifier color picker)
+    static var idleLensCoordinates: String { s("idleLensCoordinates") }
+    static var idleLensHex: String { s("idleLensHex") }
+    static var idleLensRgb: String { s("idleLensRgb") }
+    static var idleLensCopyHint: String { s("idleLensCopyHint") }
+    static var idleLensShiftHint: String { s("idleLensShiftHint") }
+    static func idleLensRgbString(r: Int, g: Int, b: Int) -> String {
+        String(format: s("idleLensRgbString"), r, g, b)
+    }
+    static var settingsIdleColorLensTitle: String { s("settingsIdleColorLensTitle") }
+    static var settingsIdleColorLensHint: String { s("settingsIdleColorLensHint") }
+
     // Copy-to-clipboard shortcut (editor confirm)
     static var clipboardShortcutHeader: String { s("clipboardShortcutHeader") }
     static var clipboardShortcutHint: String { s("clipboardShortcutHint") }
@@ -1717,6 +1729,20 @@ struct Defaults {
             if oldValue != newValue {
                 NotificationCenter.default.post(name: .historyCacheEnabledDidChange, object: nil)
             }
+        }
+    }
+
+    /// Whether to show the magnifier color picker on the overlay's idle state
+    /// (replaces the legacy "drag to screenshot" cursor chip when enabled).
+    static var idleColorLensEnabled: Bool {
+        get {
+            if defaults.object(forKey: "idleColorLensEnabled") == nil {
+                return true
+            }
+            return defaults.bool(forKey: "idleColorLensEnabled")
+        }
+        set {
+            defaults.set(newValue, forKey: "idleColorLensEnabled")
         }
     }
 

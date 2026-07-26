@@ -565,3 +565,13 @@
 "savePathReveal" = "顯示";
 "chooseRecordingSavePathTitle" = "選擇錄製儲存路徑";
 "chooseScreenshotSavePathTitle" = "選擇截圖儲存路徑";
+
+/* Idle color lens */
+"idleLensCoordinates" = "座標: %@, %@";
+"idleLensHex" = "HEX: %@";
+"idleLensRgb" = "RGB: %@";
+"idleLensRgbString" = "rgb(%d, %d, %d)";
+"idleLensCopyHint" = "按 ⌘+C 複製色彩";
+"idleLensShiftHint" = "按 Shift 切換 RGB";
+"settingsIdleColorLensTitle" = "閒置狀態顯示放大鏡取色";
+"settingsIdleColorLensHint" = "繪製前在游標旁顯示帶 RGB/HEX 的放大鏡";

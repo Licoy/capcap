@@ -565,3 +565,13 @@
 "savePathReveal" = "보기";
 "chooseRecordingSavePathTitle" = "녹화 저장 경로 선택";
 "chooseScreenshotSavePathTitle" = "스크린샷 저장 경로 선택";
+
+/* Idle color lens */
+"idleLensCoordinates" = "좌표: %@, %@";
+"idleLensHex" = "HEX: %@";
+"idleLensRgb" = "RGB: %@";
+"idleLensRgbString" = "rgb(%d, %d, %d)";
+"idleLensCopyHint" = "⌘+C 로 색상 복사";
+"idleLensShiftHint" = "Shift 로 RGB 전환";
+"settingsIdleColorLensTitle" = "대기 상태에서 색상 렌즈 표시";
+"settingsIdleColorLensHint" = "선택 전에 커서 옆에 RGB/HEX 확대경 표시";
