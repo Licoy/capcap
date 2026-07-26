@@ -181,11 +181,12 @@ final class IdleColorLensTests: XCTestCase {
         XCTAssertTrue(rgb.contains("23"))
     }
 
-    func testDefaultsIdleColorLensEnabledIsOnByDefault() {
-        // Wipe any persisted value and ensure the default is true.
+    func testDefaultsIdleColorLensEnabledIsOffByDefault() {
+        // Wipe any persisted value and ensure the default is false so the
+        // legacy "drag to screenshot" chip remains the default behavior.
         let key = "idleColorLensEnabled"
         UserDefaults.standard.removeObject(forKey: key)
-        XCTAssertTrue(Defaults.idleColorLensEnabled)
+        XCTAssertFalse(Defaults.idleColorLensEnabled)
         UserDefaults.standard.removeObject(forKey: key)
     }
 }

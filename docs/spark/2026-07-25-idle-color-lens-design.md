@@ -8,7 +8,7 @@ Project: capcap
 
 Add a magnifier color picker (lens) to the screenshot overlay's idle state. When the user has triggered an overlay session but has not yet started dragging a selection, the cursor is followed by a small panel that shows the current pixel coordinates, RGB/HEX value, and a magnified view of the area around the cursor. The user can press `⌘+C` to copy the currently displayed value, or `Shift` (single tap) to toggle between HEX and RGB display. Clicking the cursor still triggers the existing window-selection capture. Pressing `Esc` cancels as before. The lens replaces the legacy "drag to screenshot" cursor chip while the overlay is in the idle state.
 
-The feature is opt-out via a new `Defaults.idleColorLensEnabled` toggle (default ON) and reuses the existing `backgroundSnapshot` for pixel sampling, so no new screen-capture permission is required.
+The feature is opt-in via a new `Defaults.idleColorLensEnabled` toggle (default `false` so existing users keep the legacy "drag to screenshot" chip until they explicitly enable the lens) and reuses the existing `backgroundSnapshot` for pixel sampling, so no new screen-capture permission is required.
 
 ## Goals
 
@@ -108,10 +108,10 @@ Global monitors only observe — they cannot prevent the foreground app from rec
 
 ## Settings
 
-New `Defaults.idleColorLensEnabled: Bool` (default `true`).
+New `Defaults.idleColorLensEnabled: Bool` (default `false`).
 
 - When `true`: `OverlayWindowController` creates the lens instead of the `dragToScreenshot` cursor chip in idle.
-- When `false`: legacy `CursorChipWindow` chip with `L10n.dragToScreenshot` text is shown.
+- When `false` (default): legacy `CursorChipWindow` chip with `L10n.dragToScreenshot` text is shown.
 
 SettingsView adds a toggle row near the existing Color Picker shortcut card:
 
