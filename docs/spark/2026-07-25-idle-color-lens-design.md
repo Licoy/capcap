@@ -113,10 +113,10 @@ New `Defaults.idleColorLensEnabled: Bool` (default `false`).
 - When `true`: `OverlayWindowController` creates the lens instead of the `dragToScreenshot` cursor chip in idle.
 - When `false` (default): legacy `CursorChipWindow` chip with `L10n.dragToScreenshot` text is shown.
 
-SettingsView adds a toggle row near the existing Color Picker shortcut card:
+SettingsView adds the toggle row inside the existing **General → Toggles** card, placed after the `pinAcrossSpaces` row. The Toggles card is the first thing visible in General, so users can find the lens switch without digging into the Shortcuts tab.
 
 ```
-Show color lens on idle   [ON]
+Show color lens on idle       [ON/OFF]   ← inside General → Toggles
 Display a magnifier with RGB/HEX readout next to the cursor before drawing
 ```
 

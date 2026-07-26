@@ -730,6 +730,17 @@ class SettingsView: NSView {
         pinAcrossSpacesSwitch = pinAcrossSpaces.toggle
         togglesInner.addArrangedSubview(pinAcrossSpaces.row)
         pinAcrossSpaces.row.widthAnchor.constraint(equalTo: togglesInner.widthAnchor).isActive = true
+        togglesInner.addArrangedSubview(rowDivider())
+
+        let idleLens = makeToggleRow(
+            title: L10n.settingsIdleColorLensTitle,
+            subtitle: L10n.settingsIdleColorLensHint,
+            isOn: Defaults.idleColorLensEnabled,
+            action: #selector(idleColorLensToggled(_:))
+        )
+        idleColorLensSwitch = idleLens.toggle
+        togglesInner.addArrangedSubview(idleLens.row)
+        idleLens.row.widthAnchor.constraint(equalTo: togglesInner.widthAnchor).isActive = true
 
         stack.addArrangedSubview(togglesCard)
         togglesCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
@@ -1132,17 +1143,6 @@ class SettingsView: NSView {
         colorPickerShortcutRestoreButton = colorPickerShortcut.restoreButton
         stack.addArrangedSubview(colorPickerShortcut.card)
         colorPickerShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
-
-        // Idle color lens toggle (related to color-picker behavior)
-        let idleLensToggle = makeToggleRow(
-            title: L10n.settingsIdleColorLensTitle,
-            subtitle: L10n.settingsIdleColorLensHint,
-            isOn: Defaults.idleColorLensEnabled,
-            action: #selector(idleColorLensToggled(_:))
-        )
-        idleColorLensSwitch = idleLensToggle.toggle
-        stack.addArrangedSubview(idleLensToggle.row)
-        idleLensToggle.row.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
         // Edit selected image shortcut card
         let selectedImageEditShortcut = buildShortcutCard(
