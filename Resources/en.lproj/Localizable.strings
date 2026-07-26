@@ -140,6 +140,11 @@
 "historyPanelFilterMP4" = "MP4";
 "historyPanelFilterColors" = "Colors";
 "historyPanelFilterText" = "Text";
+"historyPanelSearchColorsAndText" = "Search colors and text";
+"historyPanelSearchColors" = "Search colors";
+"historyPanelSearchText" = "Search text";
+"historyPanelClearSearch" = "Clear search";
+"historyPanelSearchNoResults" = "No matching history";
 "historyPreviewCopyText" = "Copy Text";
 "historyPreviewTranslateText" = "Translate Text";
 "historyPreviewConvertToQRCode" = "Convert to QR Code";

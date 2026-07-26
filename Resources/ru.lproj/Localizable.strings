@@ -140,6 +140,11 @@
 "historyPanelFilterMP4" = "MP4";
 "historyPanelFilterColors" = "Цвета";
 "historyPanelFilterText" = "Текст";
+"historyPanelSearchColorsAndText" = "Поиск по цветам и тексту";
+"historyPanelSearchColors" = "Поиск по цветам";
+"historyPanelSearchText" = "Поиск по тексту";
+"historyPanelClearSearch" = "Очистить поиск";
+"historyPanelSearchNoResults" = "Совпадений не найдено";
 "historyPreviewCopyText" = "Копировать текст";
 "historyPreviewTranslateText" = "Перевести текст";
 "historyPreviewConvertToQRCode" = "Преобразовать в QR-код";

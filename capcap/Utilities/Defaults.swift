@@ -258,6 +258,11 @@ enum L10n {
     static var historyPanelFilterMP4: String { s("historyPanelFilterMP4") }
     static var historyPanelFilterColors: String { s("historyPanelFilterColors") }
     static var historyPanelFilterText: String { s("historyPanelFilterText") }
+    static var historyPanelSearchColorsAndText: String { s("historyPanelSearchColorsAndText") }
+    static var historyPanelSearchColors: String { s("historyPanelSearchColors") }
+    static var historyPanelSearchText: String { s("historyPanelSearchText") }
+    static var historyPanelClearSearch: String { s("historyPanelClearSearch") }
+    static var historyPanelSearchNoResults: String { s("historyPanelSearchNoResults") }
     static var historyPreviewCopyText: String { s("historyPreviewCopyText") }
     static var historyPreviewTranslateText: String { s("historyPreviewTranslateText") }
     static var historyPreviewConvertToQRCode: String { s("historyPreviewConvertToQRCode") }

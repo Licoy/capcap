@@ -140,6 +140,11 @@
 "historyPanelFilterMP4" = "MP4";
 "historyPanelFilterColors" = "Couleurs";
 "historyPanelFilterText" = "Texte";
+"historyPanelSearchColorsAndText" = "Rechercher couleurs et texte";
+"historyPanelSearchColors" = "Rechercher des couleurs";
+"historyPanelSearchText" = "Rechercher du texte";
+"historyPanelClearSearch" = "Effacer la recherche";
+"historyPanelSearchNoResults" = "Aucun historique correspondant";
 "historyPreviewCopyText" = "Copier le texte";
 "historyPreviewTranslateText" = "Traduire le texte";
 "historyPreviewConvertToQRCode" = "Convertir en code QR";

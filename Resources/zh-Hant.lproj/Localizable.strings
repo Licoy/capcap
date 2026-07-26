@@ -140,6 +140,11 @@
 "historyPanelFilterMP4" = "MP4";
 "historyPanelFilterColors" = "顏色";
 "historyPanelFilterText" = "文字";
+"historyPanelSearchColorsAndText" = "搜尋顏色和文字";
+"historyPanelSearchColors" = "搜尋顏色";
+"historyPanelSearchText" = "搜尋文字";
+"historyPanelClearSearch" = "清除搜尋";
+"historyPanelSearchNoResults" = "沒有符合的歷史";
 "historyPreviewCopyText" = "複製文字";
 "historyPreviewTranslateText" = "翻譯文字";
 "historyPreviewConvertToQRCode" = "轉成二維碼";

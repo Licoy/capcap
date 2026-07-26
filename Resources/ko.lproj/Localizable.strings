@@ -140,6 +140,11 @@
 "historyPanelFilterMP4" = "MP4";
 "historyPanelFilterColors" = "색상";
 "historyPanelFilterText" = "텍스트";
+"historyPanelSearchColorsAndText" = "색상 및 텍스트 검색";
+"historyPanelSearchColors" = "색상 검색";
+"historyPanelSearchText" = "텍스트 검색";
+"historyPanelClearSearch" = "검색 지우기";
+"historyPanelSearchNoResults" = "일치하는 기록 없음";
 "historyPreviewCopyText" = "텍스트 복사";
 "historyPreviewTranslateText" = "텍스트 번역";
 "historyPreviewConvertToQRCode" = "QR 코드로 변환";
