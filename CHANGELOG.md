@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.16] - 2026-07-26
+
+### Added
+- Add localized search support to the history panel (0e069a2)
+
+### Fixed
+- Improve history search cursor positioning and clean up search mode state (f790366, a57e200)
+
 ## [1.6.15] - 2026-07-25
 
 ### Added
