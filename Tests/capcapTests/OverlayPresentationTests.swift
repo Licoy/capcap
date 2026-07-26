@@ -45,6 +45,14 @@ final class OverlayPresentationTests: XCTestCase {
         XCTAssertEqual(provider.cancellationCount, 1)
     }
 
+    func testCursorChipIsExcludedFromScreenSnapshots() {
+        _ = NSApplication.shared
+        let chip = CursorChipWindow()
+
+        XCTAssertEqual(chip.sharingType, .none)
+        chip.close()
+    }
+
     func testEventTrackingCaptureWaitsForSnapshotBeforeDismissingPopup() throws {
         _ = NSApplication.shared
         let provider = ControlledScreenSnapshotProvider()
