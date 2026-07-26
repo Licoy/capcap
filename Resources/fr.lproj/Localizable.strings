@@ -156,6 +156,28 @@
 "historyPanelCopyMarkdownLink" = "Copier le lien MD";
 "historyPanelCopyPlainLink" = "Copier l'URL simple";
 "historyPanelEmpty" = "Aucun historique";
+"historyPanelShortcutGuide" = "Raccourcis clavier";
+"historyPanelShortcutGuideHide" = "Retour à l’historique";
+"historyPanelShortcutKeyClick" = "Cliquer";
+"historyPanelShortcutKeyDrag" = "Glisser";
+"historyPanelShortcutKeySpace" = "Espace";
+"historyPanelShortcutSearch" = "Rechercher ou fermer la recherche";
+"historyPanelShortcutSwitchFilter" = "Changer de catégorie";
+"historyPanelShortcutToggleSelection" = "Sélectionner ou désélectionner un élément";
+"historyPanelShortcutRangeSelection" = "Sélectionner une plage";
+"historyPanelShortcutSelectAll" = "Sélectionner tous les éléments visibles";
+"historyPanelShortcutCancel" = "Quitter la recherche ou effacer l’état actuel";
+"historyPanelShortcutCopyItem" = "Copier l’élément";
+"historyPanelShortcutDragItem" = "Glisser l’image ou la vidéo vers une autre app";
+"historyPanelShortcutOpenPreview" = "Prévisualiser l’image ou le texte survolé";
+"historyPanelShortcutBrowsePreview" = "Parcourir l’aperçu précédent ou suivant";
+"historyPanelShortcutClosePreview" = "Fermer l’aperçu";
+"historyPanelShortcutCopyPreview" = "Copier le contenu de l’aperçu";
+"historyPanelShortcutEditImage" = "Modifier l’image";
+"historyPanelShortcutPinImage" = "Épingler l’image";
+"historyPanelShortcutUploadImage" = "Téléverser l’image";
+"historyPanelShortcutTranslateText" = "Traduire le texte";
+"historyPanelShortcutQRCode" = "Créer un code QR";
 
 /* Cursor chip */
 "dragToScreenshot" = "Cliquez sur une fenêtre ou faites glisser pour capturer";

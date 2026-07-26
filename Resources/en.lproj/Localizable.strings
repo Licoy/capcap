@@ -156,6 +156,28 @@
 "historyPanelCopyMarkdownLink" = "Copy MD link";
 "historyPanelCopyPlainLink" = "Copy plain link";
 "historyPanelEmpty" = "No history yet";
+"historyPanelShortcutGuide" = "Keyboard shortcuts";
+"historyPanelShortcutGuideHide" = "Show history";
+"historyPanelShortcutKeyClick" = "Click";
+"historyPanelShortcutKeyDrag" = "Drag";
+"historyPanelShortcutKeySpace" = "Space";
+"historyPanelShortcutSearch" = "Search or close search";
+"historyPanelShortcutSwitchFilter" = "Switch categories";
+"historyPanelShortcutToggleSelection" = "Select or deselect one item";
+"historyPanelShortcutRangeSelection" = "Select a range";
+"historyPanelShortcutSelectAll" = "Select all visible items";
+"historyPanelShortcutCancel" = "Exit search or clear current state";
+"historyPanelShortcutCopyItem" = "Copy item";
+"historyPanelShortcutDragItem" = "Drag image or video to another app";
+"historyPanelShortcutOpenPreview" = "Preview hovered image or text";
+"historyPanelShortcutBrowsePreview" = "Browse previous or next preview";
+"historyPanelShortcutClosePreview" = "Close preview";
+"historyPanelShortcutCopyPreview" = "Copy preview content";
+"historyPanelShortcutEditImage" = "Edit image";
+"historyPanelShortcutPinImage" = "Pin image";
+"historyPanelShortcutUploadImage" = "Upload image";
+"historyPanelShortcutTranslateText" = "Translate text";
+"historyPanelShortcutQRCode" = "Create QR code";
 
 /* Cursor chip */
 "dragToScreenshot" = "Click window or drag to screenshot";

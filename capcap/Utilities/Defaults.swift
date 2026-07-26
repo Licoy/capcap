@@ -274,6 +274,28 @@ enum L10n {
     static var historyPanelCopyMarkdownLink: String { s("historyPanelCopyMarkdownLink") }
     static var historyPanelCopyPlainLink: String { s("historyPanelCopyPlainLink") }
     static var historyPanelEmpty: String { s("historyPanelEmpty") }
+    static var historyPanelShortcutGuide: String { s("historyPanelShortcutGuide") }
+    static var historyPanelShortcutGuideHide: String { s("historyPanelShortcutGuideHide") }
+    static var historyPanelShortcutKeyClick: String { s("historyPanelShortcutKeyClick") }
+    static var historyPanelShortcutKeyDrag: String { s("historyPanelShortcutKeyDrag") }
+    static var historyPanelShortcutKeySpace: String { s("historyPanelShortcutKeySpace") }
+    static var historyPanelShortcutSearch: String { s("historyPanelShortcutSearch") }
+    static var historyPanelShortcutSwitchFilter: String { s("historyPanelShortcutSwitchFilter") }
+    static var historyPanelShortcutToggleSelection: String { s("historyPanelShortcutToggleSelection") }
+    static var historyPanelShortcutRangeSelection: String { s("historyPanelShortcutRangeSelection") }
+    static var historyPanelShortcutSelectAll: String { s("historyPanelShortcutSelectAll") }
+    static var historyPanelShortcutCancel: String { s("historyPanelShortcutCancel") }
+    static var historyPanelShortcutCopyItem: String { s("historyPanelShortcutCopyItem") }
+    static var historyPanelShortcutDragItem: String { s("historyPanelShortcutDragItem") }
+    static var historyPanelShortcutOpenPreview: String { s("historyPanelShortcutOpenPreview") }
+    static var historyPanelShortcutBrowsePreview: String { s("historyPanelShortcutBrowsePreview") }
+    static var historyPanelShortcutClosePreview: String { s("historyPanelShortcutClosePreview") }
+    static var historyPanelShortcutCopyPreview: String { s("historyPanelShortcutCopyPreview") }
+    static var historyPanelShortcutEditImage: String { s("historyPanelShortcutEditImage") }
+    static var historyPanelShortcutPinImage: String { s("historyPanelShortcutPinImage") }
+    static var historyPanelShortcutUploadImage: String { s("historyPanelShortcutUploadImage") }
+    static var historyPanelShortcutTranslateText: String { s("historyPanelShortcutTranslateText") }
+    static var historyPanelShortcutQRCode: String { s("historyPanelShortcutQRCode") }
 
     // Cursor chip
     static var dragToScreenshot: String { s("dragToScreenshot") }

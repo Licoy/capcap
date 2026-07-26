@@ -156,6 +156,28 @@
 "historyPanelCopyMarkdownLink" = "MD リンクをコピー";
 "historyPanelCopyPlainLink" = "通常リンクをコピー";
 "historyPanelEmpty" = "履歴がありません";
+"historyPanelShortcutGuide" = "キーボードショートカット";
+"historyPanelShortcutGuideHide" = "履歴に戻る";
+"historyPanelShortcutKeyClick" = "クリック";
+"historyPanelShortcutKeyDrag" = "ドラッグ";
+"historyPanelShortcutKeySpace" = "スペース";
+"historyPanelShortcutSearch" = "検索を開始または終了";
+"historyPanelShortcutSwitchFilter" = "カテゴリを切り替える";
+"historyPanelShortcutToggleSelection" = "1項目を選択または解除";
+"historyPanelShortcutRangeSelection" = "範囲選択";
+"historyPanelShortcutSelectAll" = "表示中の項目をすべて選択";
+"historyPanelShortcutCancel" = "検索を終了または現在の状態を解除";
+"historyPanelShortcutCopyItem" = "項目をコピー";
+"historyPanelShortcutDragItem" = "画像または動画を別のアプリへドラッグ";
+"historyPanelShortcutOpenPreview" = "ホバー中の画像またはテキストをプレビュー";
+"historyPanelShortcutBrowsePreview" = "前後のプレビューを表示";
+"historyPanelShortcutClosePreview" = "プレビューを閉じる";
+"historyPanelShortcutCopyPreview" = "プレビュー内容をコピー";
+"historyPanelShortcutEditImage" = "画像を編集";
+"historyPanelShortcutPinImage" = "画像をピン留め";
+"historyPanelShortcutUploadImage" = "画像をアップロード";
+"historyPanelShortcutTranslateText" = "テキストを翻訳";
+"historyPanelShortcutQRCode" = "QRコードを作成";
 
 /* Cursor chip */
 "dragToScreenshot" = "ウィンドウをクリックまたはドラッグして撮影";

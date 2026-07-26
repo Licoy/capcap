@@ -156,6 +156,28 @@
 "historyPanelCopyMarkdownLink" = "MD 링크 복사";
 "historyPanelCopyPlainLink" = "일반 링크 복사";
 "historyPanelEmpty" = "기록 없음";
+"historyPanelShortcutGuide" = "키보드 단축키";
+"historyPanelShortcutGuideHide" = "기록으로 돌아가기";
+"historyPanelShortcutKeyClick" = "클릭";
+"historyPanelShortcutKeyDrag" = "드래그";
+"historyPanelShortcutKeySpace" = "스페이스";
+"historyPanelShortcutSearch" = "검색 시작 또는 종료";
+"historyPanelShortcutSwitchFilter" = "카테고리 전환";
+"historyPanelShortcutToggleSelection" = "항목 하나 선택 또는 해제";
+"historyPanelShortcutRangeSelection" = "범위 선택";
+"historyPanelShortcutSelectAll" = "표시된 항목 모두 선택";
+"historyPanelShortcutCancel" = "검색 종료 또는 현재 상태 해제";
+"historyPanelShortcutCopyItem" = "항목 복사";
+"historyPanelShortcutDragItem" = "이미지나 동영상을 다른 앱으로 드래그";
+"historyPanelShortcutOpenPreview" = "가리킨 이미지나 텍스트 미리보기";
+"historyPanelShortcutBrowsePreview" = "이전 또는 다음 미리보기 보기";
+"historyPanelShortcutClosePreview" = "미리보기 닫기";
+"historyPanelShortcutCopyPreview" = "미리보기 내용 복사";
+"historyPanelShortcutEditImage" = "이미지 편집";
+"historyPanelShortcutPinImage" = "이미지 고정";
+"historyPanelShortcutUploadImage" = "이미지 업로드";
+"historyPanelShortcutTranslateText" = "텍스트 번역";
+"historyPanelShortcutQRCode" = "QR 코드 만들기";
 
 /* Cursor chip */
 "dragToScreenshot" = "창을 클릭하거나 드래그하여 스크린샷";

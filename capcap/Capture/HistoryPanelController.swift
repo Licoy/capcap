@@ -8,7 +8,7 @@ private enum HistoryPanelLayout {
     static let verticalGap: CGFloat = 12
     static let searchFieldWidth: CGFloat = 252
     static let searchTransitionDuration: TimeInterval = 0.26
-    static let actionsHiddenOffset: CGFloat = 116
+    static let actionsHiddenOffset: CGFloat = 152
     static let searchHiddenOffset: CGFloat = searchFieldWidth + 20
 }
 
@@ -969,10 +969,15 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
     private let collectionLayout = NSCollectionViewFlowLayout()
     private let emptyLabel = NSTextField(labelWithString: "")
     private let deleteButton = HistoryPanelDeleteButton()
+    private let infoButton = HistoryPanelActionButton(
+        symbolName: "info.circle",
+        accessibilityLabel: L10n.historyPanelShortcutGuide
+    )
     private let finderButton = HistoryPanelActionButton(symbolName: "folder", accessibilityLabel: L10n.historyShowInFinder)
     private let settingsButton = HistoryPanelActionButton(symbolName: "gearshape", accessibilityLabel: L10n.settings)
     private let actionButtonsContainer = NSStackView()
     private let searchField = HistoryPanelSearchField()
+    private let shortcutGuideView: HistoryPanelShortcutGuideView
     private var deleteButtonWidthConstraint: NSLayoutConstraint?
     private var actionButtonsTrailingConstraint: NSLayoutConstraint?
     private var searchFieldTrailingConstraint: NSLayoutConstraint?
@@ -999,6 +1004,7 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
     private var lastScrollOriginX: CGFloat = 0
     private var hoverSyncWorkItem: DispatchWorkItem?
     private var isScrollingContent = false
+    private var isShowingShortcutGuide = false
     private var isSearchMode = false
     private var isSearchInputActive = false
     private var searchMouseMovementMonitor: Any?
@@ -1017,6 +1023,7 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
         self.presentation = presentation
         self.onRequestDismiss = onRequestDismiss
         self.onEditEntry = onEditEntry
+        shortcutGuideView = HistoryPanelShortcutGuideView(presentation: presentation)
         super.init(frame: .zero)
         wantsLayer = true
         layer?.backgroundColor = NSColor.clear.cgColor
@@ -1084,6 +1091,9 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
         finderButton.target = self
         finderButton.action = #selector(showHistoryInFinderClicked)
 
+        infoButton.target = self
+        infoButton.action = #selector(toggleShortcutGuideClicked)
+
         settingsButton.target = self
         settingsButton.action = #selector(openSettingsClicked)
 
@@ -1095,6 +1105,7 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
         actionButtonsContainer.spacing = 8
         actionButtonsContainer.translatesAutoresizingMaskIntoConstraints = false
         actionButtonsContainer.addArrangedSubview(deleteButton)
+        actionButtonsContainer.addArrangedSubview(infoButton)
         actionButtonsContainer.addArrangedSubview(finderButton)
         actionButtonsContainer.addArrangedSubview(settingsButton)
         header.addSubview(actionButtonsContainer)
@@ -1148,6 +1159,10 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
         scrollView.documentView = collectionView
         addSubview(scrollView)
 
+        shortcutGuideView.translatesAutoresizingMaskIntoConstraints = false
+        shortcutGuideView.isHidden = true
+        addSubview(shortcutGuideView)
+
         emptyLabel.font = NSFont.systemFont(ofSize: 13, weight: .medium)
         emptyLabel.textColor = NSColor.white.withAlphaComponent(0.48)
         emptyLabel.alignment = .center
@@ -1193,6 +1208,11 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
             scrollView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -inset),
             scrollView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -presentation.contentBottomInset),
 
+            shortcutGuideView.topAnchor.constraint(equalTo: header.bottomAnchor),
+            shortcutGuideView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
+            shortcutGuideView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
+            shortcutGuideView.bottomAnchor.constraint(equalTo: bottomAnchor),
+
             emptyLabel.centerXAnchor.constraint(equalTo: scrollView.centerXAnchor),
             emptyLabel.centerYAnchor.constraint(equalTo: scrollView.centerYAnchor),
             emptyLabel.widthAnchor.constraint(lessThanOrEqualTo: scrollView.widthAnchor, constant: -40),
@@ -1218,6 +1238,10 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
             button.title = filter.title
         }
         updateDeleteButtonPresentation()
+        infoButton.updateAccessibilityLabel(
+            isShowingShortcutGuide ? L10n.historyPanelShortcutGuideHide : L10n.historyPanelShortcutGuide
+        )
+        shortcutGuideView.reload()
         finderButton.updateAccessibilityLabel(L10n.historyShowInFinder)
         settingsButton.updateAccessibilityLabel(L10n.settings)
         searchField.clearAccessibilityLabel = L10n.historyPanelClearSearch
@@ -1262,6 +1286,7 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
     }
 
     private func selectFilter(_ filter: HistoryPanelFilter) {
+        setShortcutGuideVisible(false)
         if isSearchMode, filter.searchScope == nil {
             endSearchMode(animated: true, updateResults: false)
         }
@@ -1287,6 +1312,7 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
     private func beginSearchMode() {
         guard isActive else { return }
 
+        setShortcutGuideVisible(false)
         if selectedFilter.searchScope == nil {
             selectedFilter = .all
             updateFilterSelection()
@@ -1536,6 +1562,25 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
         }
     }
 
+    @objc private func toggleShortcutGuideClicked() {
+        setDeleteConfirmation(false, animated: true)
+        setShortcutGuideVisible(!isShowingShortcutGuide)
+    }
+
+    private func setShortcutGuideVisible(_ visible: Bool) {
+        guard isShowingShortcutGuide != visible else { return }
+        isShowingShortcutGuide = visible
+        if visible {
+            clearActiveHoverTile()
+            previewController?.close()
+        }
+        infoButton.isSelected = visible
+        infoButton.updateAccessibilityLabel(
+            visible ? L10n.historyPanelShortcutGuideHide : L10n.historyPanelShortcutGuide
+        )
+        updateContentVisibility()
+    }
+
     @objc private func showHistoryInFinderClicked() {
         setDeleteConfirmation(false, animated: true)
         NSWorkspace.shared.open(HistoryManager.shared.cacheDirectoryURL())
@@ -1631,7 +1676,7 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
             setDeleteConfirmation(false, animated: true)
         }
         updateEmptyLabel()
-        emptyLabel.isHidden = !entries.isEmpty
+        updateContentVisibility()
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             self.loadNextPageIfNeeded()
@@ -1815,12 +1860,13 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
 
     func resetTransientState(animated: Bool) {
         setDeleteConfirmation(false, animated: animated)
+        setShortcutGuideVisible(false)
         clearSelection()
         clearActiveHoverTile()
     }
 
     func syncHoverStateWithCurrentMouse() {
-        guard let window, !isHidden else {
+        guard let window, !isHidden, !isShowingShortcutGuide else {
             clearActiveHoverTile()
             return
         }
@@ -1879,6 +1925,7 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
         // The Space preview uses a Carbon hotkey, so suspend it only while the
         // search field owns keyboard input. Mouse movement returns Space to results.
         guard isActive,
+              !isShowingShortcutGuide,
               !isSearchInputActive,
               previewController == nil,
               let entry = activeHoverTile?.entry,
@@ -1928,6 +1975,13 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
                     self.beginSearchMode()
                 }
                 return nil
+            }
+            if self.isShowingShortcutGuide {
+                if event.keyCode == UInt16(kVK_Escape) {
+                    self.setShortcutGuideVisible(false)
+                    return nil
+                }
+                return event
             }
             if self.isSearchMode {
                 if event.keyCode == UInt16(kVK_Escape) {
@@ -2033,6 +2087,12 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
             NSEvent.removeMonitor(selectionKeyMonitor)
             self.selectionKeyMonitor = nil
         }
+    }
+
+    private func updateContentVisibility() {
+        scrollView.isHidden = isShowingShortcutGuide
+        shortcutGuideView.isHidden = !isShowingShortcutGuide
+        emptyLabel.isHidden = isShowingShortcutGuide || !visibleEntries.isEmpty
     }
 
     private func collapseDeleteConfirmationIfNeeded(for event: NSEvent) {
@@ -2554,6 +2614,240 @@ private extension NSFont {
     }
 }
 
+private final class HistoryPanelShortcutGuideDocumentView: NSView {
+    override var isFlipped: Bool { true }
+}
+
+private final class HistoryPanelShortcutGuideView: NSView {
+    fileprivate struct Item {
+        let shortcut: String
+        let description: String
+    }
+
+    private let scrollView = NSScrollView()
+    private let documentView = HistoryPanelShortcutGuideDocumentView()
+    private let horizontalCardMargin: CGFloat
+    private let verticalCardMargin: CGFloat
+    private var groups: [HistoryPanelShortcutGroupView] = []
+
+    init(presentation: HistoryPanelPresentation) {
+        horizontalCardMargin = presentation.stripSideInset
+        verticalCardMargin = presentation.stripSideInset > 0
+            ? presentation.stripSideInset
+            : presentation.outerInset
+        super.init(frame: .zero)
+
+        scrollView.drawsBackground = false
+        scrollView.hasHorizontalScroller = false
+        scrollView.hasVerticalScroller = false
+        scrollView.horizontalScroller = nil
+        scrollView.verticalScroller = nil
+        scrollView.borderType = .noBorder
+        scrollView.horizontalScrollElasticity = .allowed
+        scrollView.verticalScrollElasticity = .none
+        scrollView.documentView = documentView
+        addSubview(scrollView)
+
+        reload()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func layout() {
+        super.layout()
+        scrollView.frame = bounds
+
+        let cardGap: CGFloat = 12
+        let columnCount = 3
+        let rowCount = 2
+        let minimumCellWidth: CGFloat = 300
+        let minimumContentWidth = horizontalCardMargin * 2
+            + CGFloat(columnCount) * minimumCellWidth
+            + CGFloat(columnCount - 1) * cardGap
+        let contentWidth = max(bounds.width, minimumContentWidth)
+        let cellWidth =
+            (contentWidth - horizontalCardMargin * 2 - CGFloat(columnCount - 1) * cardGap)
+            / CGFloat(columnCount)
+        let cellHeight = max(
+            1,
+            (bounds.height - verticalCardMargin * 2 - CGFloat(rowCount - 1) * cardGap)
+                / CGFloat(rowCount)
+        )
+        documentView.frame = NSRect(
+            x: 0,
+            y: 0,
+            width: contentWidth,
+            height: bounds.height
+        )
+
+        for (index, group) in groups.enumerated() {
+            let column = index % columnCount
+            let row = index / columnCount
+            group.frame = NSRect(
+                x: horizontalCardMargin + CGFloat(column) * (cellWidth + cardGap),
+                y: verticalCardMargin + CGFloat(row) * (cellHeight + cardGap),
+                width: cellWidth,
+                height: cellHeight
+            )
+        }
+    }
+
+    func reload() {
+        groups.forEach { $0.removeFromSuperview() }
+        groups = Self.itemGroups.map {
+            HistoryPanelShortcutGroupView(items: $0)
+        }
+        groups.forEach(documentView.addSubview)
+        scrollView.contentView.scroll(to: .zero)
+        needsLayout = true
+    }
+
+    private static var itemGroups: [[Item]] {
+        let click = L10n.historyPanelShortcutKeyClick
+        let drag = L10n.historyPanelShortcutKeyDrag
+        let space = L10n.historyPanelShortcutKeySpace
+        return [
+            [
+                Item(shortcut: "⌘ K", description: L10n.historyPanelShortcutSearch),
+                Item(shortcut: "←  →", description: L10n.historyPanelShortcutSwitchFilter),
+                Item(shortcut: "Esc", description: L10n.historyPanelShortcutCancel),
+            ],
+            [
+                Item(shortcut: "⌘ \(click)", description: L10n.historyPanelShortcutToggleSelection),
+                Item(shortcut: "⇧ \(click)", description: L10n.historyPanelShortcutRangeSelection),
+                Item(shortcut: "⌘ A", description: L10n.historyPanelShortcutSelectAll),
+            ],
+            [
+                Item(shortcut: click, description: L10n.historyPanelShortcutCopyItem),
+                Item(shortcut: drag, description: L10n.historyPanelShortcutDragItem),
+                Item(shortcut: space, description: L10n.historyPanelShortcutOpenPreview),
+            ],
+            [
+                Item(shortcut: "←  →", description: L10n.historyPanelShortcutBrowsePreview),
+                Item(shortcut: "\(space) / Esc", description: L10n.historyPanelShortcutClosePreview),
+                Item(shortcut: "C", description: L10n.historyPanelShortcutCopyPreview),
+            ],
+            [
+                Item(shortcut: "E", description: L10n.historyPanelShortcutEditImage),
+                Item(shortcut: "P", description: L10n.historyPanelShortcutPinImage),
+                Item(shortcut: "U", description: L10n.historyPanelShortcutUploadImage),
+            ],
+            [
+                Item(shortcut: "T", description: L10n.historyPanelShortcutTranslateText),
+                Item(shortcut: "Q", description: L10n.historyPanelShortcutQRCode),
+            ],
+        ]
+    }
+}
+
+private final class HistoryPanelShortcutGroupView: NSView {
+    private let rows: [HistoryPanelShortcutRowView]
+
+    override var isFlipped: Bool { true }
+
+    init(items: [HistoryPanelShortcutGuideView.Item]) {
+        rows = items.map {
+            HistoryPanelShortcutRowView(shortcut: $0.shortcut, description: $0.description)
+        }
+        super.init(frame: .zero)
+        wantsLayer = true
+        layer?.cornerRadius = 8
+        layer?.cornerCurve = .continuous
+        layer?.backgroundColor = NSColor.white.withAlphaComponent(0.065).cgColor
+        layer?.borderColor = NSColor.white.withAlphaComponent(0.08).cgColor
+        layer?.borderWidth = 1
+        rows.forEach(addSubview)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func layout() {
+        super.layout()
+        let contentPadding: CGFloat = 5
+        let rowHeight = max(1, (bounds.height - contentPadding * 2) / 3)
+        let topOffset = rows.count == 2 ? rowHeight / 2 : 0
+        for (index, row) in rows.enumerated() {
+            row.frame = NSRect(
+                x: contentPadding,
+                y: contentPadding + topOffset + CGFloat(index) * rowHeight,
+                width: max(0, bounds.width - contentPadding * 2),
+                height: rowHeight
+            )
+        }
+    }
+}
+
+private final class HistoryPanelShortcutRowView: NSView {
+    private let shortcutLabel = HistoryPanelCenteredTextView()
+    private let shortcutCapsule = NSView()
+    private let descriptionLabel = HistoryPanelCenteredTextView()
+
+    init(shortcut: String, description: String) {
+        super.init(frame: .zero)
+
+        shortcutCapsule.wantsLayer = true
+        shortcutCapsule.layer?.cornerRadius = 5
+        shortcutCapsule.layer?.cornerCurve = .continuous
+        shortcutCapsule.layer?.backgroundColor = accentGreen.withAlphaComponent(0.14).cgColor
+        shortcutCapsule.layer?.borderColor = accentGreen.withAlphaComponent(0.38).cgColor
+        shortcutCapsule.layer?.borderWidth = 1
+        addSubview(shortcutCapsule)
+
+        shortcutLabel.stringValue = shortcut
+        shortcutLabel.font = NSFont.monospacedSystemFont(ofSize: 9.5, weight: .semibold)
+        shortcutLabel.textColor = accentGreen.withAlphaComponent(0.94)
+        shortcutLabel.alignment = .center
+        shortcutLabel.horizontalInset = 0
+        shortcutLabel.verticalInset = 0
+        shortcutLabel.lineBreakMode = .byClipping
+        shortcutLabel.ignoresHitTesting = true
+        shortcutCapsule.addSubview(shortcutLabel)
+
+        descriptionLabel.stringValue = description
+        descriptionLabel.font = NSFont.systemFont(ofSize: 10.5, weight: .medium)
+        descriptionLabel.textColor = NSColor.white.withAlphaComponent(0.78)
+        descriptionLabel.alignment = .left
+        descriptionLabel.horizontalInset = 0
+        descriptionLabel.verticalInset = 0
+        descriptionLabel.lineBreakMode = .byClipping
+        descriptionLabel.ignoresHitTesting = true
+        addSubview(descriptionLabel)
+
+        setAccessibilityLabel("\(shortcut) \(description)")
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func layout() {
+        super.layout()
+        let gap: CGFloat = 7
+        let measuredWidth = ceil(
+            (shortcutLabel.stringValue as NSString).size(withAttributes: [.font: shortcutLabel.font as Any]).width
+        )
+        let capsuleWidth = min(88, max(38, measuredWidth + 12))
+        let capsuleHeight = min(18, max(1, bounds.height - 2))
+        shortcutCapsule.frame = NSRect(
+            x: 0,
+            y: bounds.midY - capsuleHeight / 2,
+            width: capsuleWidth,
+            height: capsuleHeight
+        )
+        shortcutLabel.frame = shortcutCapsule.bounds
+        descriptionLabel.frame = NSRect(
+            x: shortcutCapsule.frame.maxX + gap,
+            y: 0,
+            width: max(0, bounds.width - shortcutCapsule.frame.maxX - gap),
+            height: bounds.height
+        )
+    }
+}
+
 private final class HistorySelectionBadgeView: NSView {
     private static let size: CGFloat = 18
     private let label = NSTextField(labelWithString: "")
@@ -2920,6 +3214,10 @@ private final class HistoryPanelActionButton: NSControl {
     private static let iconSize: CGFloat = 13
     private let iconView = NSImageView()
 
+    var isSelected = false {
+        didSet { applyAppearance() }
+    }
+
     override var toolTip: String? {
         didSet {
             iconView.toolTip = toolTip
@@ -2937,7 +3235,6 @@ private final class HistoryPanelActionButton: NSControl {
         let config = NSImage.SymbolConfiguration(pointSize: 12, weight: .semibold)
         iconView.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: accessibilityLabel)?
             .withSymbolConfiguration(config)
-        iconView.contentTintColor = NSColor.white.withAlphaComponent(0.68)
         iconView.imageScaling = .scaleProportionallyDown
         iconView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(iconView)
@@ -2950,6 +3247,7 @@ private final class HistoryPanelActionButton: NSControl {
             iconView.widthAnchor.constraint(equalToConstant: Self.iconSize),
             iconView.heightAnchor.constraint(equalToConstant: Self.iconSize),
         ])
+        applyAppearance()
     }
 
     required init?(coder: NSCoder) {
@@ -2970,6 +3268,15 @@ private final class HistoryPanelActionButton: NSControl {
     }
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    private func applyAppearance() {
+        layer?.backgroundColor = isSelected
+            ? accentGreen.withAlphaComponent(0.95).cgColor
+            : NSColor.white.withAlphaComponent(0.10).cgColor
+        iconView.contentTintColor = isSelected
+            ? NSColor.black.withAlphaComponent(0.88)
+            : NSColor.white.withAlphaComponent(0.68)
+    }
 }
 
 private final class HistoryPanelFilterButton: NSControl {

@@ -156,6 +156,28 @@
 "historyPanelCopyMarkdownLink" = "复制 MD 链接";
 "historyPanelCopyPlainLink" = "复制普通链接";
 "historyPanelEmpty" = "暂无历史";
+"historyPanelShortcutGuide" = "快捷键说明";
+"historyPanelShortcutGuideHide" = "返回历史";
+"historyPanelShortcutKeyClick" = "单击";
+"historyPanelShortcutKeyDrag" = "拖拽";
+"historyPanelShortcutKeySpace" = "空格";
+"historyPanelShortcutSearch" = "搜索或关闭搜索";
+"historyPanelShortcutSwitchFilter" = "切换分类";
+"historyPanelShortcutToggleSelection" = "单个选择或取消选择";
+"historyPanelShortcutRangeSelection" = "范围选择";
+"historyPanelShortcutSelectAll" = "全选当前结果";
+"historyPanelShortcutCancel" = "退出搜索或清除当前状态";
+"historyPanelShortcutCopyItem" = "复制项目";
+"historyPanelShortcutDragItem" = "拖拽图片或视频到其他应用";
+"historyPanelShortcutOpenPreview" = "预览悬停的图片或文本";
+"historyPanelShortcutBrowsePreview" = "切换上一个或下一个预览";
+"historyPanelShortcutClosePreview" = "关闭预览";
+"historyPanelShortcutCopyPreview" = "复制预览内容";
+"historyPanelShortcutEditImage" = "编辑图片";
+"historyPanelShortcutPinImage" = "贴图";
+"historyPanelShortcutUploadImage" = "上传图片";
+"historyPanelShortcutTranslateText" = "翻译文本";
+"historyPanelShortcutQRCode" = "生成二维码";
 
 /* Cursor chip */
 "dragToScreenshot" = "点击窗口或拖动以截图";

@@ -156,6 +156,28 @@
 "historyPanelCopyMarkdownLink" = "Sao chép liên kết MD";
 "historyPanelCopyPlainLink" = "Sao chép liên kết thường";
 "historyPanelEmpty" = "Chưa có lịch sử";
+"historyPanelShortcutGuide" = "Phím tắt";
+"historyPanelShortcutGuideHide" = "Quay lại lịch sử";
+"historyPanelShortcutKeyClick" = "Nhấp";
+"historyPanelShortcutKeyDrag" = "Kéo";
+"historyPanelShortcutKeySpace" = "Phím cách";
+"historyPanelShortcutSearch" = "Mở hoặc đóng tìm kiếm";
+"historyPanelShortcutSwitchFilter" = "Chuyển danh mục";
+"historyPanelShortcutToggleSelection" = "Chọn hoặc bỏ chọn một mục";
+"historyPanelShortcutRangeSelection" = "Chọn một phạm vi";
+"historyPanelShortcutSelectAll" = "Chọn tất cả mục đang hiển thị";
+"historyPanelShortcutCancel" = "Thoát tìm kiếm hoặc xóa trạng thái hiện tại";
+"historyPanelShortcutCopyItem" = "Sao chép mục";
+"historyPanelShortcutDragItem" = "Kéo ảnh hoặc video sang ứng dụng khác";
+"historyPanelShortcutOpenPreview" = "Xem trước ảnh hoặc văn bản đang trỏ";
+"historyPanelShortcutBrowsePreview" = "Xem mục trước hoặc sau";
+"historyPanelShortcutClosePreview" = "Đóng bản xem trước";
+"historyPanelShortcutCopyPreview" = "Sao chép nội dung xem trước";
+"historyPanelShortcutEditImage" = "Sửa ảnh";
+"historyPanelShortcutPinImage" = "Ghim ảnh";
+"historyPanelShortcutUploadImage" = "Tải ảnh lên";
+"historyPanelShortcutTranslateText" = "Dịch văn bản";
+"historyPanelShortcutQRCode" = "Tạo mã QR";
 
 /* Cursor chip */
 "dragToScreenshot" = "Nhấp vào cửa sổ hoặc kéo để chụp";

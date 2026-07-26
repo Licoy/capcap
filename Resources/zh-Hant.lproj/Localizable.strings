@@ -156,6 +156,28 @@
 "historyPanelCopyMarkdownLink" = "複製 MD 連結";
 "historyPanelCopyPlainLink" = "複製純網址";
 "historyPanelEmpty" = "尚無歷史";
+"historyPanelShortcutGuide" = "快速鍵說明";
+"historyPanelShortcutGuideHide" = "返回歷史";
+"historyPanelShortcutKeyClick" = "按一下";
+"historyPanelShortcutKeyDrag" = "拖曳";
+"historyPanelShortcutKeySpace" = "空白鍵";
+"historyPanelShortcutSearch" = "搜尋或關閉搜尋";
+"historyPanelShortcutSwitchFilter" = "切換分類";
+"historyPanelShortcutToggleSelection" = "單選或取消選取";
+"historyPanelShortcutRangeSelection" = "範圍選取";
+"historyPanelShortcutSelectAll" = "全選目前結果";
+"historyPanelShortcutCancel" = "離開搜尋或清除目前狀態";
+"historyPanelShortcutCopyItem" = "複製項目";
+"historyPanelShortcutDragItem" = "拖曳圖片或影片到其他 App";
+"historyPanelShortcutOpenPreview" = "預覽游標停留的圖片或文字";
+"historyPanelShortcutBrowsePreview" = "切換上一個或下一個預覽";
+"historyPanelShortcutClosePreview" = "關閉預覽";
+"historyPanelShortcutCopyPreview" = "複製預覽內容";
+"historyPanelShortcutEditImage" = "編輯圖片";
+"historyPanelShortcutPinImage" = "釘選圖片";
+"historyPanelShortcutUploadImage" = "上傳圖片";
+"historyPanelShortcutTranslateText" = "翻譯文字";
+"historyPanelShortcutQRCode" = "產生二維碼";
 
 /* Cursor chip */
 "dragToScreenshot" = "點選視窗或拖曳以截圖";
