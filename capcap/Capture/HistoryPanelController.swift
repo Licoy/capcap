@@ -1235,7 +1235,7 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
                 updatePreviewLoading(initial: true)
             }
         } else {
-            endSearchMode(animated: false, updateResults: false)
+            endSearchMode(animated: false)
             if isReloading {
                 needsEntriesReload = true
                 isReloading = false
