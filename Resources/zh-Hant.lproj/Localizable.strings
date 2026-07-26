@@ -178,6 +178,7 @@
 "historyPanelShortcutUploadImage" = "上傳圖片";
 "historyPanelShortcutTranslateText" = "翻譯文字";
 "historyPanelShortcutQRCode" = "產生二維碼";
+"historyPanelShortcutToggleGuide" = "顯示或隱藏快速鍵說明";
 
 /* Cursor chip */
 "dragToScreenshot" = "點選視窗或拖曳以截圖";

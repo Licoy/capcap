@@ -178,6 +178,7 @@
 "historyPanelShortcutUploadImage" = "画像をアップロード";
 "historyPanelShortcutTranslateText" = "テキストを翻訳";
 "historyPanelShortcutQRCode" = "QRコードを作成";
+"historyPanelShortcutToggleGuide" = "ショートカット一覧を表示または非表示";
 
 /* Cursor chip */
 "dragToScreenshot" = "ウィンドウをクリックまたはドラッグして撮影";

@@ -1967,6 +1967,12 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
             let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
             let shortcutModifiers = modifiers.intersection([.command, .control, .option, .shift])
             if self.isActive,
+               event.keyCode == UInt16(kVK_ANSI_Slash),
+               shortcutModifiers == .command || shortcutModifiers == [.command, .shift] {
+                self.toggleShortcutGuideClicked()
+                return nil
+            }
+            if self.isActive,
                event.keyCode == UInt16(kVK_ANSI_K),
                shortcutModifiers == .command {
                 if self.isSearchMode {
@@ -2737,6 +2743,7 @@ private final class HistoryPanelShortcutGuideView: NSView {
             [
                 Item(shortcut: "T", description: L10n.historyPanelShortcutTranslateText),
                 Item(shortcut: "Q", description: L10n.historyPanelShortcutQRCode),
+                Item(shortcut: "⌘ ?", description: L10n.historyPanelShortcutToggleGuide),
             ],
         ]
     }

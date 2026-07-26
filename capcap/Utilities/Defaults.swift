@@ -296,6 +296,7 @@ enum L10n {
     static var historyPanelShortcutUploadImage: String { s("historyPanelShortcutUploadImage") }
     static var historyPanelShortcutTranslateText: String { s("historyPanelShortcutTranslateText") }
     static var historyPanelShortcutQRCode: String { s("historyPanelShortcutQRCode") }
+    static var historyPanelShortcutToggleGuide: String { s("historyPanelShortcutToggleGuide") }
 
     // Cursor chip
     static var dragToScreenshot: String { s("dragToScreenshot") }

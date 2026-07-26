@@ -178,6 +178,7 @@
 "historyPanelShortcutUploadImage" = "Загрузить изображение";
 "historyPanelShortcutTranslateText" = "Перевести текст";
 "historyPanelShortcutQRCode" = "Создать QR-код";
+"historyPanelShortcutToggleGuide" = "Показать или скрыть сочетания клавиш";
 
 /* Cursor chip */
 "dragToScreenshot" = "Нажмите на окно или перетащите для снимка";

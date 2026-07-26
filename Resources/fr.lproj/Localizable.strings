@@ -178,6 +178,7 @@
 "historyPanelShortcutUploadImage" = "Téléverser l’image";
 "historyPanelShortcutTranslateText" = "Traduire le texte";
 "historyPanelShortcutQRCode" = "Créer un code QR";
+"historyPanelShortcutToggleGuide" = "Afficher ou masquer les raccourcis clavier";
 
 /* Cursor chip */
 "dragToScreenshot" = "Cliquez sur une fenêtre ou faites glisser pour capturer";

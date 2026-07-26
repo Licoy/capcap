@@ -178,6 +178,7 @@
 "historyPanelShortcutUploadImage" = "Upload image";
 "historyPanelShortcutTranslateText" = "Translate text";
 "historyPanelShortcutQRCode" = "Create QR code";
+"historyPanelShortcutToggleGuide" = "Show or hide keyboard shortcuts";
 
 /* Cursor chip */
 "dragToScreenshot" = "Click window or drag to screenshot";

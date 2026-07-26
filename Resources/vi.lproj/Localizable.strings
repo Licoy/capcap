@@ -178,6 +178,7 @@
 "historyPanelShortcutUploadImage" = "Tải ảnh lên";
 "historyPanelShortcutTranslateText" = "Dịch văn bản";
 "historyPanelShortcutQRCode" = "Tạo mã QR";
+"historyPanelShortcutToggleGuide" = "Hiện hoặc ẩn phím tắt";
 
 /* Cursor chip */
 "dragToScreenshot" = "Nhấp vào cửa sổ hoặc kéo để chụp";
