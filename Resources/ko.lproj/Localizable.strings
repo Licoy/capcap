@@ -575,3 +575,10 @@
 "idleLensShiftHint" = "Shift 로 RGB 전환";
 "settingsIdleColorLensTitle" = "대기 상태에서 색상 렌즈 표시";
 "settingsIdleColorLensHint" = "선택 전에 커서 옆에 RGB/HEX 확대경 표시";
+"settingsIdleLensMagnifiedSizeLabel" = "확대 영역 크기";
+"settingsIdleLensPanelOffsetLabel" = "패널 오프셋 (X, Y)";
+"settingsIdleLensBackgroundLabel" = "배경색";
+"settingsIdleLensFollowSystemAppearanceTitle" = "시스템 모양 따라가기";
+"settingsIdleLensFollowSystemAppearanceHint" = "현재 macOS 모양에 따라 어두움/밝음 배경 자동 선택";
+"settingsIdleLensDarkBackgroundLabel" = "다크 모드";
+"settingsIdleLensLightBackgroundLabel" = "라이트 모드";

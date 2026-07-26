@@ -575,3 +575,10 @@
 "idleLensShiftHint" = "Appuyez sur Shift pour basculer en RGB";
 "settingsIdleColorLensTitle" = "Afficher la loupe colorimétrique au repos";
 "settingsIdleColorLensHint" = "Avant la sélection, affiche une loupe avec valeurs RGB/HEX près du curseur";
+"settingsIdleLensMagnifiedSizeLabel" = "Taille de la zone agrandie";
+"settingsIdleLensPanelOffsetLabel" = "Décalage du panneau (X, Y)";
+"settingsIdleLensBackgroundLabel" = "Couleur de fond";
+"settingsIdleLensFollowSystemAppearanceTitle" = "Suivre l'apparence du système";
+"settingsIdleLensFollowSystemAppearanceHint" = "Choisit automatiquement le fond sombre ou clair selon l'apparence macOS";
+"settingsIdleLensDarkBackgroundLabel" = "Mode sombre";
+"settingsIdleLensLightBackgroundLabel" = "Mode clair";

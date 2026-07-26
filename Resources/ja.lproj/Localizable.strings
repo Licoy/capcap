@@ -575,3 +575,10 @@
 "idleLensShiftHint" = "Shift で RGB に切替";
 "settingsIdleColorLensTitle" = "待機時に拡大カラーピッカーを表示";
 "settingsIdleColorLensHint" = "選択前にカーソル脇に RGB/HEX 表示の拡大鏡を表示";
+"settingsIdleLensMagnifiedSizeLabel" = "拡大エリアのサイズ";
+"settingsIdleLensPanelOffsetLabel" = "パネルオフセット (X, Y)";
+"settingsIdleLensBackgroundLabel" = "背景色";
+"settingsIdleLensFollowSystemAppearanceTitle" = "システムの外観に追従";
+"settingsIdleLensFollowSystemAppearanceHint" = "現在の macOS 外観に応じてダーク/ライト背景を自動選択";
+"settingsIdleLensDarkBackgroundLabel" = "ダークモード";
+"settingsIdleLensLightBackgroundLabel" = "ライトモード";

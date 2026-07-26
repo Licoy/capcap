@@ -575,3 +575,10 @@
 "idleLensShiftHint" = "Press Shift to switch RGB";
 "settingsIdleColorLensTitle" = "Show color lens on idle";
 "settingsIdleColorLensHint" = "Display a magnifier with RGB/HEX readout next to the cursor before drawing";
+"settingsIdleLensMagnifiedSizeLabel" = "Magnified area size";
+"settingsIdleLensPanelOffsetLabel" = "Panel offset (X, Y)";
+"settingsIdleLensBackgroundLabel" = "Background colour";
+"settingsIdleLensFollowSystemAppearanceTitle" = "Follow system appearance";
+"settingsIdleLensFollowSystemAppearanceHint" = "Auto-pick the dark or light background based on the current macOS appearance";
+"settingsIdleLensDarkBackgroundLabel" = "Dark mode";
+"settingsIdleLensLightBackgroundLabel" = "Light mode";

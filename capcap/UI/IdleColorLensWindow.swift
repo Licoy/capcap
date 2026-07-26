@@ -4,9 +4,12 @@ import AppKit
 ///
 /// Replaces the legacy "drag to screenshot" cursor chip while the user has not
 /// yet started dragging a selection rectangle. Displays absolute desktop
-/// coordinates, a 12× magnification of the 8×8 pixel neighborhood around the
-/// cursor, and the current pixel value in either HEX or RGB. Listens for
-/// mouse-move events to follow the cursor but never blocks input.
+/// coordinates, a magnification of the pixel neighborhood around the cursor,
+/// and the current pixel value in either HEX or RGB. Listens for mouse-move
+/// events to follow the cursor but never blocks input. All visual settings
+/// (panel size, magnified area, offsets, background color, hint visibility)
+/// are read from `Defaults` so changes in Settings take effect the next time
+/// the lens is shown.
 final class IdleColorLensWindow: NSPanel {
 
     enum Format {
@@ -21,17 +24,33 @@ final class IdleColorLensWindow: NSPanel {
         let b: Int
     }
 
-    private static let panelSize = NSSize(width: 256, height: 240)
-    private static let cursorOffsetX: CGFloat = 15
-    private static let cursorOffsetY: CGFloat = 14
     private static let edgeMargin: CGFloat = 8
 
-    private let lensView = IdleColorLensView(frame: NSRect(origin: .zero, size: panelSize))
+    /// Computes the panel size that fits the current Defaults (magnified
+    /// square + 4 info rows or 2 rows when hints are disabled).
+    private static func computePanelSize() -> NSSize {
+        let magnifiedSide = CGFloat(Defaults.idleLensMagnifiedSize)
+        let infoRows = 2
+            + (Defaults.idleLensShowCopyHint ? 1 : 0)
+            + (Defaults.idleLensShowShiftHint ? 1 : 0)
+        let infoHeight = CGFloat(infoRows) * 18 + 8  // 18px/row + bottom inset
+        let gap: CGFloat = 8
+        let topInset: CGFloat = 8
+        let width: CGFloat = max(220, magnifiedSide + 24)
+        let height = magnifiedSide + gap + infoHeight + topInset
+        return NSSize(width: ceil(width), height: ceil(height))
+    }
+
+    private let lensView: IdleColorLensView
     private var mouseMonitor: Any?
+    private let panelSize: NSSize
 
     init() {
+        let size = Self.computePanelSize()
+        self.panelSize = size
+        self.lensView = IdleColorLensView(frame: NSRect(origin: .zero, size: size))
         super.init(
-            contentRect: NSRect(origin: .zero, size: Self.panelSize),
+            contentRect: NSRect(origin: .zero, size: size),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -97,6 +116,13 @@ final class IdleColorLensWindow: NSPanel {
     var currentSample: Sample? { lensView.currentSample }
     var currentPixelPoint: CGPoint { lensView.currentPixelPoint }
 
+    /// Public layout values for the Settings preview to mirror.
+    var layoutMagnifiedSide: CGFloat { CGFloat(Defaults.idleLensMagnifiedSize) }
+    var layoutPanelSize: NSSize { panelSize }
+    var layoutCursorOffset: NSPoint {
+        NSPoint(x: Defaults.idleLensPanelOffsetX, y: Defaults.idleLensPanelOffsetY)
+    }
+
     // MARK: - Position tracking
 
     private func startTracking() {
@@ -116,31 +142,23 @@ final class IdleColorLensWindow: NSPanel {
 
     private func updatePosition() {
         let loc = NSEvent.mouseLocation
-        // Default: panel sits directly below the cursor so the cursor stays
-        // inside the magnified area when the lens first appears and when the
-        // user is near the top edge of the screen.
-        // AppKit's panel origin is the bottom-left corner, so:
-        //   panel.bottom = origin.y
-        //   panel.top    = origin.y + panelSize.height
-        // "Below cursor" → panel top = cursor.y - offsetY → origin.y = cursor.y - offsetY - height
+        let offsetX = CGFloat(Defaults.idleLensPanelOffsetX)
+        let offsetY = CGFloat(Defaults.idleLensPanelOffsetY)
+        // Default: panel sits directly below the cursor. AppKit panel origin
+        // is the bottom-left corner, so panel.top = origin.y + height →
+        // origin.y = cursor.y - offsetY - height.
         var origin = NSPoint(
-            x: loc.x + Self.cursorOffsetX,
-            y: loc.y - Self.cursorOffsetY - Self.panelSize.height
+            x: loc.x + offsetX,
+            y: loc.y - offsetY - panelSize.height
         )
-        // Find the screen containing the cursor so the panel stays inside it.
         if let screen = NSScreen.screens.first(where: { $0.frame.contains(loc) }) {
             let frame = screen.frame
-            // Right edge flip: panel would overflow screen right → move to the
-            // left side of the cursor.
-            let panelRight = origin.x + Self.panelSize.width
+            let panelRight = origin.x + panelSize.width
             if panelRight > frame.maxX - Self.edgeMargin {
-                origin.x = loc.x - Self.cursorOffsetX - Self.panelSize.width
+                origin.x = loc.x - offsetX - panelSize.width
             }
-            // Bottom edge flip: panel would overflow screen bottom → move above
-            // the cursor. This is the only case where the panel sits above the
-            // cursor.
             if origin.y < frame.minY + Self.edgeMargin {
-                origin.y = loc.y + Self.cursorOffsetY
+                origin.y = loc.y + offsetY
             }
         }
         setFrameOrigin(origin)
@@ -164,8 +182,6 @@ enum IdleColorLensSampler {
         let scaleY = snapshotSize.height / max(screenFrame.height, 1)
         let xInScreen = (globalPoint.x - screenFrame.origin.x) * scaleX
         let yInScreenFromTop = (screenFrame.maxY - globalPoint.y) * scaleY
-        // Clamp into the valid pixel range so cursor-on-edge still resolves
-        // to a valid sample instead of returning nil.
         let maxX = max(0, snapshotSize.width - 1)
         let maxY = max(0, snapshotSize.height - 1)
         return CGPoint(
@@ -201,12 +217,11 @@ enum IdleColorLensSampler {
             return nil
         }
 
-        // Position the image so that `point` lands at (0.5, 0.5) of the 1x1
-        // context. `CGContext.draw(image, in: rect)` places the image's top
-        // edge at the top of `rect` in the context's y-up coords, so the
-        // desired image pixel needs:
-        //   x:  rect.x + px = 0.5  →  rect.x = 0.5 - px
-        //   y:  rect.y + imageH - py = 0.5  →  rect.y = 0.5 + py - imageH
+        // Position the image so that `point` lands at (0.5, 0.5) of the 1×1
+        // context. CGContext.draw places the image's top edge at rect's top in
+        // the context's y-up coords, so the target pixel needs:
+        //   x: rect.x + px = 0.5  →  rect.x = 0.5 - px
+        //   y: rect.y + imageH - py = 0.5  →  rect.y = 0.5 + py - imageH
         let drawRect = CGRect(
             x: 0.5 - point.x,
             y: 0.5 + point.y - CGFloat(image.height),
@@ -221,9 +236,38 @@ enum IdleColorLensSampler {
             b: Int(pixelData[2])
         )
     }
+
+    /// Picks the dark- or light-mode background color according to the user's
+    /// `followSystemAppearance` preference. Pass `effectiveAppearance` from
+    /// the view that needs to draw so this works regardless of AppKit quirks.
+    static func backgroundColor(forAppearance appearance: NSAppearance) -> NSColor {
+        if Defaults.idleLensFollowSystemAppearance {
+            let isDark = appearance.bestMatch(from: [.darkAqua, .vibrantDark]) == .darkAqua
+            return isDark ? darkBackgroundColor() : lightBackgroundColor()
+        }
+        return darkBackgroundColor()
+    }
+
+    static func darkBackgroundColor() -> NSColor {
+        NSColor(
+            srgbRed: CGFloat(Defaults.idleLensDarkBackgroundRed),
+            green: CGFloat(Defaults.idleLensDarkBackgroundGreen),
+            blue: CGFloat(Defaults.idleLensDarkBackgroundBlue),
+            alpha: CGFloat(Defaults.idleLensDarkBackgroundAlpha)
+        )
+    }
+
+    static func lightBackgroundColor() -> NSColor {
+        NSColor(
+            srgbRed: CGFloat(Defaults.idleLensLightBackgroundRed),
+            green: CGFloat(Defaults.idleLensLightBackgroundGreen),
+            blue: CGFloat(Defaults.idleLensLightBackgroundBlue),
+            alpha: CGFloat(Defaults.idleLensLightBackgroundAlpha)
+        )
+    }
 }
 
-private final class IdleColorLensView: NSView {
+final class IdleColorLensView: NSView {
 
     var format: IdleColorLensWindow.Format = .hex {
         didSet { needsDisplay = true }
@@ -235,16 +279,17 @@ private final class IdleColorLensView: NSView {
     private var snapshot: CGImage?
     private var screenFrame: NSRect = .zero
 
-    // Layout
-    private static let magnifiedSide: CGFloat = 144
-    private static let magnifiedBottom: CGFloat = 88
-    private static let magnifiedLeft: CGFloat = 56 // (256 - 144) / 2
-    private static let infoLeftPadding: CGFloat = 12
-    private static let infoRightPadding: CGFloat = 12
-    private static let infoRowHeight: CGFloat = 18
-    private static let infoBottomInset: CGFloat = 8
-    private static let swatchSize: CGFloat = 16
-    private static let magnifiedSourceSize: CGFloat = 12 // 12x12 source → 144x144 dest = 12x mag
+    // Layout — derived from Defaults on every draw so changes show up
+    // immediately the next time the lens appears.
+    private let infoLeftPadding: CGFloat = 12
+    private let infoRightPadding: CGFloat = 12
+    private let infoRowHeight: CGFloat = 18
+    private let infoBottomInset: CGFloat = 8
+    private let swatchSize: CGFloat = 16
+    private let magnifiedSourceSize: CGFloat = 12 // source pixels per side
+    private let gapBetweenMagnifiedAndInfo: CGFloat = 8
+    private let topInset: CGFloat = 8
+
     private static let font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
     private static let tipFont = NSFont.systemFont(ofSize: 11, weight: .regular)
 
@@ -272,35 +317,39 @@ private final class IdleColorLensView: NSView {
     }
 
     override func draw(_ dirtyRect: NSRect) {
-        // Panel background
-        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 1, dy: 1), xRadius: 8, yRadius: 8)
-        AdaptiveChrome.floatingBackground.setFill()
-        path.fill()
-        AdaptiveChrome.border.setStroke()
-        path.lineWidth = 0.5
-        path.stroke()
+        let magnifiedSide = CGFloat(Defaults.idleLensMagnifiedSize)
+        let panelWidth = bounds.width
+        let panelHeight = bounds.height
+        let magnifiedRect = NSRect(
+            x: (panelWidth - magnifiedSide) / 2,
+            y: panelHeight - topInset - magnifiedSide,
+            width: magnifiedSide,
+            height: magnifiedSide
+        )
 
-        drawMagnifiedArea()
-        drawInfo()
+        // Panel background — pick dark or light based on appearance + setting.
+        let bgPath = NSBezierPath(roundedRect: bounds.insetBy(dx: 1, dy: 1), xRadius: 8, yRadius: 8)
+        let panelBackground = IdleColorLensSampler.backgroundColor(forAppearance: effectiveAppearance)
+        panelBackground.setFill()
+        bgPath.fill()
+        AdaptiveChrome.border.setStroke()
+        bgPath.lineWidth = 0.5
+        bgPath.stroke()
+
+        drawMagnifiedArea(in: magnifiedRect)
+        drawInfo(panelHeight: panelHeight, magnifiedBottom: magnifiedRect.minY)
     }
 
-    private func drawMagnifiedArea() {
-        let rect = NSRect(
-            x: Self.magnifiedLeft,
-            y: Self.magnifiedBottom,
-            width: Self.magnifiedSide,
-            height: Self.magnifiedSide
-        )
-        // Frame
-        NSColor.black.withAlphaComponent(0.7).setFill()
+    private func drawMagnifiedArea(in rect: NSRect) {
+        // Background fill (also makes the empty-state visible when no snapshot).
+        IdleColorLensSampler.backgroundColor(forAppearance: effectiveAppearance).setFill()
         NSBezierPath(rect: rect).fill()
 
         guard let snapshot else { return }
 
-        let regionSize = Self.magnifiedSourceSize
+        let regionSize = magnifiedSourceSize
         let sourceX = max(0, currentPixelPoint.x - regionSize / 2)
         let sourceY = max(0, currentPixelPoint.y - regionSize / 2)
-        // Clamp the source region so it never extends beyond the snapshot.
         let clampedWidth = min(regionSize, CGFloat(snapshot.width) - sourceX)
         let clampedHeight = min(regionSize, CGFloat(snapshot.height) - sourceY)
 
@@ -310,12 +359,11 @@ private final class IdleColorLensView: NSView {
               )),
               let context = NSGraphicsContext.current?.cgContext else { return }
 
-        // CGContext.draw(image, in: rect) already places the image's visual
-        // top-left at rect's visual top-left, so cropping to sourceRect and
-        // drawing the result into the magnified area gives a correctly
-        // oriented magnification with the cursor pixel at destRect's center.
         context.saveGState()
         context.interpolationQuality = .none
+        // CGContext.draw(image, in: rect) places the image's visual top-left
+        // at rect's visual top-left, so the cursor pixel sits at destRect.mid
+        // without any manual transform.
         context.draw(cropped, in: rect)
         context.restoreGState()
 
@@ -338,7 +386,7 @@ private final class IdleColorLensView: NSView {
         cross.stroke()
     }
 
-    private func drawInfo() {
+    private func drawInfo(panelHeight: CGFloat, magnifiedBottom: CGFloat) {
         let infoAttrs: [NSAttributedString.Key: Any] = [
             .font: Self.font,
             .foregroundColor: NSColor.labelColor
@@ -348,7 +396,22 @@ private final class IdleColorLensView: NSView {
             .foregroundColor: NSColor.labelColor.withAlphaComponent(0.7)
         ]
 
-        // Coordinates (top row)
+        // Compute the row index (from the bottom) for each row that exists.
+        // We always render coords + color (rows 3 and 2 in old layout).
+        // Tip rows occupy 1 and 0 conditionally.
+        var rowFromBottom = 0
+        let infoAreaBottom = infoBottomInset
+        // totalRows in info area (coords + color + maybe copy + maybe shift)
+        let totalRows = 2
+            + (Defaults.idleLensShowCopyHint ? 1 : 0)
+            + (Defaults.idleLensShowShiftHint ? 1 : 0)
+
+        func rowY(forIndex i: Int) -> CGFloat {
+            // i is 0-based from bottom
+            infoAreaBottom + CGFloat(i) * infoRowHeight
+        }
+
+        // Coordinates row (always)
         if currentSample != nil {
             let x = String(Int(mouseLocation.x))
             let y = String(Int(mouseLocation.y))
@@ -356,18 +419,19 @@ private final class IdleColorLensView: NSView {
             drawText(
                 coordsText,
                 attrs: infoAttrs,
-                rowFromBottom: 3,
-                availableWidth: bounds.width - Self.infoLeftPadding - Self.infoRightPadding
+                at: rowY(forIndex: totalRows - 1),
+                availableWidth: bounds.width - infoLeftPadding - infoRightPadding
             )
         }
 
-        // Swatch + HEX/RGB
+        // Swatch + HEX/RGB row (always)
         if let sample = currentSample {
+            let rowIndex = totalRows - 2
             let swatchRect = NSRect(
-                x: Self.infoLeftPadding,
-                y: Self.infoBottomInset + 2 * Self.infoRowHeight + 1,
-                width: Self.swatchSize,
-                height: Self.swatchSize
+                x: infoLeftPadding,
+                y: rowY(forIndex: rowIndex) + 1,
+                width: swatchSize,
+                height: swatchSize
             )
             NSColor(
                 srgbRed: CGFloat(sample.r) / 255.0,
@@ -376,7 +440,6 @@ private final class IdleColorLensView: NSView {
                 alpha: 1.0
             ).setFill()
             NSBezierPath(roundedRect: swatchRect, xRadius: 2, yRadius: 2).fill()
-            // Border
             NSColor.labelColor.withAlphaComponent(0.3).setStroke()
             let border = NSBezierPath(roundedRect: swatchRect, xRadius: 2, yRadius: 2)
             border.lineWidth = 0.5
@@ -392,40 +455,46 @@ private final class IdleColorLensView: NSView {
             drawText(
                 colorText,
                 attrs: infoAttrs,
-                rowFromBottom: 2,
-                leftOffset: Self.infoLeftPadding + Self.swatchSize + 6,
-                availableWidth: bounds.width - Self.infoLeftPadding - Self.swatchSize - 6 - Self.infoRightPadding
+                at: rowY(forIndex: rowIndex),
+                leftOffset: infoLeftPadding + swatchSize + 6,
+                availableWidth: bounds.width - infoLeftPadding - swatchSize - 6 - infoRightPadding
             )
         }
 
-        // Tip rows (permanent — no fade-out)
-        drawText(
-            L10n.idleLensCopyHint,
-            attrs: tipAttrs,
-            rowFromBottom: 1,
-            availableWidth: bounds.width - Self.infoLeftPadding - Self.infoRightPadding
-        )
-        drawText(
-            L10n.idleLensShiftHint,
-            attrs: tipAttrs,
-            rowFromBottom: 0,
-            availableWidth: bounds.width - Self.infoLeftPadding - Self.infoRightPadding
-        )
+        // Tip rows (conditional)
+        if Defaults.idleLensShowCopyHint {
+            drawText(
+                L10n.idleLensCopyHint,
+                attrs: tipAttrs,
+                at: rowY(forIndex: rowFromBottom),
+                availableWidth: bounds.width - infoLeftPadding - infoRightPadding
+            )
+            rowFromBottom += 1
+        }
+        if Defaults.idleLensShowShiftHint {
+            drawText(
+                L10n.idleLensShiftHint,
+                attrs: tipAttrs,
+                at: rowY(forIndex: rowFromBottom),
+                availableWidth: bounds.width - infoLeftPadding - infoRightPadding
+            )
+        }
+        _ = magnifiedBottom // silence unused warning
+        _ = panelHeight
     }
 
     private func drawText(
         _ text: String,
         attrs: [NSAttributedString.Key: Any],
-        rowFromBottom: Int,
+        at y: CGFloat,
         leftOffset: CGFloat = 0,
         availableWidth: CGFloat = 0
     ) {
-        let y = Self.infoBottomInset + CGFloat(rowFromBottom) * Self.infoRowHeight
-        let x = leftOffset == 0 ? Self.infoLeftPadding : leftOffset
+        let x = leftOffset == 0 ? infoLeftPadding : leftOffset
         let width = leftOffset == 0
-            ? bounds.width - Self.infoLeftPadding - Self.infoRightPadding
+            ? bounds.width - infoLeftPadding - infoRightPadding
             : availableWidth
-        let rect = NSRect(x: x, y: y, width: width, height: Self.infoRowHeight)
+        let rect = NSRect(x: x, y: y, width: width, height: infoRowHeight)
         (text as NSString).draw(in: rect, withAttributes: attrs)
     }
 

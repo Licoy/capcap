@@ -203,6 +203,13 @@ enum L10n {
     }
     static var settingsIdleColorLensTitle: String { s("settingsIdleColorLensTitle") }
     static var settingsIdleColorLensHint: String { s("settingsIdleColorLensHint") }
+    static var settingsIdleLensMagnifiedSizeLabel: String { s("settingsIdleLensMagnifiedSizeLabel") }
+    static var settingsIdleLensPanelOffsetLabel: String { s("settingsIdleLensPanelOffsetLabel") }
+    static var settingsIdleLensBackgroundLabel: String { s("settingsIdleLensBackgroundLabel") }
+    static var settingsIdleLensFollowSystemAppearanceTitle: String { s("settingsIdleLensFollowSystemAppearanceTitle") }
+    static var settingsIdleLensFollowSystemAppearanceHint: String { s("settingsIdleLensFollowSystemAppearanceHint") }
+    static var settingsIdleLensDarkBackgroundLabel: String { s("settingsIdleLensDarkBackgroundLabel") }
+    static var settingsIdleLensLightBackgroundLabel: String { s("settingsIdleLensLightBackgroundLabel") }
 
     // Copy-to-clipboard shortcut (editor confirm)
     static var clipboardShortcutHeader: String { s("clipboardShortcutHeader") }
@@ -1745,6 +1752,124 @@ struct Defaults {
         }
         set {
             defaults.set(newValue, forKey: "idleColorLensEnabled")
+        }
+    }
+
+    /// Background color used in dark mode (when `idleLensFollowSystemAppearance` is on).
+    /// Stored as 0–1 RGBA components. Default: black with 70% alpha.
+    static var idleLensDarkBackgroundRed: Double {
+        get { defaults.object(forKey: "idleLensDarkBackgroundRed") == nil ? 0 : defaults.double(forKey: "idleLensDarkBackgroundRed") }
+        set { defaults.set(newValue, forKey: "idleLensDarkBackgroundRed") }
+    }
+    static var idleLensDarkBackgroundGreen: Double {
+        get { defaults.object(forKey: "idleLensDarkBackgroundGreen") == nil ? 0 : defaults.double(forKey: "idleLensDarkBackgroundGreen") }
+        set { defaults.set(newValue, forKey: "idleLensDarkBackgroundGreen") }
+    }
+    static var idleLensDarkBackgroundBlue: Double {
+        get { defaults.object(forKey: "idleLensDarkBackgroundBlue") == nil ? 0 : defaults.double(forKey: "idleLensDarkBackgroundBlue") }
+        set { defaults.set(newValue, forKey: "idleLensDarkBackgroundBlue") }
+    }
+    static var idleLensDarkBackgroundAlpha: Double {
+        get { defaults.object(forKey: "idleLensDarkBackgroundAlpha") == nil ? 0.7 : defaults.double(forKey: "idleLensDarkBackgroundAlpha") }
+        set { defaults.set(min(1, max(0, newValue)), forKey: "idleLensDarkBackgroundAlpha") }
+    }
+
+    /// Background color used in light mode (when `idleLensFollowSystemAppearance` is on).
+    /// Stored as 0–1 RGBA components. Default: white with 80% alpha.
+    static var idleLensLightBackgroundRed: Double {
+        get { defaults.object(forKey: "idleLensLightBackgroundRed") == nil ? 1 : defaults.double(forKey: "idleLensLightBackgroundRed") }
+        set { defaults.set(newValue, forKey: "idleLensLightBackgroundRed") }
+    }
+    static var idleLensLightBackgroundGreen: Double {
+        get { defaults.object(forKey: "idleLensLightBackgroundGreen") == nil ? 1 : defaults.double(forKey: "idleLensLightBackgroundGreen") }
+        set { defaults.set(newValue, forKey: "idleLensLightBackgroundGreen") }
+    }
+    static var idleLensLightBackgroundBlue: Double {
+        get { defaults.object(forKey: "idleLensLightBackgroundBlue") == nil ? 1 : defaults.double(forKey: "idleLensLightBackgroundBlue") }
+        set { defaults.set(newValue, forKey: "idleLensLightBackgroundBlue") }
+    }
+    static var idleLensLightBackgroundAlpha: Double {
+        get { defaults.object(forKey: "idleLensLightBackgroundAlpha") == nil ? 0.8 : defaults.double(forKey: "idleLensLightBackgroundAlpha") }
+        set { defaults.set(min(1, max(0, newValue)), forKey: "idleLensLightBackgroundAlpha") }
+    }
+
+    /// When `true`, the lens picks the dark/light background color based on the
+    /// current macOS appearance. When `false`, the dark color is always used.
+    static var idleLensFollowSystemAppearance: Bool {
+        get {
+            if defaults.object(forKey: "idleLensFollowSystemAppearance") == nil {
+                return true
+            }
+            return defaults.bool(forKey: "idleLensFollowSystemAppearance")
+        }
+        set {
+            defaults.set(newValue, forKey: "idleLensFollowSystemAppearance")
+        }
+    }
+
+    /// Side length (in points) of the magnified area. One of 96, 144, 192.
+    static var idleLensMagnifiedSize: Int {
+        get {
+            if defaults.object(forKey: "idleLensMagnifiedSize") == nil {
+                return 144
+            }
+            return defaults.integer(forKey: "idleLensMagnifiedSize")
+        }
+        set {
+            defaults.set(newValue, forKey: "idleLensMagnifiedSize")
+        }
+    }
+
+    /// Horizontal offset (in points) between the cursor and the panel's left edge.
+    static var idleLensPanelOffsetX: Double {
+        get {
+            if defaults.object(forKey: "idleLensPanelOffsetX") == nil {
+                return 15
+            }
+            return defaults.double(forKey: "idleLensPanelOffsetX")
+        }
+        set {
+            defaults.set(newValue, forKey: "idleLensPanelOffsetX")
+        }
+    }
+
+    /// Vertical offset (in points) between the cursor and the panel's top edge
+    /// when the panel sits below the cursor.
+    static var idleLensPanelOffsetY: Double {
+        get {
+            if defaults.object(forKey: "idleLensPanelOffsetY") == nil {
+                return 14
+            }
+            return defaults.double(forKey: "idleLensPanelOffsetY")
+        }
+        set {
+            defaults.set(newValue, forKey: "idleLensPanelOffsetY")
+        }
+    }
+
+    /// Whether to show the "Press ⌘+C to copy color" hint row in the lens.
+    static var idleLensShowCopyHint: Bool {
+        get {
+            if defaults.object(forKey: "idleLensShowCopyHint") == nil {
+                return true
+            }
+            return defaults.bool(forKey: "idleLensShowCopyHint")
+        }
+        set {
+            defaults.set(newValue, forKey: "idleLensShowCopyHint")
+        }
+    }
+
+    /// Whether to show the "Press Shift to switch RGB" hint row in the lens.
+    static var idleLensShowShiftHint: Bool {
+        get {
+            if defaults.object(forKey: "idleLensShowShiftHint") == nil {
+                return true
+            }
+            return defaults.bool(forKey: "idleLensShowShiftHint")
+        }
+        set {
+            defaults.set(newValue, forKey: "idleLensShowShiftHint")
         }
     }
 

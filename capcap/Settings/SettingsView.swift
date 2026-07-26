@@ -72,6 +72,19 @@ class SettingsView: NSView {
     private var historyCacheSwitch: NSSwitch!
     private var clipboardTextCacheSwitch: NSSwitch!
     private var idleColorLensSwitch: NSSwitch!
+    private var idleLensMagnifiedSizePopup: NSPopUpButton!
+    private var idleLensPanelOffsetXField: NSTextField!
+    private var idleLensPanelOffsetYField: NSTextField!
+    private var idleLensFollowSystemSwitch: NSSwitch!
+    private var idleLensDarkBackgroundWell: NSColorWell!
+    private var idleLensDarkAlphaSlider: NSSlider!
+    private var idleLensLightBackgroundWell: NSColorWell!
+    private var idleLensLightAlphaSlider: NSSlider!
+    private var idleLensShowCopyHintSwitch: NSSwitch!
+    private var idleLensShowShiftHintSwitch: NSSwitch!
+    private var idleLensPreview: IdleLensPreviewView!
+
+    private var idleLensLastEditedIsDark: Bool = true
     private var historyCacheSlider: SettingsTickSlider!
     private var historyCacheValueLabel: NSTextField!
     private var clipboardTextHistoryLimitSlider: SettingsTickSlider!
@@ -732,20 +745,12 @@ class SettingsView: NSView {
         pinAcrossSpaces.row.widthAnchor.constraint(equalTo: togglesInner.widthAnchor).isActive = true
         togglesInner.addArrangedSubview(rowDivider())
 
-        let idleLens = makeToggleRow(
-            title: L10n.settingsIdleColorLensTitle,
-            subtitle: L10n.settingsIdleColorLensHint,
-            isOn: Defaults.idleColorLensEnabled,
-            action: #selector(idleColorLensToggled(_:))
-        )
-        idleColorLensSwitch = idleLens.toggle
-        togglesInner.addArrangedSubview(idleLens.row)
-        idleLens.row.widthAnchor.constraint(equalTo: togglesInner.widthAnchor).isActive = true
-
         stack.addArrangedSubview(togglesCard)
         togglesCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
         buildWindowShadowCard(into: stack)
+
+        buildIdleLensCard(into: stack)
 
         buildBeautifyDefaultsCard(into: stack)
 
@@ -852,6 +857,222 @@ class SettingsView: NSView {
         windowShadowSizeTitleLabel?.textColor = NSColor.white.withAlphaComponent(on ? 0.94 : 0.4)
         windowShadowSizeValueLabel?.textColor = NSColor.white.withAlphaComponent(on ? 0.88 : 0.4)
         windowShadowPreview?.isEffectEnabled = on
+    }
+
+    /// Idle magnifier color picker card: master toggle, magnified-area
+    /// size picker, panel-offset (X/Y) text fields, dark/light background
+    /// colour wells with alpha, follow-system-appearance toggle, hint
+    /// toggles, and a live preview that mirrors the lens chrome.
+    private func buildIdleLensCard(into stack: NSStackView) {
+        let card = CardView()
+        let inner = NSStackView()
+        inner.orientation = .vertical
+        inner.alignment = .leading
+        inner.spacing = 12
+        inner.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(inner)
+        pin(inner, to: card, insets: NSEdgeInsets(top: 4, left: 14, bottom: 14, right: 14))
+
+        // ----- Master toggle
+        let toggle = makeToggleRow(
+            title: L10n.settingsIdleColorLensTitle,
+            subtitle: L10n.settingsIdleColorLensHint,
+            isOn: Defaults.idleColorLensEnabled,
+            action: #selector(idleColorLensToggled(_:))
+        )
+        idleColorLensSwitch = toggle.toggle
+        inner.addArrangedSubview(toggle.row)
+        toggle.row.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        // Two-column body: options on the left, preview on the right.
+        let splitRow = NSStackView()
+        splitRow.orientation = .horizontal
+        splitRow.alignment = .top
+        splitRow.spacing = 18
+        splitRow.translatesAutoresizingMaskIntoConstraints = false
+        inner.addArrangedSubview(splitRow)
+        splitRow.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let optionsColumn = NSStackView()
+        optionsColumn.orientation = .vertical
+        optionsColumn.alignment = .leading
+        optionsColumn.spacing = 10
+        optionsColumn.translatesAutoresizingMaskIntoConstraints = false
+        splitRow.addArrangedSubview(optionsColumn)
+
+        // ----- Magnified area size picker
+        let sizeLabel = primaryLabel(L10n.settingsIdleLensMagnifiedSizeLabel)
+        let sizePopup = NSPopUpButton(frame: .zero, pullsDown: false)
+        for option in [96, 144, 192] {
+            sizePopup.addItem(withTitle: "\(option) × \(option)")
+        }
+        sizePopup.selectItem(withTitle: "\(Defaults.idleLensMagnifiedSize) × \(Defaults.idleLensMagnifiedSize)")
+        sizePopup.controlSize = .small
+        sizePopup.target = self
+        sizePopup.action = #selector(idleLensMagnifiedSizeChanged(_:))
+        idleLensMagnifiedSizePopup = sizePopup
+        let sizeRow = NSStackView()
+        sizeRow.orientation = .horizontal
+        sizeRow.alignment = .centerY
+        sizeRow.spacing = 10
+        sizeRow.translatesAutoresizingMaskIntoConstraints = false
+        sizeRow.addArrangedSubview(sizeLabel)
+        sizeRow.addArrangedSubview(sizePopup)
+        optionsColumn.addArrangedSubview(sizeRow)
+        sizeRow.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
+
+        // ----- Panel offset X / Y
+        let offsetLabel = primaryLabel(L10n.settingsIdleLensPanelOffsetLabel)
+        let xField = NSTextField(string: "\(Int(Defaults.idleLensPanelOffsetX))")
+        xField.alignment = .right
+        xField.widthAnchor.constraint(equalToConstant: 44).isActive = true
+        xField.controlSize = .small
+        xField.target = self
+        xField.action = #selector(idleLensPanelOffsetXChanged(_:))
+        idleLensPanelOffsetXField = xField
+        let yField = NSTextField(string: "\(Int(Defaults.idleLensPanelOffsetY))")
+        yField.alignment = .right
+        yField.widthAnchor.constraint(equalToConstant: 44).isActive = true
+        yField.controlSize = .small
+        yField.target = self
+        yField.action = #selector(idleLensPanelOffsetYChanged(_:))
+        idleLensPanelOffsetYField = yField
+        let offsetRow = NSStackView()
+        offsetRow.orientation = .horizontal
+        offsetRow.alignment = .centerY
+        offsetRow.spacing = 10
+        offsetRow.translatesAutoresizingMaskIntoConstraints = false
+        offsetRow.addArrangedSubview(offsetLabel)
+        offsetRow.addArrangedSubview(xField)
+        offsetRow.addArrangedSubview(yField)
+        optionsColumn.addArrangedSubview(offsetRow)
+        offsetRow.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
+
+        // ----- Background section
+        let bgHeader = primaryLabel(L10n.settingsIdleLensBackgroundLabel)
+        optionsColumn.addArrangedSubview(bgHeader)
+
+        let followRow = makeToggleRow(
+            title: L10n.settingsIdleLensFollowSystemAppearanceTitle,
+            subtitle: L10n.settingsIdleLensFollowSystemAppearanceHint,
+            isOn: Defaults.idleLensFollowSystemAppearance,
+            action: #selector(idleLensFollowSystemToggled(_:))
+        )
+        idleLensFollowSystemSwitch = followRow.toggle
+        optionsColumn.addArrangedSubview(followRow.row)
+        followRow.row.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
+
+        let darkColorRow = makeBackgroundColorRow(
+            label: L10n.settingsIdleLensDarkBackgroundLabel,
+            isDark: true
+        )
+        idleLensDarkBackgroundWell = darkColorRow.well
+        idleLensDarkAlphaSlider = darkColorRow.slider
+        optionsColumn.addArrangedSubview(darkColorRow.row)
+        darkColorRow.row.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
+
+        let lightColorRow = makeBackgroundColorRow(
+            label: L10n.settingsIdleLensLightBackgroundLabel,
+            isDark: false
+        )
+        idleLensLightBackgroundWell = lightColorRow.well
+        idleLensLightAlphaSlider = lightColorRow.slider
+        optionsColumn.addArrangedSubview(lightColorRow.row)
+        lightColorRow.row.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
+
+        // ----- Hint toggles
+        let copyHintRow = makeToggleRow(
+            title: L10n.idleLensCopyHint,
+            subtitle: nil,
+            isOn: Defaults.idleLensShowCopyHint,
+            action: #selector(idleLensShowCopyHintToggled(_:))
+        )
+        idleLensShowCopyHintSwitch = copyHintRow.toggle
+        optionsColumn.addArrangedSubview(copyHintRow.row)
+        copyHintRow.row.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
+
+        let shiftHintRow = makeToggleRow(
+            title: L10n.idleLensShiftHint,
+            subtitle: nil,
+            isOn: Defaults.idleLensShowShiftHint,
+            action: #selector(idleLensShowShiftHintToggled(_:))
+        )
+        idleLensShowShiftHintSwitch = shiftHintRow.toggle
+        optionsColumn.addArrangedSubview(shiftHintRow.row)
+        shiftHintRow.row.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
+
+        // ----- Preview (right side)
+        let preview = IdleLensPreviewView(frame: NSRect(x: 0, y: 0, width: 232, height: 232))
+        preview.translatesAutoresizingMaskIntoConstraints = false
+        idleLensPreview = preview
+        splitRow.addArrangedSubview(preview)
+        preview.widthAnchor.constraint(equalToConstant: 232).isActive = true
+        preview.heightAnchor.constraint(equalToConstant: 232).isActive = true
+
+        stack.addArrangedSubview(card)
+        card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+    }
+
+    /// Builds a labelled row that pairs a color well with an alpha slider.
+    /// The well writes RGBA channels individually on every change so we can
+    /// persist them in separate UserDefaults keys (NSColor's encoded form
+    /// isn't stable across color spaces).
+    private func makeBackgroundColorRow(
+        label: String,
+        isDark: Bool
+    ) -> (row: NSStackView, well: NSColorWell, slider: NSSlider) {
+        let row = NSStackView()
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.spacing = 10
+        row.translatesAutoresizingMaskIntoConstraints = false
+
+        let labelField = primaryLabel(label)
+        row.addArrangedSubview(labelField)
+
+        let initialColor = currentLensBackgroundColor(isDark: isDark)
+        let well = NSColorWell(frame: .zero)
+        well.color = initialColor
+        well.target = self
+        well.action = isDark
+            ? #selector(idleLensDarkBackgroundWellChanged(_:))
+            : #selector(idleLensLightBackgroundWellChanged(_:))
+        well.widthAnchor.constraint(equalToConstant: 36).isActive = true
+        well.heightAnchor.constraint(equalToConstant: 22).isActive = true
+        row.addArrangedSubview(well)
+
+        let slider = NSSlider(
+            value: Double(initialColor.alphaComponent),
+            minValue: 0,
+            maxValue: 1,
+            target: self,
+            action: isDark
+                ? #selector(idleLensDarkAlphaChanged(_:))
+                : #selector(idleLensLightAlphaChanged(_:))
+        )
+        slider.controlSize = .small
+        slider.isContinuous = true
+        row.addArrangedSubview(slider)
+        slider.widthAnchor.constraint(equalToConstant: 120).isActive = true
+
+        return (row, well, slider)
+    }
+
+    private func currentLensBackgroundColor(isDark: Bool) -> NSColor {
+        if isDark {
+            return NSColor(
+                srgbRed: CGFloat(Defaults.idleLensDarkBackgroundRed),
+                green: CGFloat(Defaults.idleLensDarkBackgroundGreen),
+                blue: CGFloat(Defaults.idleLensDarkBackgroundBlue),
+                alpha: CGFloat(Defaults.idleLensDarkBackgroundAlpha)
+            )
+        }
+        return NSColor(
+            srgbRed: CGFloat(Defaults.idleLensLightBackgroundRed),
+            green: CGFloat(Defaults.idleLensLightBackgroundGreen),
+            blue: CGFloat(Defaults.idleLensLightBackgroundBlue),
+            alpha: CGFloat(Defaults.idleLensLightBackgroundAlpha)
+        )
     }
 
     /// Default beautify behaviour when the annotation editor opens: optional
@@ -3043,6 +3264,64 @@ class SettingsView: NSView {
 
     @objc private func idleColorLensToggled(_ sender: NSSwitch) {
         Defaults.idleColorLensEnabled = sender.state == .on
+    }
+
+    @objc private func idleLensMagnifiedSizeChanged(_ sender: NSPopUpButton) {
+        guard let title = sender.selectedItem?.title,
+              let side = Int(title.split(separator: " ").first ?? "") else { return }
+        Defaults.idleLensMagnifiedSize = side
+    }
+
+    @objc private func idleLensPanelOffsetXChanged(_ sender: NSTextField) {
+        if let value = Double(sender.stringValue) {
+            Defaults.idleLensPanelOffsetX = value
+        }
+    }
+
+    @objc private func idleLensPanelOffsetYChanged(_ sender: NSTextField) {
+        if let value = Double(sender.stringValue) {
+            Defaults.idleLensPanelOffsetY = value
+        }
+    }
+
+    @objc private func idleLensFollowSystemToggled(_ sender: NSSwitch) {
+        Defaults.idleLensFollowSystemAppearance = sender.state == .on
+    }
+
+    @objc private func idleLensDarkBackgroundWellChanged(_ sender: NSColorWell) {
+        let color = sender.color.usingColorSpace(.sRGB) ?? sender.color
+        Defaults.idleLensDarkBackgroundRed = Double(color.redComponent)
+        Defaults.idleLensDarkBackgroundGreen = Double(color.greenComponent)
+        Defaults.idleLensDarkBackgroundBlue = Double(color.blueComponent)
+        Defaults.idleLensDarkBackgroundAlpha = Double(color.alphaComponent)
+        idleLensDarkAlphaSlider.doubleValue = color.alphaComponent
+    }
+
+    @objc private func idleLensLightBackgroundWellChanged(_ sender: NSColorWell) {
+        let color = sender.color.usingColorSpace(.sRGB) ?? sender.color
+        Defaults.idleLensLightBackgroundRed = Double(color.redComponent)
+        Defaults.idleLensLightBackgroundGreen = Double(color.greenComponent)
+        Defaults.idleLensLightBackgroundBlue = Double(color.blueComponent)
+        Defaults.idleLensLightBackgroundAlpha = Double(color.alphaComponent)
+        idleLensLightAlphaSlider.doubleValue = color.alphaComponent
+    }
+
+    @objc private func idleLensDarkAlphaChanged(_ sender: NSSlider) {
+        Defaults.idleLensDarkBackgroundAlpha = sender.doubleValue
+        idleLensDarkBackgroundWell.color = currentLensBackgroundColor(isDark: true)
+    }
+
+    @objc private func idleLensLightAlphaChanged(_ sender: NSSlider) {
+        Defaults.idleLensLightBackgroundAlpha = sender.doubleValue
+        idleLensLightBackgroundWell.color = currentLensBackgroundColor(isDark: false)
+    }
+
+    @objc private func idleLensShowCopyHintToggled(_ sender: NSSwitch) {
+        Defaults.idleLensShowCopyHint = sender.state == .on
+    }
+
+    @objc private func idleLensShowShiftHintToggled(_ sender: NSSwitch) {
+        Defaults.idleLensShowShiftHint = sender.state == .on
     }
 
     @objc private func clipboardTextCacheToggled(_ sender: NSSwitch) {

@@ -575,3 +575,10 @@
 "idleLensShiftHint" = "Нажмите Shift для переключения на RGB";
 "settingsIdleColorLensTitle" = "Показывать лупу цвета в режиме ожидания";
 "settingsIdleColorLensHint" = "Перед выбором показывать у курсора лупу с RGB/HEX";
+"settingsIdleLensMagnifiedSizeLabel" = "Размер области увеличения";
+"settingsIdleLensPanelOffsetLabel" = "Смещение панели (X, Y)";
+"settingsIdleLensBackgroundLabel" = "Цвет фона";
+"settingsIdleLensFollowSystemAppearanceTitle" = "Следовать оформлению системы";
+"settingsIdleLensFollowSystemAppearanceHint" = "Авто-выбор тёмного или светлого фона по текущему оформлению macOS";
+"settingsIdleLensDarkBackgroundLabel" = "Тёмное оформление";
+"settingsIdleLensLightBackgroundLabel" = "Светлое оформление";

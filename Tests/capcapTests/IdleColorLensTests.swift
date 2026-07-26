@@ -189,4 +189,32 @@ final class IdleColorLensTests: XCTestCase {
         XCTAssertFalse(Defaults.idleColorLensEnabled)
         UserDefaults.standard.removeObject(forKey: key)
     }
+
+    func testDefaultsLensVisualDefaults() {
+        // Magnified size defaults to 144.
+        UserDefaults.standard.removeObject(forKey: "idleLensMagnifiedSize")
+        XCTAssertEqual(Defaults.idleLensMagnifiedSize, 144)
+        // Offsets default to (15, 14).
+        UserDefaults.standard.removeObject(forKey: "idleLensPanelOffsetX")
+        UserDefaults.standard.removeObject(forKey: "idleLensPanelOffsetY")
+        XCTAssertEqual(Defaults.idleLensPanelOffsetX, 15)
+        XCTAssertEqual(Defaults.idleLensPanelOffsetY, 14)
+        // Hint toggles default on.
+        UserDefaults.standard.removeObject(forKey: "idleLensShowCopyHint")
+        UserDefaults.standard.removeObject(forKey: "idleLensShowShiftHint")
+        XCTAssertTrue(Defaults.idleLensShowCopyHint)
+        XCTAssertTrue(Defaults.idleLensShowShiftHint)
+        // Follow-system defaults on; dark/light RGBA defaults match docs.
+        UserDefaults.standard.removeObject(forKey: "idleLensFollowSystemAppearance")
+        XCTAssertTrue(Defaults.idleLensFollowSystemAppearance)
+        UserDefaults.standard.removeObject(forKey: "idleLensDarkBackgroundAlpha")
+        UserDefaults.standard.removeObject(forKey: "idleLensLightBackgroundAlpha")
+        XCTAssertEqual(Defaults.idleLensDarkBackgroundAlpha, 0.7, accuracy: 0.001)
+        XCTAssertEqual(Defaults.idleLensLightBackgroundAlpha, 0.8, accuracy: 0.001)
+        // Alpha setter clamps to 0…1.
+        Defaults.idleLensDarkBackgroundAlpha = 5
+        XCTAssertEqual(Defaults.idleLensDarkBackgroundAlpha, 1.0, accuracy: 0.001)
+        Defaults.idleLensDarkBackgroundAlpha = -1
+        XCTAssertEqual(Defaults.idleLensDarkBackgroundAlpha, 0.0, accuracy: 0.001)
+    }
 }

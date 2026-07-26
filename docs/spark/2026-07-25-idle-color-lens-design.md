@@ -137,20 +137,68 @@ New L10n keys (added to all 8 `.lproj/Localizable.strings`):
 
 All translations follow the project rule: **no trailing punctuation** on user-facing strings.
 
+## Settings
+
+The feature has its own **dedicated card** in Settings → General, with a master toggle, configurable options, and a live preview of the lens.
+
+```
++----------------------------------------------+
+| [ON/OFF] Show color lens on idle             |
+| Display a magnifier with RGB/HEX readout...  |
++----------------------------------------------+
+| Magnified area size: [144 × 144 v]           |
+| Panel offset (X, Y): [15]  [14]             |
+| Background colour                            |
+|   [ON] Follow system appearance              |
+|   Dark mode  [■]  alpha: ━━━━━━━              |
+|   Light mode [□]  alpha: ━━━━━━━              |
+| +------------------+ +----------------------+ |
+| | [preview panel] | | Show ⌘+C hint  [ON]  | |
+| | - magnifier     | | Show Shift hint [ON]  | |
+| | - coordinates   | +----------------------+ |
+| | - swatch + HEX  |                         | |
+| | - hint rows     |                         | |
+| +------------------+                         | |
++----------------------------------------------+
+```
+
+### Configurable options
+
+All options live on `Defaults` and take effect the next time the lens is created (or, for the live preview, immediately).
+
+| Key | Type | Default | Purpose |
+| --- | --- | --- | --- |
+| `idleColorLensEnabled` | `Bool` | `false` | Master toggle. When off, the legacy "drag to screenshot" cursor chip is shown. |
+| `idleLensMagnifiedSize` | `Int` | `144` | Side length of the magnified square. Choices: 96, 144, 192. |
+| `idleLensPanelOffsetX` | `Double` | `15` | Horizontal offset (in points) between the cursor and the panel's left edge. |
+| `idleLensPanelOffsetY` | `Double` | `14` | Vertical offset (in points) between the cursor and the panel's top edge (when below the cursor). |
+| `idleLensFollowSystemAppearance` | `Bool` | `true` | When on, the lens picks the dark/light background based on `effectiveAppearance`. When off, it always uses the dark colour. |
+| `idleLensDarkBackground{R,G,B,Alpha}` | `Double` × 4 | `0, 0, 0, 0.7` | RGBA used in dark mode (or always when `followSystemAppearance` is off). Alpha is clamped to 0…1. |
+| `idleLensLightBackground{R,G,B,Alpha}` | `Double` × 4 | `1, 1, 1, 0.8` | RGBA used in light mode (only honoured when `followSystemAppearance` is on). Alpha is clamped to 0…1. |
+| `idleLensShowCopyHint` | `Bool` | `true` | Whether to render the "Press ⌘+C to copy color" row. |
+| `idleLensShowShiftHint` | `Bool` | `true` | Whether to render the "Press Shift to switch RGB" row. |
+
+The lens panel size is recomputed from these defaults every time the panel is created — pick a different `idleLensMagnifiedSize` and the panel grows to fit.
+
+### Preview
+
+The right side of the card hosts an `IdleLensPreviewView` (defined in `capcap/Settings/IdleLensPreviewView.swift`). It draws a stylised "app icon" inside the magnified square, mock coordinates (`590, 445`) and a swatch + HEX (`#0B63FE`) that match the dominant icon colour, plus the conditional hint rows. The preview re-renders via a `UserDefaults.didChangeNotification` observer so changes to background colour, hint visibility, or follow-system appearance reflect immediately.
+
 ## Files Touched
 
 ### New
 
-- `capcap/UI/IdleColorLensWindow.swift` — `NSPanel` subclass plus `IdleColorLensView` (drawing, magnification, swatch, layout) and the pure `IdleColorLensSampler` enum for pixel-coordinate mapping and single-pixel sampling.
-- `Tests/capcapTests/IdleColorLensTests.swift` — Unit tests covering `pixelCoordinate` mapping (including offset-screen cases), single-pixel sampling, Y-axis orientation (each row painted a distinct color so a flipped sample fails), clamp-to-bounds, and `Defaults.idleColorLensEnabled` default.
+- `capcap/UI/IdleColorLensWindow.swift` — `NSPanel` subclass plus `IdleColorLensView` (drawing, magnification, swatch, layout) and the pure `IdleColorLensSampler` enum for pixel-coordinate mapping, single-pixel sampling, and background-colour selection (`backgroundColor(forAppearance:)`, `darkBackgroundColor()`, `lightBackgroundColor()`).
+- `capcap/Settings/IdleLensPreviewView.swift` — `NSView` subclass that mocks the lens for the Settings card; reads from `Defaults` directly and re-renders on `UserDefaults.didChangeNotification`.
+- `Tests/capcapTests/IdleColorLensTests.swift` — Unit tests covering `pixelCoordinate` mapping (including offset-screen cases), single-pixel sampling, Y-axis orientation, clamp-to-bounds, all new `Defaults` defaults, and alpha-setter clamping.
 - `docs/spark/2026-07-25-idle-color-lens-design.md` — This document.
 
 ### Modified
 
 - `capcap/Capture/OverlayWindowController.swift` — Owns the lens lifecycle, mouse-tracking, and `Shift` / `⌘+C` routing via local + global monitors.
-- `capcap/Utilities/Defaults.swift` — Adds `idleColorLensEnabled` and the 8 new L10n accessors.
-- `capcap/Settings/SettingsView.swift` — Adds the toggle row in the capture-behavior section.
-- `Resources/*.lproj/Localizable.strings` × 8 — Adds the 8 lens-related keys.
+- `capcap/Utilities/Defaults.swift` — Adds `idleColorLensEnabled`, the configurable lens defaults, and the L10n accessors for the new keys.
+- `capcap/Settings/SettingsView.swift` — Builds the dedicated "Idle Color Lens" card in `General` (master toggle + every option above + live preview). The previous single-line toggle inside the General `Toggles` card was removed.
+- `Resources/*.lproj/Localizable.strings` × 8 — Adds the lens-related keys (`idleLens*`, `settingsIdleColorLens*`, `settingsIdleLens*`).
 
 ## Verification
 
@@ -165,7 +213,8 @@ All translations follow the project rule: **no trailing punctuation** on user-fa
   - Settings toggle hides the lens and restores the legacy chip.
   - Multi-monitor: cursor on a secondary screen left of the main display reports negative coordinates and samples the correct screen's snapshot.
   - Edge cases: panel flips left when the cursor is near the right edge; flips up when the cursor is near the bottom edge; defaults to below the cursor when the cursor is near the top.
-- The unit tests in `IdleColorLensTests.swift` cover the pixel-coordinate math and the y-axis-correct sample path. Running them requires Xcode (the `XCTest` framework is not bundled with the available `xcode-select` command-line tools).
+- The unit tests in `IdleColorLensTests.swift` cover the pixel-coordinate math, the y-axis-correct sample path, every new `Defaults` key (magnified size, panel offsets, hint toggles, follow-system appearance, RGBA alpha clamping). Running them requires Xcode (the `XCTest` framework is not bundled with the available `xcode-select` command-line tools).
+- Manual runtime verification on `feat_idle-magnifier-color-picker` covers the dedicated Settings card: master toggle, magnified-area size picker (96 / 144 / 192), X / Y offset fields, dark + light NSColorWells with alpha sliders, follow-system-appearance toggle, and the two hint toggles all take effect; the `IdleLensPreviewView` on the right of the card mirrors every change in real time.
 
 ## Out of Scope
 

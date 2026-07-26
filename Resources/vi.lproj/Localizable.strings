@@ -575,3 +575,10 @@
 "idleLensShiftHint" = "Nhấn Shift để chuyển RGB";
 "settingsIdleColorLensTitle" = "Hiển thị kính lúp màu khi chờ";
 "settingsIdleColorLensHint" = "Trước khi chọn, hiển thị kính lúp với RGB/HEX cạnh con trỏ";
+"settingsIdleLensMagnifiedSizeLabel" = "Kích thước vùng phóng to";
+"settingsIdleLensPanelOffsetLabel" = "Lệch bảng (X, Y)";
+"settingsIdleLensBackgroundLabel" = "Màu nền";
+"settingsIdleLensFollowSystemAppearanceTitle" = "Theo giao diện hệ thống";
+"settingsIdleLensFollowSystemAppearanceHint" = "Tự chọn nền sáng hoặc tối theo giao diện macOS hiện tại";
+"settingsIdleLensDarkBackgroundLabel" = "Chế độ tối";
+"settingsIdleLensLightBackgroundLabel" = "Chế độ sáng";

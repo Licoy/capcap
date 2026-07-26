@@ -575,3 +575,10 @@
 "idleLensShiftHint" = "按 Shift 切換 RGB";
 "settingsIdleColorLensTitle" = "閒置狀態顯示放大鏡取色";
 "settingsIdleColorLensHint" = "繪製前在游標旁顯示帶 RGB/HEX 的放大鏡";
+"settingsIdleLensMagnifiedSizeLabel" = "放大區尺寸";
+"settingsIdleLensPanelOffsetLabel" = "面板偏移 (X, Y)";
+"settingsIdleLensBackgroundLabel" = "背景色彩";
+"settingsIdleLensFollowSystemAppearanceTitle" = "跟隨系統外觀";
+"settingsIdleLensFollowSystemAppearanceHint" = "依據 macOS 當前外觀自動選擇深色或淺色背景";
+"settingsIdleLensDarkBackgroundLabel" = "深色模式";
+"settingsIdleLensLightBackgroundLabel" = "淺色模式";
