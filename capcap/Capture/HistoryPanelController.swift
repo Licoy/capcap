@@ -1004,7 +1004,6 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
     private var searchMouseMovementMonitor: Any?
     private var searchMouseTrackingTimer: Timer?
     private var searchMouseOrigin: NSPoint?
-    private var isSearchCursorHidden = false
     private var searchQuery = ""
     private var searchApplyWorkItem: DispatchWorkItem?
     private var searchGeneration = 0
@@ -1049,7 +1048,6 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
         stopConfirmationDismissMonitoring()
         stopSelectionKeyMonitoring()
         stopSearchMouseMovementTracking()
-        showSearchCursor()
         searchApplyWorkItem?.cancel()
         hoverSyncWorkItem?.cancel()
         previewPrefetchRequests.values.forEach { $0.cancel() }
@@ -1304,10 +1302,10 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
         }
 
         isSearchMode = true
-        setSearchInputActive(true)
         searchQuery = ""
         searchField.text = ""
         updateSearchPresentation(searching: true, animated: true)
+        setSearchInputActive(true)
         applySelectedFilter(resetScrollPosition: false)
         DispatchQueue.main.async { [weak self] in
             self?.focusSearchInput()
@@ -1372,18 +1370,34 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
         isSearchInputActive = nextValue
         if nextValue {
             clearActiveHoverTile()
-            hideSearchCursor()
-            startSearchMouseMovementTracking()
+            startSearchMouseMovementTracking(origin: moveCursorToSearchField())
         } else {
             stopSearchMouseMovementTracking()
-            showSearchCursor()
         }
         updateHistoryPreviewHotkey()
     }
 
-    private func startSearchMouseMovementTracking() {
+    private func moveCursorToSearchField() -> NSPoint {
+        guard let window else { return NSEvent.mouseLocation }
+
+        layoutSubtreeIfNeeded()
+        let fieldCenter = NSPoint(x: searchField.bounds.midX, y: searchField.bounds.midY)
+        let windowPoint = searchField.convert(fieldCenter, to: nil)
+        let screenPoint = window.convertPoint(toScreen: windowPoint)
+
+        // AppKit screen coordinates grow upward from the main display, while
+        // Core Graphics cursor coordinates grow downward from that display.
+        let mainDisplayTop = NSScreen.screens.first?.frame.maxY ?? 0
+        let cursorPoint = CGPoint(x: screenPoint.x, y: mainDisplayTop - screenPoint.y)
+        guard CGWarpMouseCursorPosition(cursorPoint) == .success else {
+            return NSEvent.mouseLocation
+        }
+        return screenPoint
+    }
+
+    private func startSearchMouseMovementTracking(origin: NSPoint) {
         stopSearchMouseMovementTracking()
-        searchMouseOrigin = NSEvent.mouseLocation
+        searchMouseOrigin = origin
 
         searchMouseMovementMonitor = NSEvent.addLocalMonitorForEvents(
             matching: [.mouseMoved, .leftMouseDragged, .rightMouseDragged, .otherMouseDragged]
@@ -1420,18 +1434,6 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
               window?.makeFirstResponder(self) == true else { return }
         setSearchInputActive(false)
         syncHoverStateWithCurrentMouse()
-    }
-
-    private func hideSearchCursor() {
-        guard !isSearchCursorHidden else { return }
-        NSCursor.hide()
-        isSearchCursorHidden = true
-    }
-
-    private func showSearchCursor() {
-        guard isSearchCursorHidden else { return }
-        NSCursor.unhide()
-        isSearchCursorHidden = false
     }
 
     private func updateSearchPlaceholder() {
