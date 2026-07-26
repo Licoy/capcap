@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.17] - 2026-07-26
+
+### Added
+- Add a keyboard shortcut guide to the history panel (d6e1760)
+
+### Fixed
+- Exclude the cursor chip from screen snapshots (ce251a6)
+
 ## [1.6.16] - 2026-07-26
 
 ### Added
