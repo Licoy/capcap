@@ -1002,12 +1002,13 @@ class SettingsView: NSView {
         shiftHintRow.row.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
 
         // ----- Preview (right side)
-        let preview = IdleLensPreviewView(frame: NSRect(x: 0, y: 0, width: 232, height: 232))
+        let previewSize = IdleLensPreviewView.requiredSize()
+        let preview = IdleLensPreviewView(frame: NSRect(origin: .zero, size: previewSize))
         preview.translatesAutoresizingMaskIntoConstraints = false
         idleLensPreview = preview
         splitRow.addArrangedSubview(preview)
-        preview.widthAnchor.constraint(equalToConstant: 232).isActive = true
-        preview.heightAnchor.constraint(equalToConstant: 232).isActive = true
+        preview.widthAnchor.constraint(equalToConstant: previewSize.width).isActive = true
+        preview.heightAnchor.constraint(equalToConstant: previewSize.height).isActive = true
 
         stack.addArrangedSubview(card)
         card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true

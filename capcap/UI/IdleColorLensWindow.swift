@@ -27,18 +27,24 @@ final class IdleColorLensWindow: NSPanel {
     private static let edgeMargin: CGFloat = 8
 
     /// Computes the panel size that fits the current Defaults (magnified
-    /// square + 4 info rows or 2 rows when hints are disabled).
-    private static func computePanelSize() -> NSSize {
+    /// square + 4 info rows or 2 rows when hints are disabled). Public so
+    /// the Settings preview can size its embedded lens view identically to
+    /// the live panel.
+    static func panelSizeForCurrentSettings() -> NSSize {
         let magnifiedSide = CGFloat(Defaults.idleLensMagnifiedSize)
         let infoRows = 2
             + (Defaults.idleLensShowCopyHint ? 1 : 0)
             + (Defaults.idleLensShowShiftHint ? 1 : 0)
-        let infoHeight = CGFloat(infoRows) * 18 + 8  // 18px/row + bottom inset
+        let infoHeight = CGFloat(infoRows) * 18 + 8
         let gap: CGFloat = 8
         let topInset: CGFloat = 8
         let width: CGFloat = max(220, magnifiedSide + 24)
         let height = magnifiedSide + gap + infoHeight + topInset
         return NSSize(width: ceil(width), height: ceil(height))
+    }
+
+    private static func computePanelSize() -> NSSize {
+        panelSizeForCurrentSettings()
     }
 
     private let lensView: IdleColorLensView
