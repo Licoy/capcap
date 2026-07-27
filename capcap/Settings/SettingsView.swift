@@ -1,6 +1,7 @@
 import AppKit
 import Carbon
 import PermissionFlow
+import SwiftUI
 
 // MARK: - Tab model
 
@@ -82,7 +83,7 @@ class SettingsView: NSView {
     private var idleLensLightAlphaSlider: NSSlider!
     private var idleLensShowCopyHintSwitch: NSSwitch!
     private var idleLensShowShiftHintSwitch: NSSwitch!
-    private var idleLensPreview: IdleLensPreviewView!
+    private var idleLensPreview: NSHostingView<IdleLensPreviewView>!
 
     private var idleLensLastEditedIsDark: Bool = true
     private var historyCacheSlider: SettingsTickSlider!
@@ -660,6 +661,41 @@ class SettingsView: NSView {
 
     // MARK: - Pane builders
 
+    /// Loads capcap's bundled AppIcon for the idle-lens preview, falling
+    /// back to a 1×1 transparent `NSImage` so the SwiftUI preview can
+    /// still render during unit tests.
+    private static func loadAppIconForPreview() -> NSImage {
+        if let bundleIcon = NSImage(named: "AppIcon") {
+            return bundleIcon
+        }
+        if let bundle = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
+           let img = NSImage(contentsOf: bundle) {
+            return img
+        }
+        if let symbol = NSImage(systemSymbolName: "app.fill", accessibilityDescription: nil) {
+            return symbol
+        }
+        return NSImage(size: NSSize(width: 1, height: 1))
+    }
+
+    /// 1×1 transparent `CGImage` returned when no real icon is available.
+    /// Keeps the lens's `cgImage` argument non-nil so `IdleColorLensView`
+    /// can still draw without crashing.
+    private static func fallbackCGImage() -> CGImage {
+        let space = CGColorSpaceCreateDeviceRGB()
+        return CGImage(
+            width: 1, height: 1,
+            bitsPerComponent: 8, bitsPerPixel: 32,
+            bytesPerRow: 4,
+            space: space,
+            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+            provider: CGDataProvider(data: Data([0, 0, 0, 0]) as CFData)!,
+            decode: nil,
+            shouldInterpolate: false,
+            intent: .defaultIntent
+        )!
+    }
+
     private func buildGeneralPane() -> NSView {
         let stack = paneStack()
 
@@ -1001,14 +1037,39 @@ class SettingsView: NSView {
         optionsColumn.addArrangedSubview(shiftHintRow.row)
         shiftHintRow.row.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
 
-        // ----- Preview (right side)
+        // ----- Preview (right side) — SwiftUI view hosting the real
+        // IdleColorLensView via NSViewRepresentable.
         let previewSize = IdleLensPreviewView.requiredSize()
-        let preview = IdleLensPreviewView(frame: NSRect(origin: .zero, size: previewSize))
-        preview.translatesAutoresizingMaskIntoConstraints = false
-        idleLensPreview = preview
-        splitRow.addArrangedSubview(preview)
-        preview.widthAnchor.constraint(equalToConstant: previewSize.width).isActive = true
-        preview.heightAnchor.constraint(equalToConstant: previewSize.height).isActive = true
+        let iconImage = Self.loadAppIconForPreview()
+        let mockSnapshot = iconImage.cgImage(
+            forProposedRect: nil,
+            context: nil,
+            hints: nil
+        ) ?? Self.fallbackCGImage()
+        let centrePoint = CGPoint(
+            x: mockSnapshot.width / 2,
+            y: mockSnapshot.height / 2
+        )
+        let mockSample = IdleColorLensSampler.sample(
+            image: mockSnapshot,
+            at: centrePoint
+        ) ?? IdleColorLensWindow.Sample(r: 14, g: 118, b: 110)
+        let swiftUIPreview = IdleLensPreviewView(
+            iconImage: iconImage,
+            mockSnapshot: mockSnapshot,
+            mockSample: mockSample,
+            lensSize: NSSize(
+                width: previewSize.width - 76 - 18 - 16 * 2,
+                height: previewSize.height - 16 * 2
+            )
+        )
+        let hosting = NSHostingView(rootView: swiftUIPreview)
+        hosting.translatesAutoresizingMaskIntoConstraints = false
+        hosting.setFrameSize(previewSize)
+        idleLensPreview = hosting
+        splitRow.addArrangedSubview(hosting)
+        hosting.widthAnchor.constraint(equalToConstant: previewSize.width).isActive = true
+        hosting.heightAnchor.constraint(equalToConstant: previewSize.height).isActive = true
 
         stack.addArrangedSubview(card)
         card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
