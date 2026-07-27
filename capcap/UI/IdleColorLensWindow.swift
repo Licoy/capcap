@@ -64,7 +64,7 @@ final class IdleColorLensWindow: NSPanel {
         level = .screenSaver + 1
         isOpaque = false
         backgroundColor = .clear
-        hasShadow = true
+        hasShadow = false
         ignoresMouseEvents = true
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         contentView = lensView
@@ -346,8 +346,10 @@ final class IdleColorLensView: NSView {
     }
 
     private func drawMagnifiedArea(in rect: NSRect) {
-        // Background fill (also makes the empty-state visible when no snapshot).
-        IdleColorLensSampler.backgroundColor(forAppearance: effectiveAppearance).setFill()
+        // Fill the entire area with a visually distinct out-of-bounds
+        // colour so the user can tell which region sits beyond the
+        // screen boundary. The valid crop is drawn on top afterwards.
+        NSColor(calibratedWhite: 0.15, alpha: 0.6).setFill()
         NSBezierPath(rect: rect).fill()
 
         guard let snapshot else { return }
@@ -365,12 +367,26 @@ final class IdleColorLensView: NSView {
               )),
               let context = NSGraphicsContext.current?.cgContext else { return }
 
+        // Compute where the valid crop should sit inside the display
+        // rect so the out-of-bounds portion stays visible as the dimmed
+        // background fill. The cursor pixel must land at rect.mid.
+        // CGContext maps CGImage y=0 to drawRect.maxY (AppKit y-up),
+        // so the cursor (at crop-y cursorOffsetY) sits at
+        // drawRect.maxY - cursorOffsetY * scale == rect.midY.
+        let scale = rect.width / regionSize
+        let missingLeft = sourceX - (currentPixelPoint.x - regionSize / 2)  // ≥ 0
+        let cursorOffsetY = currentPixelPoint.y - sourceY  // in crop (y-down)
+        let drawMaxY = rect.midY + cursorOffsetY * scale
+        let drawRect = NSRect(
+            x: rect.minX + missingLeft * scale,
+            y: drawMaxY - clampedHeight * scale,
+            width: clampedWidth * scale,
+            height: clampedHeight * scale
+        )
+
         context.saveGState()
         context.interpolationQuality = .none
-        // CGContext.draw(image, in: rect) places the image's visual top-left
-        // at rect's visual top-left, so the cursor pixel sits at destRect.mid
-        // without any manual transform.
-        context.draw(cropped, in: rect)
+        context.draw(cropped, in: drawRect)
         context.restoreGState()
 
         // Border

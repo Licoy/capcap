@@ -1147,6 +1147,7 @@ class OverlayWindowController {
     // MARK: - Idle color lens
 
     private func setupIdleColorLens() {
+        guard idleColorLens == nil else { return }
         let lens = IdleColorLensWindow()
         idleColorLens = lens
         idleColorLensFormat = .hex
