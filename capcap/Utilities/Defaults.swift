@@ -204,6 +204,7 @@ enum L10n {
     static var settingsIdleColorLensTitle: String { s("settingsIdleColorLensTitle") }
     static var settingsIdleColorLensHint: String { s("settingsIdleColorLensHint") }
     static var settingsIdleLensMagnifiedSizeLabel: String { s("settingsIdleLensMagnifiedSizeLabel") }
+    static var settingsIdleLensMagnificationLabel: String { s("settingsIdleLensMagnificationLabel") }
     static var settingsIdleLensPanelOffsetLabel: String { s("settingsIdleLensPanelOffsetLabel") }
     static var settingsIdleLensBackgroundLabel: String { s("settingsIdleLensBackgroundLabel") }
     static var settingsIdleLensFollowSystemAppearanceTitle: String { s("settingsIdleLensFollowSystemAppearanceTitle") }
@@ -1817,6 +1818,21 @@ struct Defaults {
         }
         set {
             defaults.set(newValue, forKey: "idleLensMagnifiedSize")
+        }
+    }
+
+    /// Magnification factor for the lens. Controls how many source pixels are
+    /// sampled: source region = magnified display size / magnification.
+    /// Higher values = tighter zoom (smaller source region). Default 12×.
+    static var idleLensMagnification: Double {
+        get {
+            if defaults.object(forKey: "idleLensMagnification") == nil {
+                return 12.0
+            }
+            return defaults.double(forKey: "idleLensMagnification")
+        }
+        set {
+            defaults.set(newValue, forKey: "idleLensMagnification")
         }
     }
 

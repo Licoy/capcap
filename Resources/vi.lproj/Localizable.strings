@@ -576,6 +576,7 @@
 "settingsIdleColorLensTitle" = "Hiển thị kính lúp màu khi chờ";
 "settingsIdleColorLensHint" = "Trước khi chọn, hiển thị kính lúp với RGB/HEX cạnh con trỏ";
 "settingsIdleLensMagnifiedSizeLabel" = "Kích thước vùng phóng to";
+"settingsIdleLensMagnificationLabel" = "Độ phóng đại";
 "settingsIdleLensPanelOffsetLabel" = "Lệch bảng (X, Y)";
 "settingsIdleLensBackgroundLabel" = "Màu nền";
 "settingsIdleLensFollowSystemAppearanceTitle" = "Theo giao diện hệ thống";

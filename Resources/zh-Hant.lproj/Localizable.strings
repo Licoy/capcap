@@ -576,6 +576,7 @@
 "settingsIdleColorLensTitle" = "閒置狀態顯示放大鏡取色";
 "settingsIdleColorLensHint" = "繪製前在游標旁顯示帶 RGB/HEX 的放大鏡";
 "settingsIdleLensMagnifiedSizeLabel" = "放大區尺寸";
+"settingsIdleLensMagnificationLabel" = "放大倍率";
 "settingsIdleLensPanelOffsetLabel" = "面板偏移 (X, Y)";
 "settingsIdleLensBackgroundLabel" = "背景色彩";
 "settingsIdleLensFollowSystemAppearanceTitle" = "跟隨系統外觀";

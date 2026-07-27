@@ -292,7 +292,6 @@ final class IdleColorLensView: NSView {
     private let infoRowHeight: CGFloat = 18
     private let infoBottomInset: CGFloat = 8
     private let swatchSize: CGFloat = 16
-    private let magnifiedSourceSize: CGFloat = 12 // source pixels per side
     private let gapBetweenMagnifiedAndInfo: CGFloat = 8
     private let topInset: CGFloat = 8
 
@@ -353,7 +352,8 @@ final class IdleColorLensView: NSView {
 
         guard let snapshot else { return }
 
-        let regionSize = magnifiedSourceSize
+        // Source region (in pixels) = display size / zoom factor.
+        let regionSize = max(2, rect.width / CGFloat(Defaults.idleLensMagnification))
         let sourceX = max(0, currentPixelPoint.x - regionSize / 2)
         let sourceY = max(0, currentPixelPoint.y - regionSize / 2)
         let clampedWidth = min(regionSize, CGFloat(snapshot.width) - sourceX)

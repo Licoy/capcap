@@ -576,6 +576,7 @@
 "settingsIdleColorLensTitle" = "待機時に拡大カラーピッカーを表示";
 "settingsIdleColorLensHint" = "選択前にカーソル脇に RGB/HEX 表示の拡大鏡を表示";
 "settingsIdleLensMagnifiedSizeLabel" = "拡大エリアのサイズ";
+"settingsIdleLensMagnificationLabel" = "拡大倍率";
 "settingsIdleLensPanelOffsetLabel" = "パネルオフセット (X, Y)";
 "settingsIdleLensBackgroundLabel" = "背景色";
 "settingsIdleLensFollowSystemAppearanceTitle" = "システムの外観に追従";

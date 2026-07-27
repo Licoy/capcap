@@ -576,6 +576,7 @@
 "settingsIdleColorLensTitle" = "Показывать лупу цвета в режиме ожидания";
 "settingsIdleColorLensHint" = "Перед выбором показывать у курсора лупу с RGB/HEX";
 "settingsIdleLensMagnifiedSizeLabel" = "Размер области увеличения";
+"settingsIdleLensMagnificationLabel" = "Увеличение";
 "settingsIdleLensPanelOffsetLabel" = "Смещение панели (X, Y)";
 "settingsIdleLensBackgroundLabel" = "Цвет фона";
 "settingsIdleLensFollowSystemAppearanceTitle" = "Следовать оформлению системы";

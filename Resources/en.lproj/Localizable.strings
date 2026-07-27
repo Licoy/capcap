@@ -576,6 +576,7 @@
 "settingsIdleColorLensTitle" = "Show color lens on idle";
 "settingsIdleColorLensHint" = "Display a magnifier with RGB/HEX readout next to the cursor before drawing";
 "settingsIdleLensMagnifiedSizeLabel" = "Magnified area size";
+"settingsIdleLensMagnificationLabel" = "Magnification";
 "settingsIdleLensPanelOffsetLabel" = "Panel offset (X, Y)";
 "settingsIdleLensBackgroundLabel" = "Background colour";
 "settingsIdleLensFollowSystemAppearanceTitle" = "Follow system appearance";

@@ -957,6 +957,27 @@ class SettingsView: NSView {
         optionsColumn.addArrangedSubview(sizeRow)
         sizeRow.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
 
+        // ----- Magnification picker
+        let magLabel = primaryLabel(L10n.settingsIdleLensMagnificationLabel)
+        let magPopup = NSPopUpButton(frame: .zero, pullsDown: false)
+        for option in [4, 6, 8, 10, 12, 16, 20, 24] {
+            magPopup.addItem(withTitle: "\(option)×")
+        }
+        let currentMag = Int(Defaults.idleLensMagnification)
+        magPopup.selectItem(withTitle: "\(currentMag)×")
+        magPopup.controlSize = .small
+        magPopup.target = self
+        magPopup.action = #selector(idleLensMagnificationChanged(_:))
+        let magRow = NSStackView()
+        magRow.orientation = .horizontal
+        magRow.alignment = .centerY
+        magRow.spacing = 10
+        magRow.translatesAutoresizingMaskIntoConstraints = false
+        magRow.addArrangedSubview(magLabel)
+        magRow.addArrangedSubview(magPopup)
+        optionsColumn.addArrangedSubview(magRow)
+        magRow.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
+
         // ----- Panel offset X / Y
         let offsetLabel = primaryLabel(L10n.settingsIdleLensPanelOffsetLabel)
         let xField = NSTextField(string: "\(Int(Defaults.idleLensPanelOffsetX))")
@@ -3328,6 +3349,12 @@ class SettingsView: NSView {
         guard let title = sender.selectedItem?.title,
               let side = Int(title.split(separator: " ").first ?? "") else { return }
         Defaults.idleLensMagnifiedSize = side
+    }
+
+    @objc private func idleLensMagnificationChanged(_ sender: NSPopUpButton) {
+        guard let title = sender.selectedItem?.title,
+              let mag = Double(title.trimmingCharacters(in: CharacterSet(charactersIn: "×"))) else { return }
+        Defaults.idleLensMagnification = mag
     }
 
     @objc private func idleLensPanelOffsetXChanged(_ sender: NSTextField) {
