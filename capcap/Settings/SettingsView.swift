@@ -1057,11 +1057,7 @@ class SettingsView: NSView {
         let swiftUIPreview = IdleLensPreviewView(
             iconImage: iconImage,
             mockSnapshot: mockSnapshot,
-            mockSample: mockSample,
-            lensSize: NSSize(
-                width: previewSize.width - 76 - 18 - 16 * 2,
-                height: previewSize.height - 16 * 2
-            )
+            mockSample: mockSample
         )
         let hosting = NSHostingView(rootView: swiftUIPreview)
         hosting.translatesAutoresizingMaskIntoConstraints = false
