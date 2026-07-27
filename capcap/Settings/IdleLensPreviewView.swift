@@ -28,11 +28,22 @@ struct IdleLensPreviewView: View {
         let lensSize = IdleColorLensWindow.panelSizeForCurrentSettings()
 
         return HStack(alignment: .center, spacing: 18) {
-            // Capcap logo (the "subject" being magnified).
-            Image(nsImage: iconImage)
-                .resizable()
-                .frame(width: 76, height: 76)
-                .clipShape(RoundedRectangle(cornerRadius: 17))
+            // Capcap logo (the "subject" being magnified) with a
+            // macOS arrow cursor overlaid so the preview looks like
+            // a real cursor is hovering over the icon.
+            ZStack {
+                Image(nsImage: iconImage)
+                    .resizable()
+                    .frame(width: 76, height: 76)
+                    .clipShape(RoundedRectangle(cornerRadius: 17))
+
+                let cursorImg = NSCursor.arrow.image
+                Image(nsImage: cursorImg)
+                    .resizable()
+                    .frame(width: 22, height: 22)
+                    .offset(x: 7, y: 8)
+                    .shadow(radius: 2)
+            }
 
             // The real lens view, hosted via NSViewRepresentable.
             LensRepresentable(
