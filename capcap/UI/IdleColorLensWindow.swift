@@ -187,8 +187,8 @@ enum IdleColorLensSampler {
     ) -> CGPoint {
         let scaleX = snapshotSize.width / max(screenFrame.width, 1)
         let scaleY = snapshotSize.height / max(screenFrame.height, 1)
-        let xInScreen = (globalPoint.x - screenFrame.origin.x) * scaleX
-        let yInScreenFromTop = (screenFrame.maxY - globalPoint.y) * scaleY
+        let xInScreen = ((globalPoint.x - screenFrame.origin.x) * scaleX).rounded()
+        let yInScreenFromTop = ((screenFrame.maxY - globalPoint.y) * scaleY).rounded()
         let maxX = max(0, snapshotSize.width - 1)
         let maxY = max(0, snapshotSize.height - 1)
         return CGPoint(
@@ -386,6 +386,7 @@ final class IdleColorLensView: NSView {
         )
 
         context.saveGState()
+        context.clip(to: rect)
         context.interpolationQuality = .none
         context.draw(cropped, in: drawRect)
         context.restoreGState()
@@ -448,9 +449,17 @@ final class IdleColorLensView: NSView {
 
         // Coordinates row (always)
         if currentSample != nil {
-            let x = String(Int(mouseLocation.x))
-            let y = String(Int(mouseLocation.y))
-            let coordsText = String(format: L10n.idleLensCoordinates, x, y)
+            let coordsText: String
+            switch Defaults.idleLensCoordinateMode {
+            case .points:
+                let x = String(Int(mouseLocation.x))
+                let y = String(Int(mouseLocation.y))
+                coordsText = String(format: L10n.idleLensCoordinates, x, y)
+            case .pixels:
+                let x = String(Int(currentPixelPoint.x))
+                let y = String(Int(currentPixelPoint.y))
+                coordsText = String(format: L10n.idleLensCoordinates, x, y)
+            }
             drawText(
                 coordsText,
                 attrs: infoAttrs,

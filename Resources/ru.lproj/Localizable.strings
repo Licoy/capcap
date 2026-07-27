@@ -583,3 +583,6 @@
 "settingsIdleLensFollowSystemAppearanceHint" = "Авто-выбор тёмного или светлого фона по текущему оформлению macOS";
 "settingsIdleLensDarkBackgroundLabel" = "Тёмное оформление";
 "settingsIdleLensLightBackgroundLabel" = "Светлое оформление";
+"settingsIdleLensCoordinateModeLabel" = "Режим координат";
+"settingsIdleLensCoordinateModePoints" = "Точки";
+"settingsIdleLensCoordinateModePixels" = "Пиксели";

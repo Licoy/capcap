@@ -583,3 +583,6 @@
 "settingsIdleLensFollowSystemAppearanceHint" = "Auto-pick the dark or light background based on the current macOS appearance";
 "settingsIdleLensDarkBackgroundLabel" = "Dark mode";
 "settingsIdleLensLightBackgroundLabel" = "Light mode";
+"settingsIdleLensCoordinateModeLabel" = "Coordinates mode";
+"settingsIdleLensCoordinateModePoints" = "Points";
+"settingsIdleLensCoordinateModePixels" = "Pixels";

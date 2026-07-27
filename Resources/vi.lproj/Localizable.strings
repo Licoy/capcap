@@ -583,3 +583,6 @@
 "settingsIdleLensFollowSystemAppearanceHint" = "Tự chọn nền sáng hoặc tối theo giao diện macOS hiện tại";
 "settingsIdleLensDarkBackgroundLabel" = "Chế độ tối";
 "settingsIdleLensLightBackgroundLabel" = "Chế độ sáng";
+"settingsIdleLensCoordinateModeLabel" = "Chế độ tọa độ";
+"settingsIdleLensCoordinateModePoints" = "Điểm";
+"settingsIdleLensCoordinateModePixels" = "Điểm ảnh";

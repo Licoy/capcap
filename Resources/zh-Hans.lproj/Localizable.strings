@@ -583,3 +583,6 @@
 "settingsIdleLensFollowSystemAppearanceHint" = "根据 macOS 当前外观自动选择深色或浅色背景";
 "settingsIdleLensDarkBackgroundLabel" = "深色模式";
 "settingsIdleLensLightBackgroundLabel" = "浅色模式";
+"settingsIdleLensCoordinateModeLabel" = "坐标模式";
+"settingsIdleLensCoordinateModePoints" = "逻辑点";
+"settingsIdleLensCoordinateModePixels" = "物理像素";

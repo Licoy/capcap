@@ -583,3 +583,6 @@
 "settingsIdleLensFollowSystemAppearanceHint" = "현재 macOS 모양에 따라 어두움/밝음 배경 자동 선택";
 "settingsIdleLensDarkBackgroundLabel" = "다크 모드";
 "settingsIdleLensLightBackgroundLabel" = "라이트 모드";
+"settingsIdleLensCoordinateModeLabel" = "좌표 모드";
+"settingsIdleLensCoordinateModePoints" = "논리 포인트";
+"settingsIdleLensCoordinateModePixels" = "물리 픽셀";

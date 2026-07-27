@@ -978,6 +978,26 @@ class SettingsView: NSView {
         optionsColumn.addArrangedSubview(magRow)
         magRow.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
 
+        // ----- Coordinate mode picker
+        let coordLabel = primaryLabel(L10n.settingsIdleLensCoordinateModeLabel)
+        let coordPopup = NSPopUpButton(frame: .zero, pullsDown: false)
+        coordPopup.addItem(withTitle: L10n.settingsIdleLensCoordinateModePoints)
+        coordPopup.addItem(withTitle: L10n.settingsIdleLensCoordinateModePixels)
+        let currentCoordMode = Defaults.idleLensCoordinateMode
+        coordPopup.selectItem(at: currentCoordMode == .points ? 0 : 1)
+        coordPopup.controlSize = .small
+        coordPopup.target = self
+        coordPopup.action = #selector(idleLensCoordinateModeChanged(_:))
+        let coordRow = NSStackView()
+        coordRow.orientation = .horizontal
+        coordRow.alignment = .centerY
+        coordRow.spacing = 10
+        coordRow.translatesAutoresizingMaskIntoConstraints = false
+        coordRow.addArrangedSubview(coordLabel)
+        coordRow.addArrangedSubview(coordPopup)
+        optionsColumn.addArrangedSubview(coordRow)
+        coordRow.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
+
         // ----- Panel offset X / Y
         let offsetLabel = primaryLabel(L10n.settingsIdleLensPanelOffsetLabel)
         let xField = NSTextField(string: "\(Int(Defaults.idleLensPanelOffsetX))")
@@ -3355,6 +3375,10 @@ class SettingsView: NSView {
         guard let title = sender.selectedItem?.title,
               let mag = Double(title.trimmingCharacters(in: CharacterSet(charactersIn: "×"))) else { return }
         Defaults.idleLensMagnification = mag
+    }
+
+    @objc private func idleLensCoordinateModeChanged(_ sender: NSPopUpButton) {
+        Defaults.idleLensCoordinateMode = sender.indexOfSelectedItem == 0 ? .points : .pixels
     }
 
     @objc private func idleLensPanelOffsetXChanged(_ sender: NSTextField) {

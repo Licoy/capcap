@@ -583,3 +583,6 @@
 "settingsIdleLensFollowSystemAppearanceHint" = "Choisit automatiquement le fond sombre ou clair selon l'apparence macOS";
 "settingsIdleLensDarkBackgroundLabel" = "Mode sombre";
 "settingsIdleLensLightBackgroundLabel" = "Mode clair";
+"settingsIdleLensCoordinateModeLabel" = "Mode coordonnées";
+"settingsIdleLensCoordinateModePoints" = "Points";
+"settingsIdleLensCoordinateModePixels" = "Pixels";

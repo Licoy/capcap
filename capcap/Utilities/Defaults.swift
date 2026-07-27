@@ -211,6 +211,9 @@ enum L10n {
     static var settingsIdleLensFollowSystemAppearanceHint: String { s("settingsIdleLensFollowSystemAppearanceHint") }
     static var settingsIdleLensDarkBackgroundLabel: String { s("settingsIdleLensDarkBackgroundLabel") }
     static var settingsIdleLensLightBackgroundLabel: String { s("settingsIdleLensLightBackgroundLabel") }
+    static var settingsIdleLensCoordinateModeLabel: String { s("settingsIdleLensCoordinateModeLabel") }
+    static var settingsIdleLensCoordinateModePoints: String { s("settingsIdleLensCoordinateModePoints") }
+    static var settingsIdleLensCoordinateModePixels: String { s("settingsIdleLensCoordinateModePixels") }
 
     // Copy-to-clipboard shortcut (editor confirm)
     static var clipboardShortcutHeader: String { s("clipboardShortcutHeader") }
@@ -1886,6 +1889,26 @@ struct Defaults {
         }
         set {
             defaults.set(newValue, forKey: "idleLensShowShiftHint")
+        }
+    }
+
+    /// Coordinate mode for the lens display: `.points` shows AppKit
+    /// screen-point coordinates (default); `.pixels` shows physical
+    /// CGImage pixel coordinates matching the snapshot resolution.
+    enum IdleLensCoordinateMode: String {
+        case points
+        case pixels
+    }
+    static var idleLensCoordinateMode: IdleLensCoordinateMode {
+        get {
+            guard let raw = defaults.string(forKey: "idleLensCoordinateMode"),
+                  let mode = IdleLensCoordinateMode(rawValue: raw) else {
+                return .points
+            }
+            return mode
+        }
+        set {
+            defaults.set(newValue.rawValue, forKey: "idleLensCoordinateMode")
         }
     }
 
