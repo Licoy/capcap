@@ -668,11 +668,11 @@ class OverlayWindowController {
         idleLensKeyDownGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
             self?.handleIdleLensCopyShortcut(for: event)
         }
-        mouseMovedLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .mouseMoved) { [weak self] event in
+        mouseMovedLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { [weak self] event in
             self?.refreshIdleColorLensContent()
             return event
         }
-        mouseMovedGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] _ in
+        mouseMovedGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { [weak self] _ in
             self?.refreshIdleColorLensContent()
         }
         rightMouseLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .rightMouseDown) { [weak self] event in
@@ -1233,8 +1233,8 @@ extension OverlayWindowController: SelectionViewDelegate {
     func selectionDidStart() {
         chipWindow?.dismiss()
         chipWindow = nil
-        idleColorLens?.dismiss()
-        idleColorLens = nil
+        // Keep idleColorLens alive during drag so the user can see
+        // magnification at the drag endpoint for precise selection.
     }
 
     func selectionMaskDidDoubleClick(inView view: NSView) {
@@ -1246,6 +1246,10 @@ extension OverlayWindowController: SelectionViewDelegate {
     }
 
     func selectionDidComplete(rect: NSRect, inView view: NSView, isWindowSelection: Bool, windowID: CGWindowID?) {
+        // Selection is done — the lens has served its purpose during drag.
+        idleColorLens?.dismiss()
+        idleColorLens = nil
+
         guard let window = view.window, let screen = window.screen else {
             cancel()
             return
