@@ -66,6 +66,7 @@ final class IdleColorLensWindow: NSPanel {
         backgroundColor = .clear
         hasShadow = false
         ignoresMouseEvents = true
+        sharingType = .none
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         contentView = lensView
     }
