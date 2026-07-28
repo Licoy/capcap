@@ -573,8 +573,8 @@
 "idleLensRgbString" = "rgb(%d, %d, %d)";
 "idleLensCopyHint" = "Nhấn ⌘+C để sao chép màu";
 "idleLensShiftHint" = "Nhấn Shift để chuyển RGB";
-"settingsIdleColorLensTitle" = "Hiển thị kính lúp màu khi chờ";
-"settingsIdleColorLensHint" = "Trước khi chọn, hiển thị kính lúp với RGB/HEX cạnh con trỏ";
+"settingsIdleColorLensTitle" = "Hiển thị kính lúp khi chọn";
+"settingsIdleColorLensHint" = "Phóng to khu vực quanh con trỏ khi chọn điểm chụp hoặc điều chỉnh vùng chọn";
 "settingsIdleLensMagnifiedSizeLabel" = "Kích thước vùng phóng to";
 "settingsIdleLensMagnificationLabel" = "Độ phóng đại";
 "settingsIdleLensPanelOffsetLabel" = "Lệch bảng (X, Y)";

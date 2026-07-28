@@ -573,8 +573,8 @@
 "idleLensRgbString" = "rgb(%d, %d, %d)";
 "idleLensCopyHint" = "⌘+C 로 색상 복사";
 "idleLensShiftHint" = "Shift 로 RGB 전환";
-"settingsIdleColorLensTitle" = "대기 상태에서 색상 렌즈 표시";
-"settingsIdleColorLensHint" = "선택 전에 커서 옆에 RGB/HEX 확대경 표시";
+"settingsIdleColorLensTitle" = "선택 시 돋보기 표시";
+"settingsIdleColorLensHint" = "스크린샷 지점 선택 또는 영역 조정 시 커서 주변 확대";
 "settingsIdleLensMagnifiedSizeLabel" = "확대 영역 크기";
 "settingsIdleLensMagnificationLabel" = "확대 배율";
 "settingsIdleLensPanelOffsetLabel" = "패널 오프셋 (X, Y)";

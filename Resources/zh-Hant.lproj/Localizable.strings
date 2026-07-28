@@ -573,8 +573,8 @@
 "idleLensRgbString" = "rgb(%d, %d, %d)";
 "idleLensCopyHint" = "按 ⌘+C 複製色彩";
 "idleLensShiftHint" = "按 Shift 切換 RGB";
-"settingsIdleColorLensTitle" = "閒置狀態顯示放大鏡取色";
-"settingsIdleColorLensHint" = "繪製前在游標旁顯示帶 RGB/HEX 的放大鏡";
+"settingsIdleColorLensTitle" = "選擇時顯示放大鏡";
+"settingsIdleColorLensHint" = "選取截圖點或調整選區時，在游標旁放大顯示";
 "settingsIdleLensMagnifiedSizeLabel" = "放大區尺寸";
 "settingsIdleLensMagnificationLabel" = "放大倍率";
 "settingsIdleLensPanelOffsetLabel" = "面板偏移 (X, Y)";

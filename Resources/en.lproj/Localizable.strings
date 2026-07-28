@@ -573,8 +573,8 @@
 "idleLensRgbString" = "rgb(%d, %d, %d)";
 "idleLensCopyHint" = "Press ⌘+C to copy color";
 "idleLensShiftHint" = "Press Shift to switch RGB";
-"settingsIdleColorLensTitle" = "Show color lens on idle";
-"settingsIdleColorLensHint" = "Display a magnifier with RGB/HEX readout next to the cursor before drawing";
+"settingsIdleColorLensTitle" = "Show magnifier while selecting";
+"settingsIdleColorLensHint" = "Magnify the area around the cursor when picking screenshot points or adjusting the selection";
 "settingsIdleLensMagnifiedSizeLabel" = "Magnified area size";
 "settingsIdleLensMagnificationLabel" = "Magnification";
 "settingsIdleLensPanelOffsetLabel" = "Panel offset (X, Y)";

@@ -573,8 +573,8 @@
 "idleLensRgbString" = "rgb(%d, %d, %d)";
 "idleLensCopyHint" = "⌘+C で色をコピー";
 "idleLensShiftHint" = "Shift で RGB に切替";
-"settingsIdleColorLensTitle" = "待機時に拡大カラーピッカーを表示";
-"settingsIdleColorLensHint" = "選択前にカーソル脇に RGB/HEX 表示の拡大鏡を表示";
+"settingsIdleColorLensTitle" = "選択時に拡大鏡を表示";
+"settingsIdleColorLensHint" = "スクリーンショットのポイント選択や選択範囲の調整時にカーソル付近を拡大表示";
 "settingsIdleLensMagnifiedSizeLabel" = "拡大エリアのサイズ";
 "settingsIdleLensMagnificationLabel" = "拡大倍率";
 "settingsIdleLensPanelOffsetLabel" = "パネルオフセット (X, Y)";

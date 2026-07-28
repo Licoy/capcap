@@ -573,8 +573,8 @@
 "idleLensRgbString" = "rgb(%d, %d, %d)";
 "idleLensCopyHint" = "Нажмите ⌘+C, чтобы скопировать цвет";
 "idleLensShiftHint" = "Нажмите Shift для переключения на RGB";
-"settingsIdleColorLensTitle" = "Показывать лупу цвета в режиме ожидания";
-"settingsIdleColorLensHint" = "Перед выбором показывать у курсора лупу с RGB/HEX";
+"settingsIdleColorLensTitle" = "Показать лупу при выборе";
+"settingsIdleColorLensHint" = "Увеличить область вокруг курсора при выборе точек или настройке области";
 "settingsIdleLensMagnifiedSizeLabel" = "Размер области увеличения";
 "settingsIdleLensMagnificationLabel" = "Увеличение";
 "settingsIdleLensPanelOffsetLabel" = "Смещение панели (X, Y)";
