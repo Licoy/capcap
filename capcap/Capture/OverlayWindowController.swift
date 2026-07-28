@@ -1242,8 +1242,12 @@ extension OverlayWindowController: SelectionViewDelegate {
     func selectionDidStart() {
         chipWindow?.dismiss()
         chipWindow = nil
-        // Keep idleColorLens alive during drag so the user can see
-        // magnification at the drag endpoint for precise selection.
+        // If the lens was dismissed by a previous selection completion
+        // (e.g. the user is now resizing or moving an existing selection),
+        // bring it back so the drag endpoint can be magnified.
+        if idleColorLens == nil, Defaults.idleColorLensEnabled {
+            setupIdleColorLens()
+        }
     }
 
     func selectionMaskDidDoubleClick(inView view: NSView) {

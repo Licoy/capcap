@@ -225,6 +225,7 @@ class SelectionView: NSView {
                 dragAction = .resize(handle)
                 dragStart = point
                 dragOriginalRect = rect
+                delegate?.selectionDidStart()
                 return
             }
             // Check inside selection for move
@@ -236,6 +237,7 @@ class SelectionView: NSView {
                 dragAction = .move
                 dragStart = point
                 dragOriginalRect = rect
+                delegate?.selectionDidStart()
                 return
             }
             // Click outside selection — if locked (editor active), ignore
