@@ -5,14 +5,16 @@ import AppKit
 /// Settings → General. The right-hand side hosts the **real**
 /// `IdleColorLensView` (via `NSViewRepresentable`) so the preview
 /// reflects the production panel's rendering path; the left-hand
-/// side is capcap's real AppIcon loaded from the bundle. Reacts
-/// live to `UserDefaults` changes — any setting toggle repaints
-/// the lens and the surrounding layout.
+/// side is capcap's real AppIcon loaded from the bundle. Hover over
+/// the icon to drive the lens with real-time pixel sampling.
 struct IdleLensPreviewView: View {
 
     let iconImage: NSImage
     let mockSnapshot: CGImage
-    let mockSample: IdleColorLensWindow.Sample
+
+    /// Hover location mapped to CGImage pixel coordinates, or `nil`
+    /// when the cursor is outside the icon area.
+    @State private var hoverLocation: CGPoint? = nil
 
     /// Bumped on every `UserDefaults.didChangeNotification` so SwiftUI
     /// re-evaluates the body — and therefore re-runs `updateNSView`
@@ -26,6 +28,9 @@ struct IdleLensPreviewView: View {
         let showCopyHint = Defaults.idleLensShowCopyHint
         let showShiftHint = Defaults.idleLensShowShiftHint
         let lensSize = IdleColorLensWindow.panelSizeForCurrentSettings()
+        let iconPt = 76.0
+        let scaleX = CGFloat(mockSnapshot.width) / iconPt
+        let scaleY = CGFloat(mockSnapshot.height) / iconPt
 
         return HStack(alignment: .center, spacing: 18) {
             // Capcap logo (the "subject" being magnified) with a
@@ -34,7 +39,7 @@ struct IdleLensPreviewView: View {
             ZStack {
                 Image(nsImage: iconImage)
                     .resizable()
-                    .frame(width: 76, height: 76)
+                    .frame(width: iconPt, height: iconPt)
                     .clipShape(RoundedRectangle(cornerRadius: 17))
 
                 let cursorImg = NSCursor.arrow.image
@@ -44,11 +49,23 @@ struct IdleLensPreviewView: View {
                     .offset(x: 7, y: 8)
                     .shadow(radius: 2)
             }
+            .onContinuousHover { phase in
+                switch phase {
+                case .active(let location):
+                    // location is in the ZStack's coordinate space
+                    // (0 … 76). Clamp and map to CGImage pixels.
+                    let cx = min(max(0, location.x), iconPt)
+                    let cy = min(max(0, location.y), iconPt)
+                    hoverLocation = CGPoint(x: cx * scaleX, y: cy * scaleY)
+                case .ended:
+                    hoverLocation = nil
+                }
+            }
 
             // The real lens view, hosted via NSViewRepresentable.
             LensRepresentable(
                 snapshot: mockSnapshot,
-                sample: mockSample,
+                hoverLocation: hoverLocation,
                 showCopyHint: showCopyHint,
                 showShiftHint: showShiftHint,
                 magnifiedSize: magnifiedSize,
@@ -90,9 +107,12 @@ struct IdleLensPreviewView: View {
 /// `NSViewRepresentable` adapter for `IdleColorLensView`. Keeps the
 /// lens's own drawing pipeline (magnified area, crosshair, coords,
 /// HEX, hint rows) so the preview always matches the live panel.
+/// When the user hovers over the icon, the lens samples the pixel
+/// under the cursor in real time; otherwise it falls back to the
+/// snapshot centre.
 private struct LensRepresentable: NSViewRepresentable {
     let snapshot: CGImage
-    let sample: IdleColorLensWindow.Sample
+    let hoverLocation: CGPoint?
     let showCopyHint: Bool
     let showShiftHint: Bool
     let magnifiedSize: Int
@@ -107,23 +127,32 @@ private struct LensRepresentable: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: IdleColorLensView, context: Context) {
-        let screenFrame = NSRect(
-            x: 0, y: 0,
-            width: snapshot.width,
-            height: snapshot.height
-        )
-        // Sample the centre pixel of the mock icon so the lens shows the
-        // subject's dominant colour as HEX.
-        let center = CGPoint(
-            x: snapshot.width / 2,
-            y: snapshot.height / 2
-        )
-        // Mock mouse position so the lens shows realistic coordinates.
-        let mouseLocation = NSPoint(x: 189, y: 762)
+        let w = CGFloat(snapshot.width)
+        let h = CGFloat(snapshot.height)
+        let screenFrame = NSRect(x: 0, y: 0, width: w, height: h)
+
+        // Use the hover-driven pixel coordinate when available;
+        // otherwise default to the snapshot centre.
+        let pixelPoint: CGPoint
+        let mouseLocation: NSPoint
+        if let hl = hoverLocation {
+            pixelPoint = hl
+            // Convert CGImage y-down → AppKit y-up for Points display.
+            mouseLocation = NSPoint(x: hl.x, y: h - hl.y)
+        } else {
+            let cx = w / 2
+            let cy = h / 2
+            pixelPoint = CGPoint(x: cx, y: cy)
+            mouseLocation = NSPoint(x: cx, y: h - cy)
+        }
+
+        let sample = IdleColorLensSampler.sample(image: snapshot, at: pixelPoint)
+            ?? IdleColorLensWindow.Sample(r: 0, g: 0, b: 0)
+
         nsView.format = .hex
         nsView.update(
             sample: sample,
-            pixelPoint: center,
+            pixelPoint: pixelPoint,
             mouseLocation: mouseLocation,
             snapshot: snapshot,
             screenFrame: screenFrame,

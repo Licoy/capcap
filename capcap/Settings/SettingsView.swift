@@ -1128,18 +1128,9 @@ class SettingsView: NSView {
             context: nil,
             hints: nil
         ) ?? Self.fallbackCGImage()
-        let centrePoint = CGPoint(
-            x: mockSnapshot.width / 2,
-            y: mockSnapshot.height / 2
-        )
-        let mockSample = IdleColorLensSampler.sample(
-            image: mockSnapshot,
-            at: centrePoint
-        ) ?? IdleColorLensWindow.Sample(r: 14, g: 118, b: 110)
         let swiftUIPreview = IdleLensPreviewView(
             iconImage: iconImage,
-            mockSnapshot: mockSnapshot,
-            mockSample: mockSample
+            mockSnapshot: mockSnapshot
         )
         let hosting = NSHostingView(rootView: swiftUIPreview)
         hosting.translatesAutoresizingMaskIntoConstraints = false
