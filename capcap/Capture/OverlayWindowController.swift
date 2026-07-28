@@ -1159,7 +1159,15 @@ class OverlayWindowController {
     private func refreshIdleColorLensContent() {
         guard let lens = idleColorLens else { return }
         let mouseLocation = NSEvent.mouseLocation
-        guard let screen = NSScreen.screens.first(where: { $0.frame.contains(mouseLocation) }),
+        // CGRect.contains uses a half-open [min, max) interval so a cursor
+        // sitting on the top or right screen edge is treated as outside.
+        // Use an inclusive test instead so the lens still resolves a
+        // snapshot at extreme boundaries.
+        guard let screen = NSScreen.screens.first(where: { screen in
+            let f = screen.frame
+            return mouseLocation.x >= f.minX && mouseLocation.x <= f.maxX
+                && mouseLocation.y >= f.minY && mouseLocation.y <= f.maxY
+        }),
               let displayID = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID,
               let snapshot = screenSnapshots[displayID],
               let screenFrame = screenFramesByDisplayID[displayID] else {
