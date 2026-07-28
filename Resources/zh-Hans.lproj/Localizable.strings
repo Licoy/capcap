@@ -586,5 +586,6 @@
 "settingsIdleLensCoordinateModeLabel" = "坐标模式";
 "settingsIdleLensCoordinateModePoints" = "逻辑点";
 "settingsIdleLensCoordinateModePixels" = "物理像素";
+"settingsIdleLensCoordinateModeHint" = "Points 以屏幕左下角为原点，Pixels 以图像左上角为原点";
 "settingsIdleLensCrosshairLabel" = "十字线";
 "settingsIdleLensCrosshairHint" = "放大区域中心的定位指示器";

@@ -33,21 +33,24 @@ struct IdleLensPreviewView: View {
         let scaleY = CGFloat(mockSnapshot.height) / iconPt
 
         return HStack(alignment: .center, spacing: 18) {
-            // Capcap logo (the "subject" being magnified) with a
-            // macOS arrow cursor overlaid so the preview looks like
-            // a real cursor is hovering over the icon.
+            // Capcap logo — the "subject" being magnified.
+            // A fake cursor sits on top when idle so the preview
+            // never looks empty; it hides during real hover.
             ZStack {
                 Image(nsImage: iconImage)
                     .resizable()
                     .frame(width: iconPt, height: iconPt)
                     .clipShape(RoundedRectangle(cornerRadius: 17))
 
-                let cursorImg = NSCursor.arrow.image
-                Image(nsImage: cursorImg)
-                    .resizable()
-                    .frame(width: 22, height: 22)
-                    .offset(x: 7, y: 8)
-                    .shadow(radius: 2)
+                // Fake cursor — hidden when the real mouse is hovering.
+                if hoverLocation == nil {
+                    let cursorImg = NSCursor.arrow.image
+                    Image(nsImage: cursorImg)
+                        .resizable()
+                        .frame(width: 22, height: 22)
+                        .offset(x: 7, y: 8)
+                        .shadow(radius: 2)
+                }
             }
             .onContinuousHover { phase in
                 switch phase {

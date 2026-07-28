@@ -1001,6 +1001,14 @@ class SettingsView: NSView {
         optionsColumn.addArrangedSubview(coordRow)
         coordRow.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
 
+        let coordHint = NSTextField(labelWithString: L10n.settingsIdleLensCoordinateModeHint)
+        coordHint.font = .systemFont(ofSize: 11)
+        coordHint.textColor = .secondaryLabelColor
+        coordHint.translatesAutoresizingMaskIntoConstraints = false
+        optionsColumn.setCustomSpacing(2, after: coordRow)
+        optionsColumn.addArrangedSubview(coordHint)
+        optionsColumn.setCustomSpacing(10, after: coordHint)
+
         // ----- Panel offset X / Y
         let offsetLabel = primaryLabel(L10n.settingsIdleLensPanelOffsetLabel)
         let xField = NSTextField(string: "\(Int(Defaults.idleLensPanelOffsetX))")

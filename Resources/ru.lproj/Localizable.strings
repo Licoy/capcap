@@ -586,5 +586,6 @@
 "settingsIdleLensCoordinateModeLabel" = "Режим координат";
 "settingsIdleLensCoordinateModePoints" = "Точки";
 "settingsIdleLensCoordinateModePixels" = "Пиксели";
+"settingsIdleLensCoordinateModeHint" = "Points отсчитываются от левого нижнего угла. Pixels — от левого верхнего угла";
 "settingsIdleLensCrosshairLabel" = "Перекрестие";
 "settingsIdleLensCrosshairHint" = "Центральный индикатор в увеличенной области";

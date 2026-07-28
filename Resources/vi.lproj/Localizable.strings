@@ -586,5 +586,6 @@
 "settingsIdleLensCoordinateModeLabel" = "Chế độ tọa độ";
 "settingsIdleLensCoordinateModePoints" = "Điểm";
 "settingsIdleLensCoordinateModePixels" = "Điểm ảnh";
+"settingsIdleLensCoordinateModeHint" = "Points tính từ góc dưới bên trái. Pixels tính từ góc trên bên trái";
 "settingsIdleLensCrosshairLabel" = "Tâm ngắm";
 "settingsIdleLensCrosshairHint" = "Chỉ báo trung tâm trong vùng phóng đại";

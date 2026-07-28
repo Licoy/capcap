@@ -214,6 +214,7 @@ enum L10n {
     static var settingsIdleLensCoordinateModeLabel: String { s("settingsIdleLensCoordinateModeLabel") }
     static var settingsIdleLensCoordinateModePoints: String { s("settingsIdleLensCoordinateModePoints") }
     static var settingsIdleLensCoordinateModePixels: String { s("settingsIdleLensCoordinateModePixels") }
+    static var settingsIdleLensCoordinateModeHint: String { s("settingsIdleLensCoordinateModeHint") }
     static var settingsIdleLensCrosshairLabel: String { s("settingsIdleLensCrosshairLabel") }
     static var settingsIdleLensCrosshairHint: String { s("settingsIdleLensCrosshairHint") }
 
