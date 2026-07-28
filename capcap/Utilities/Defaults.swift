@@ -1906,7 +1906,7 @@ struct Defaults {
         get {
             guard let raw = defaults.string(forKey: "idleLensCoordinateMode"),
                   let mode = IdleLensCoordinateMode(rawValue: raw) else {
-                return .points
+                return .pixels
             }
             return mode
         }
