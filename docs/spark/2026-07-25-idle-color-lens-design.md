@@ -1,14 +1,14 @@
 # Idle Magnifier Color Picker Design
 
-Date: 2026-07-25
+Date: 2026-07-25 (updated 2026-07-27)
 Status: Implemented and verified on branch `feat_idle-magnifier-color-picker`
 Project: capcap
 
 ## Summary
 
-Add a magnifier color picker (lens) to the screenshot overlay's idle state. When the user has triggered an overlay session but has not yet started dragging a selection, the cursor is followed by a small panel that shows the current pixel coordinates, RGB/HEX value, and a magnified view of the area around the cursor. The user can press `⌘+C` to copy the currently displayed value, or `Shift` (single tap) to toggle between HEX and RGB display. Clicking the cursor still triggers the existing window-selection capture. Pressing `Esc` cancels as before. The lens replaces the legacy "drag to screenshot" cursor chip while the overlay is in the idle state.
+Add a magnifier color picker (lens) to the screenshot overlay. When the user has triggered an overlay session, the cursor is followed by a configurable panel that shows the current pixel coordinates, RGB/HEX value, and a magnified view of the area around the cursor. The lens is visible in three states: (1) idle (before any selection), (2) during drag-to-select, and (3) while resizing or moving an existing selection rectangle. The user can press `⌘+C` to copy the currently displayed value, or `Shift` (single tap) to toggle between HEX and RGB display. Clicking the cursor still triggers the existing window-selection capture. Pressing `Esc` cancels as before. The lens replaces the legacy "drag to screenshot" cursor chip while the overlay is active.
 
-The feature is opt-in via a new `Defaults.idleColorLensEnabled` toggle (default `false` so existing users keep the legacy "drag to screenshot" chip until they explicitly enable the lens) and reuses the existing `backgroundSnapshot` for pixel sampling, so no new screen-capture permission is required.
+The feature is opt-in via a `Defaults.idleColorLensEnabled` toggle (default `false` so existing users keep the legacy "drag to screenshot" chip until they explicitly enable the lens) and reuses the existing `backgroundSnapshot` for pixel sampling, so no new screen-capture permission is required.
 
 ## Goals
 
@@ -16,6 +16,8 @@ The feature is opt-in via a new `Defaults.idleColorLensEnabled` toggle (default 
 - Read pixel values from the already-captured `backgroundSnapshot` to avoid extra permissions or screen-capture latency.
 - Replace the "drag to screenshot" cursor chip in the idle state so users see useful information instead of a static hint.
 - Preserve existing behaviors: click-on-window capture, drag-to-select, Esc-cancel.
+- Keep the lens alive during drag-to-select (so the user can see magnification at the drag endpoint for precise selection).
+- Show the lens while resizing or moving an existing selection rectangle via its adjustment handles.
 - Stay in sync with the existing `ColorPickerRunner` history behavior so picking colors updates `HistoryManager` and `Defaults.lastPickedColorHex` (gated by `Defaults.historyCacheEnabled`).
 
 ## Non-Goals
@@ -23,7 +25,7 @@ The feature is opt-in via a new `Defaults.idleColorLensEnabled` toggle (default 
 - Not adding a pinned-color or "lock" feature (Cmd+L analogue of macOS Digital Color Meter).
 - Not changing the global color picker hotkey or `ColorPickerRunner`.
 - Not introducing new permissions or new background-capture paths.
-- Not changing `SelectionView` mouse handling, only reading its existing `backgroundSnapshot` CGImage.
+- Not changing `SelectionView` mouse handling beyond calling `selectionDidStart()` for resize/move paths to keep the lens alive.
 - Not refactoring `OverlayWindowController.activate()` signature.
 - Not promoting the overlay panel to a key window — events are observed via global monitors instead so the foreground app keeps focus.
 
@@ -33,15 +35,15 @@ The feature is opt-in via a new `Defaults.idleColorLensEnabled` toggle (default 
 2. `OverlayWindowController` presents the overlay. If `presetImage == nil` and `Defaults.idleColorLensEnabled` is true, an `IdleColorLensWindow` is created and replaces the "drag to screenshot" cursor chip.
 3. Mouse moves: lens position follows the cursor; the magnified area, coordinates, and HEX/RGB value update live.
 4. `Shift` (single tap, no other modifiers): toggles between HEX and RGB display. The new state persists for the current session and resets to HEX on the next overlay activation.
-5. `⌘+C` (in idle state only): copies the currently displayed value (HEX → `#RRGGBB`, RGB → `rgb(r, g, b)`) to the clipboard, shows the existing `L10n.colorCopied` toast, and updates `HistoryManager` + `Defaults.lastPickedColorHex` if `Defaults.historyCacheEnabled` is true. The two tip rows (`Press ⌘+C…` and `Press Shift…`) remain visible for the entire idle session — they do not fade out.
+5. `⌘+C`: copies the currently displayed value (HEX → `#RRGGBB`, RGB → `rgb(r, g, b)`) to the clipboard, shows the existing `L10n.colorCopied` toast, and updates `HistoryManager` + `Defaults.lastPickedColorHex` if `Defaults.historyCacheEnabled` is true. The two tip rows (`Press ⌘+C…` and `Press Shift…`) remain visible for the entire overlay session — they do not fade out.
 6. Click without drag: still triggers window-selection capture (existing behavior). The lens does not consume the click.
-7. Mouse down + drag: lens hides immediately, normal selection drawing begins.
+7. Mouse down + drag: lens stays visible while the user draws the selection rectangle, then dismisses when selection completes.
 8. `Esc`: cancels the overlay session; lens dismisses with the rest.
 9. Closing the overlay: lens is released via the standard `tearDown` path.
 
 ## Lens UI
 
-Panel size: **256 × 240 points**. The lens is a borderless `NSPanel` (similar to `CursorChipWindow`), drawn at `level = .screenSaver + 1`, ignoring mouse events.
+Panel size: **dynamic** — computed from `Defaults.idleLensMagnifiedSize` (default 144) plus info rows (2–4 depending on hint visibility). The default configuration produces a 256 × 240 point panel. The lens is a borderless `NSPanel` (similar to `CursorChipWindow`), drawn at `level = .screenSaver + 1`, ignoring mouse events, with `sharingType = .none` so ScreenCaptureKit excludes it from frozen-desktop snapshots.
 
 ### Smart positioning
 
@@ -69,7 +71,17 @@ The two tip rows are **permanent** — they do not fade out after appearance. Re
 
 ### Magnified area rendering
 
-The 12×12 source region centered on the cursor is extracted via `CGImage.cropping(to:)`. The cropped `CGImage` is drawn directly into the destination rect with `CGContext.draw(cropped, in: rect)`. `CGContext.draw` already maps the image's visual top-left to the destination rect's visual top-left, so **no manual y-flip transform is required** — adding one (`scaleBy(_, -scaleY)`) inverts the image and breaks pixel alignment. The crosshair at `destRect.midX / destRect.midY` is guaranteed to align with the sampled pixel.
+The 12×12 source region centered on the cursor is extracted via `CGImage.cropping(to:)`. The cropped `CGImage` is drawn directly into the destination rect with `CGContext.draw(cropped, in: rect)`. `CGContext.draw` already maps the image's visual top-left to the destination rect's visual top-left, so **no manual y-flip transform is required** — adding one (`scaleBy(_, -scaleY)`) inverts the image and breaks pixel alignment.
+
+When the cursor approaches a screen edge and the 12×12 source region would extend beyond the snapshot bounds, the crop is clamped to the valid pixel range. The draw rect is adjusted so the out-of-bounds portion appears as the dimmed background fill while the valid pixels stay correctly positioned. A `context.clip(to: rect)` call prevents the crop from bleeding outside the magnified area.
+
+### Crosshair
+
+Two layers ensure the centre is always visible:
+- A **10 px wide cross** in `#A5BAF9` at 65% alpha spans the full magnified area. This provides a strong background presence even on pure-white source pixels.
+- A **1 px fine white cross** at the exact centre marks the sampled pixel precisely.
+
+The crosshair at `destRect.midX / destRect.midY` is guaranteed to align with the sampled pixel.
 
 Earlier iterations tried two approaches that did **not** work and have been removed:
 
@@ -80,11 +92,11 @@ Earlier iterations tried two approaches that did **not** work and have been remo
 
 | Input | Idle + lens visible | Drawing (state == .drawing) | Selected (state == .selected) |
 | --- | --- | --- | --- |
-| Mouse move | Updates lens content | (lens hidden) | (lens hidden) |
+| Mouse move | Updates lens content | Updates lens content | Updates lens content |
 | Click (no drag) | Window-selection capture (unchanged) | — | — |
-| Drag | Lens hides, selection starts | Selection updates | Move/resize selection |
-| `⌘+C` | Copy current format; toast; history | (no effect) | (no effect) |
-| `Shift` | Toggle HEX ↔ RGB for this session | (no effect) | (no effect) |
+| Drag | Lens stays visible, selection starts | Lens stays visible, selection updates | Move/resize selection (lens visible) |
+| `⌘+C` | Copy current format; toast; history | Copy current format; toast; history | Copy current format; toast; history |
+| `Shift` | Toggle HEX ↔ RGB for this session | Toggle HEX ↔ RGB for this session | Toggle HEX ↔ RGB for this session |
 | `Esc` | Cancel overlay | Cancel overlay | Cancel overlay |
 
 ### Event routing — global + local monitors
@@ -101,8 +113,10 @@ Global monitors only observe — they cannot prevent the foreground app from rec
 ## Multi-Monitor & Coordinates
 
 - Coordinates displayed: **absolute desktop coordinates** (AppKit `NSEvent.mouseLocation`), integer. May be negative when the active screen sits left of the main display.
+- **Points vs Pixels**: `Defaults.idleLensCoordinateMode` (`.points` default / `.pixels`) controls whether the lens shows AppKit logical-point coordinates or CGImage physical-pixel coordinates. On Retina displays, 1 point = 2 pixels, so the numbers differ. The mode is set via a popup in Settings and takes effect immediately when the lens is next refreshed — no runtime toggle.
 - `OverlayWindowController` caches `screenFramesByDisplayID: [CGDirectDisplayID: NSRect]` at activation time, mapping the AppKit frame of each screen.
 - The lens picks the screen containing `mouseLocation` by linear scan over `screenFramesByDisplayID`; uses the corresponding `CGImage` from `screenSnapshots`.
+- **Edge-boundary fix**: `CGRect.contains` uses a half-open `[min, max)` interval — a cursor at the absolute top edge (`y == frame.maxY`) is treated as outside. The screen-detection guard was replaced with an inclusive `min <= x <= max && min <= y <= max` check so the lens resolves a snapshot at all screen edges.
 - The `IdleColorLensSampler.pixelCoordinate` helper applies the screen's point-to-pixel scale (handles Retina correctly) and clamps the result to the valid pixel range so cursor-on-edge still resolves to a sample instead of returning `nil`.
 - The single-pixel `IdleColorLensSampler.sample` helper uses a 1×1 `CGContext` with explicit `drawRect` math (subtract image dimensions, then add 0.5 for half-pixel centering) so the target pixel lands on the context's pixel center and the Y axis is correct on the first try.
 
@@ -113,12 +127,7 @@ New `Defaults.idleColorLensEnabled: Bool` (default `false`).
 - When `true`: `OverlayWindowController` creates the lens instead of the `dragToScreenshot` cursor chip in idle.
 - When `false` (default): legacy `CursorChipWindow` chip with `L10n.dragToScreenshot` text is shown.
 
-SettingsView adds the toggle row inside the existing **General → Toggles** card, placed after the `pinAcrossSpaces` row. The Toggles card is the first thing visible in General, so users can find the lens switch without digging into the Shortcuts tab.
-
-```
-Show color lens on idle       [ON/OFF]   ← inside General → Toggles
-Display a magnifier with RGB/HEX readout next to the cursor before drawing
-```
+The feature has its own **dedicated card** in Settings → General (see below), with a master toggle, configurable options, and a live preview of the lens.
 
 ## Localization
 
@@ -134,12 +143,21 @@ New L10n keys (added to all 8 `.lproj/Localizable.strings`):
 | `idleLensShiftHint` | `Press Shift to switch RGB` | `按 Shift 切换 RGB` |
 | `settingsIdleColorLensTitle` | `Show color lens on idle` | `空闲态显示放大镜取色` |
 | `settingsIdleColorLensHint` | `Display a magnifier with RGB/HEX readout next to the cursor before drawing` | `绘制前在光标旁显示带 RGB/HEX 的放大镜` |
+| `settingsIdleLensMagnifiedSizeLabel` | `Magnified area size` | `放大区域尺寸` |
+| `settingsIdleLensMagnificationLabel` | `Magnification` | `放大倍率` |
+| `settingsIdleLensPanelOffsetLabel` | `Panel offset` | `面板偏移` |
+| `settingsIdleLensBackgroundLabel` | `Background colour` | `背景颜色` |
+| `settingsIdleLensFollowSystemAppearanceTitle` | `Follow system appearance` | `跟随系统外观` |
+| `settingsIdleLensFollowSystemAppearanceHint` | `Match the lens background to the current light or dark mode` | `将放大镜背景与当前浅色或深色模式匹配` |
+| `settingsIdleLensDarkBackgroundLabel` | `Dark mode` | `深色模式` |
+| `settingsIdleLensLightBackgroundLabel` | `Light mode` | `浅色模式` |
+| `settingsIdleLensCoordinateModeLabel` | `Coordinates mode` | `坐标模式` |
+| `settingsIdleLensCoordinateModePoints` | `Points` | `逻辑点` |
+| `settingsIdleLensCoordinateModePixels` | `Pixels` | `物理像素` |
 
 All translations follow the project rule: **no trailing punctuation** on user-facing strings.
 
-## Settings
-
-The feature has its own **dedicated card** in Settings → General, with a master toggle, configurable options, and a live preview of the lens.
+## Settings Card Layout
 
 ```
 +----------------------------------------------+
@@ -147,6 +165,7 @@ The feature has its own **dedicated card** in Settings → General, with a maste
 | Display a magnifier with RGB/HEX readout...  |
 +----------------------------------------------+
 | Magnified area size: [144 × 144 v]           |
+| Coordinates mode: [Points v]                 |
 | Panel offset (X, Y): [15]  [14]             |
 | Background colour                            |
 |   [ON] Follow system appearance              |
@@ -177,6 +196,7 @@ All options live on `Defaults` and take effect the next time the lens is created
 | `idleLensLightBackground{R,G,B,Alpha}` | `Double` × 4 | `1, 1, 1, 0.8` | RGBA used in light mode (only honoured when `followSystemAppearance` is on). Alpha is clamped to 0…1. |
 | `idleLensShowCopyHint` | `Bool` | `true` | Whether to render the "Press ⌘+C to copy color" row. |
 | `idleLensShowShiftHint` | `Bool` | `true` | Whether to render the "Press Shift to switch RGB" row. |
+| `idleLensCoordinateMode` | `String` (`.points` / `.pixels`) | `.points` | Whether coordinates are shown as AppKit logical points or CGImage physical pixels. |
 
 The lens panel size is recomputed from these defaults every time the panel is created — pick a different `idleLensMagnifiedSize` and the panel grows to fit.
 
@@ -195,9 +215,10 @@ The right side of the card hosts an `IdleLensPreviewView` (defined in `capcap/Se
 
 ### Modified
 
-- `capcap/Capture/OverlayWindowController.swift` — Owns the lens lifecycle, mouse-tracking, and `Shift` / `⌘+C` routing via local + global monitors.
+- `capcap/Capture/OverlayWindowController.swift` — Owns the lens lifecycle, mouse-tracking (`.mouseMoved` + `.leftMouseDragged`), and `Shift` / `⌘+C` routing via local + global monitors. `refreshIdleColorLensContent` uses inclusive edge-boundary screen detection. `setupIdleColorLens` guards against duplicates. `selectionDidStart` recreates the lens if it was dismissed by a previous `selectionDidComplete` (for resize/move handle drags).
 - `capcap/Utilities/Defaults.swift` — Adds `idleColorLensEnabled`, the configurable lens defaults, and the L10n accessors for the new keys.
 - `capcap/Settings/SettingsView.swift` — Builds the dedicated "Idle Color Lens" card in `General` (master toggle + every option above + live preview). The previous single-line toggle inside the General `Toggles` card was removed.
+- `capcap/Capture/SelectionView.swift` — Calls `delegate?.selectionDidStart()` for `.resize` and `.move` drag-action paths so the lens stays visible while adjusting an existing selection.
 - `Resources/*.lproj/Localizable.strings` × 8 — Adds the lens-related keys (`idleLens*`, `settingsIdleColorLens*`, `settingsIdleLens*`).
 
 ## Verification
@@ -206,13 +227,17 @@ The right side of the card hosts an `IdleLensPreviewView` (defined in `capcap/Se
 - Manual runtime verification performed on `feat_idle-magnifier-color-picker`:
   - cmd+cmd activates the overlay; lens replaces the "drag to screenshot" chip.
   - Cursor moves update the magnified area, coordinates, and HEX value live.
-  - Tip rows stay visible for the entire idle session.
+  - Tip rows stay visible for the entire idle session (conditional on `idleLensShowCopyHint` / `idleLensShowShiftHint`).
   - ⌘+C copies the currently shown format; toast and clipboard confirm.
   - Single-tap Shift toggles HEX ↔ RGB; next cmd+cmd session resets to HEX.
-  - Drag starts a selection — lens hides immediately.
+  - Drag starts a selection — lens stays visible and tracks the drag endpoint.
+  - Resizing or moving an existing selection via handles — lens stays visible.
   - Settings toggle hides the lens and restores the legacy chip.
   - Multi-monitor: cursor on a secondary screen left of the main display reports negative coordinates and samples the correct screen's snapshot.
   - Edge cases: panel flips left when the cursor is near the right edge; flips up when the cursor is near the bottom edge; defaults to below the cursor when the cursor is near the top.
+  - **Top-edge pixel**: cursor at the absolute top of any screen (y == frame.maxY) correctly resolves a snapshot, magnifies, and samples the colour — no blank/missing pixel.
+  - **Ghost lens**: first cmd+cmd activation shows exactly one lens (no shadow/frozen duplicate). Confirmed `sharingType = .none` prevents ScreenCaptureKit from capturing the lens in its own background snapshot.
+  - **Points/Pixels mode**: Settings popup switches between logical points (e.g. `590, 445`) and physical pixels (e.g. `1180, 890` on a 2× Retina display).
 - The unit tests in `IdleColorLensTests.swift` cover the pixel-coordinate math, the y-axis-correct sample path, every new `Defaults` key (magnified size, panel offsets, hint toggles, follow-system appearance, RGBA alpha clamping). Running them requires Xcode (the `XCTest` framework is not bundled with the available `xcode-select` command-line tools).
 - Manual runtime verification on `feat_idle-magnifier-color-picker` covers the dedicated Settings card: master toggle, magnified-area size picker (96 / 144 / 192), X / Y offset fields, dark + light NSColorWells with alpha sliders, follow-system-appearance toggle, and the two hint toggles all take effect; the `IdleLensPreviewView` on the right of the card mirrors every change in real time.
 
@@ -230,3 +255,9 @@ The right side of the card hosts an `IdleLensPreviewView` (defined in `capcap/Se
 - v3 — magnification rendering replaced `NSImage.draw(in:from:)` with `CGContext.draw(snapshot, in:)` after a negative-y-scale transform — turned out to flip the image. Replaced again with `CGImage.cropping(to:)` + plain `CGContext.draw` (no transforms), which renders right-side up with the cursor pixel at `destRect.mid`.
 - v4 — single-pixel `sample` helper Y-flip fixed (added explicit `0.5 + py − imageHeight` term to `drawRect.y`); added `testSampleRespectsYAxisOrientation` to catch future regressions.
 - v5 — `⌘+C` and Shift added `global` monitors in addition to the existing local ones, because the `.nonactivatingPanel` overlay never receives key events targeted at the foreground app.
+- v6 — configurable Settings card: dedicated card replacing the single-line toggle, with magnified area size picker (96/144/192), magnification factor, panel offset fields, dark/light background RGBA with follow-system-appearance toggle, hint visibility toggles, live `IdleLensPreviewView`.
+- v7 — lens stays visible during drag-to-select (`.leftMouseDragged` added to mouse monitors, `selectionDidStart` no longer dismisses). Enhanced crosshair: 10 px `#A5BAF9` cross behind 1 px white cross. Boundary crop clamping + `context.clip(to: rect)` when source region extends beyond snapshot bounds.
+- v8 — **ghost lens fix**: `sharingType = .none` on `IdleColorLensWindow` prevents `SCScreenshotManager.captureImage` from including the lens in the background snapshot (was causing a frozen duplicate on first activation). `hasShadow = false`. `setupIdleColorLens` adds `guard idleColorLens == nil` duplicate prevention.
+- v9 — **top-edge pixel fix**: `CGRect.contains` replaced with inclusive boundary check (`min <= x <= max`) in `refreshIdleColorLensContent` because the half-open `[min, max)` interval excluded cursor positions at the absolute edge.
+- v10 — **lens during selection adjustment**: `SelectionView.mouseDown` calls `selectionDidStart()` for `.resize` and `.move` paths; `selectionDidStart` recreates the lens if it was dismissed by a previous `selectionDidComplete`. Lens now visible while dragging resize handles or moving an existing selection.
+- v11 — **Points/Pixels coordinate mode**: `Defaults.IdleLensCoordinateMode` enum (`.points`/`.pixels`), Settings popup, L10n keys in 8 languages. `drawInfo` switches between `mouseLocation` (points) and `currentPixelPoint` (pixels) based on the setting.
