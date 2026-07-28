@@ -83,6 +83,9 @@ class SettingsView: NSView {
     private var idleLensLightAlphaSlider: NSSlider!
     private var idleLensShowCopyHintSwitch: NSSwitch!
     private var idleLensShowShiftHintSwitch: NSSwitch!
+    private var idleLensCrosshairWell: NSColorWell!
+    private var idleLensCrosshairAlphaSlider: NSSlider!
+    private var idleLensCrosshairWidthField: NSTextField!
     private var idleLensPreview: NSHostingView<IdleLensPreviewView>!
 
     private var idleLensLastEditedIsDark: Bool = true
@@ -1025,6 +1028,13 @@ class SettingsView: NSView {
         optionsColumn.addArrangedSubview(offsetRow)
         offsetRow.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
 
+        // --- separator: panel layout → appearance ---
+        let div1 = rowDivider()
+        optionsColumn.setCustomSpacing(14, after: offsetRow)
+        optionsColumn.addArrangedSubview(div1)
+        div1.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
+        optionsColumn.setCustomSpacing(14, after: div1)
+
         // ----- Background section
         let bgHeader = primaryLabel(L10n.settingsIdleLensBackgroundLabel)
         optionsColumn.addArrangedSubview(bgHeader)
@@ -1056,6 +1066,37 @@ class SettingsView: NSView {
         idleLensLightAlphaSlider = lightColorRow.slider
         optionsColumn.addArrangedSubview(lightColorRow.row)
         lightColorRow.row.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
+
+        // --- separator: background → crosshair ---
+        let div2 = rowDivider()
+        optionsColumn.setCustomSpacing(14, after: lightColorRow.row)
+        optionsColumn.addArrangedSubview(div2)
+        div2.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
+        optionsColumn.setCustomSpacing(14, after: div2)
+
+        // ----- Crosshair
+        let crosshairHeader = primaryLabel(L10n.settingsIdleLensCrosshairLabel)
+        optionsColumn.addArrangedSubview(crosshairHeader)
+
+        let crosshairHint = NSTextField(labelWithString: L10n.settingsIdleLensCrosshairHint)
+        crosshairHint.font = .systemFont(ofSize: 11)
+        crosshairHint.textColor = .secondaryLabelColor
+        crosshairHint.translatesAutoresizingMaskIntoConstraints = false
+        optionsColumn.addArrangedSubview(crosshairHint)
+
+        let crosshairRow = makeCrosshairColorRow()
+        idleLensCrosshairWell = crosshairRow.well
+        idleLensCrosshairAlphaSlider = crosshairRow.slider
+        idleLensCrosshairWidthField = crosshairRow.widthField
+        optionsColumn.addArrangedSubview(crosshairRow.row)
+        crosshairRow.row.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
+
+        // --- separator: crosshair → hints ---
+        let div3 = rowDivider()
+        optionsColumn.setCustomSpacing(14, after: crosshairRow.row)
+        optionsColumn.addArrangedSubview(div3)
+        div3.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
+        optionsColumn.setCustomSpacing(14, after: div3)
 
         // ----- Hint toggles
         let copyHintRow = makeToggleRow(
@@ -1172,6 +1213,63 @@ class SettingsView: NSView {
             blue: CGFloat(Defaults.idleLensLightBackgroundBlue),
             alpha: CGFloat(Defaults.idleLensLightBackgroundAlpha)
         )
+    }
+
+    private func currentLensCrosshairColor() -> NSColor {
+        NSColor(
+            srgbRed: CGFloat(Defaults.idleLensCrosshairRed),
+            green: CGFloat(Defaults.idleLensCrosshairGreen),
+            blue: CGFloat(Defaults.idleLensCrosshairBlue),
+            alpha: CGFloat(Defaults.idleLensCrosshairAlpha)
+        )
+    }
+
+    private func makeCrosshairColorRow() -> (row: NSStackView, well: NSColorWell, slider: NSSlider, widthField: NSTextField) {
+        let row = NSStackView()
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.spacing = 10
+        row.translatesAutoresizingMaskIntoConstraints = false
+
+        let initialColor = currentLensCrosshairColor()
+        let well = NSColorWell(frame: .zero)
+        well.color = initialColor
+        well.target = self
+        well.action = #selector(idleLensCrosshairWellChanged(_:))
+        well.widthAnchor.constraint(equalToConstant: 36).isActive = true
+        well.heightAnchor.constraint(equalToConstant: 22).isActive = true
+        row.addArrangedSubview(well)
+
+        let slider = NSSlider(
+            value: Double(initialColor.alphaComponent),
+            minValue: 0,
+            maxValue: 1,
+            target: self,
+            action: #selector(idleLensCrosshairAlphaChanged(_:))
+        )
+        slider.controlSize = .small
+        slider.isContinuous = true
+        row.addArrangedSubview(slider)
+        slider.widthAnchor.constraint(equalToConstant: 80).isActive = true
+
+        let widthLabel = NSTextField(labelWithString: "Width:")
+        widthLabel.font = .systemFont(ofSize: 11)
+        row.addArrangedSubview(widthLabel)
+
+        let widthField = NSTextField(string: "\(Int(Defaults.idleLensCrosshairWidth))")
+        widthField.alignment = .right
+        widthField.font = .monospacedDigitSystemFont(ofSize: NSFont.smallSystemFontSize, weight: .regular)
+        widthField.widthAnchor.constraint(equalToConstant: 36).isActive = true
+        widthField.controlSize = .small
+        widthField.target = self
+        widthField.action = #selector(idleLensCrosshairWidthChanged(_:))
+        row.addArrangedSubview(widthField)
+
+        let pxLabel = NSTextField(labelWithString: "px")
+        pxLabel.font = .systemFont(ofSize: 11)
+        row.addArrangedSubview(pxLabel)
+
+        return (row, well, slider, widthField)
     }
 
     /// Default beautify behaviour when the annotation editor opens: optional
@@ -3423,6 +3521,28 @@ class SettingsView: NSView {
     @objc private func idleLensLightAlphaChanged(_ sender: NSSlider) {
         Defaults.idleLensLightBackgroundAlpha = sender.doubleValue
         idleLensLightBackgroundWell.color = currentLensBackgroundColor(isDark: false)
+    }
+
+    @objc private func idleLensCrosshairWellChanged(_ sender: NSColorWell) {
+        let color = sender.color.usingColorSpace(.sRGB) ?? sender.color
+        Defaults.idleLensCrosshairRed = Double(color.redComponent)
+        Defaults.idleLensCrosshairGreen = Double(color.greenComponent)
+        Defaults.idleLensCrosshairBlue = Double(color.blueComponent)
+        Defaults.idleLensCrosshairAlpha = Double(color.alphaComponent)
+        idleLensCrosshairAlphaSlider.doubleValue = color.alphaComponent
+    }
+
+    @objc private func idleLensCrosshairAlphaChanged(_ sender: NSSlider) {
+        Defaults.idleLensCrosshairAlpha = sender.doubleValue
+        idleLensCrosshairWell.color = currentLensCrosshairColor()
+    }
+
+    @objc private func idleLensCrosshairWidthChanged(_ sender: NSTextField) {
+        guard let value = Double(sender.stringValue), value >= 1, value <= 30 else {
+            sender.stringValue = "\(Int(Defaults.idleLensCrosshairWidth))"
+            return
+        }
+        Defaults.idleLensCrosshairWidth = value
     }
 
     @objc private func idleLensShowCopyHintToggled(_ sender: NSSwitch) {

@@ -586,3 +586,5 @@
 "settingsIdleLensCoordinateModeLabel" = "Режим координат";
 "settingsIdleLensCoordinateModePoints" = "Точки";
 "settingsIdleLensCoordinateModePixels" = "Пиксели";
+"settingsIdleLensCrosshairLabel" = "Перекрестие";
+"settingsIdleLensCrosshairHint" = "Центральный индикатор в увеличенной области";

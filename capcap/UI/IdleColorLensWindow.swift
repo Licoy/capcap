@@ -397,14 +397,20 @@ final class IdleColorLensView: NSView {
         borderPath.lineWidth = 0.5
         borderPath.stroke()
 
-        // Enhanced crosshair — 10 px lines in #A5BAF9 spanning the full
-        // magnified area. Sits behind the fine white cross so the centre
-        // remains visible even on pure-white backgrounds.
+        // Enhanced crosshair spanning the full magnified area. Colour and
+        // line width are read from Defaults so users can tune them in Settings.
+        // Sits behind the fine white cross so the centre remains visible even
+        // on pure-white backgrounds.
         let centerX = rect.midX
         let centerY = rect.midY
-        NSColor(srgbRed: 0xA5 / 255.0, green: 0xBA / 255.0, blue: 0xF9 / 255.0, alpha: 0.65).setStroke()
+        let cr = CGFloat(Defaults.idleLensCrosshairRed)
+        let cg = CGFloat(Defaults.idleLensCrosshairGreen)
+        let cb = CGFloat(Defaults.idleLensCrosshairBlue)
+        let ca = CGFloat(Defaults.idleLensCrosshairAlpha)
+        let cw = CGFloat(Defaults.idleLensCrosshairWidth)
+        NSColor(srgbRed: cr, green: cg, blue: cb, alpha: ca).setStroke()
         let bigCross = NSBezierPath()
-        bigCross.lineWidth = 10
+        bigCross.lineWidth = cw
         bigCross.move(to: NSPoint(x: rect.minX, y: centerY))
         bigCross.line(to: NSPoint(x: rect.maxX, y: centerY))
         bigCross.move(to: NSPoint(x: centerX, y: rect.minY))

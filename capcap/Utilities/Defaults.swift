@@ -214,6 +214,8 @@ enum L10n {
     static var settingsIdleLensCoordinateModeLabel: String { s("settingsIdleLensCoordinateModeLabel") }
     static var settingsIdleLensCoordinateModePoints: String { s("settingsIdleLensCoordinateModePoints") }
     static var settingsIdleLensCoordinateModePixels: String { s("settingsIdleLensCoordinateModePixels") }
+    static var settingsIdleLensCrosshairLabel: String { s("settingsIdleLensCrosshairLabel") }
+    static var settingsIdleLensCrosshairHint: String { s("settingsIdleLensCrosshairHint") }
 
     // Copy-to-clipboard shortcut (editor confirm)
     static var clipboardShortcutHeader: String { s("clipboardShortcutHeader") }
@@ -1910,6 +1912,34 @@ struct Defaults {
         set {
             defaults.set(newValue.rawValue, forKey: "idleLensCoordinateMode")
         }
+    }
+
+    /// Crosshair colour — RGBA components stored as 0–1 doubles.
+    /// Default: #A8BDFC at 65% alpha.
+    static var idleLensCrosshairRed: Double {
+        get { defaults.object(forKey: "idleLensCrosshairRed") == nil ? 0xA8 / 255.0 : defaults.double(forKey: "idleLensCrosshairRed") }
+        set { defaults.set(newValue, forKey: "idleLensCrosshairRed") }
+    }
+    static var idleLensCrosshairGreen: Double {
+        get { defaults.object(forKey: "idleLensCrosshairGreen") == nil ? 0xBD / 255.0 : defaults.double(forKey: "idleLensCrosshairGreen") }
+        set { defaults.set(newValue, forKey: "idleLensCrosshairGreen") }
+    }
+    static var idleLensCrosshairBlue: Double {
+        get { defaults.object(forKey: "idleLensCrosshairBlue") == nil ? 0xFC / 255.0 : defaults.double(forKey: "idleLensCrosshairBlue") }
+        set { defaults.set(newValue, forKey: "idleLensCrosshairBlue") }
+    }
+    static var idleLensCrosshairAlpha: Double {
+        get { defaults.object(forKey: "idleLensCrosshairAlpha") == nil ? 0.65 : defaults.double(forKey: "idleLensCrosshairAlpha") }
+        set { defaults.set(min(1, max(0, newValue)), forKey: "idleLensCrosshairAlpha") }
+    }
+
+    /// Crosshair line width in points. Default 6, clamped to 1–30.
+    static var idleLensCrosshairWidth: Double {
+        get {
+            if defaults.object(forKey: "idleLensCrosshairWidth") == nil { return 6 }
+            return defaults.double(forKey: "idleLensCrosshairWidth")
+        }
+        set { defaults.set(min(30, max(1, newValue)), forKey: "idleLensCrosshairWidth") }
     }
 
     static var clipboardTextCacheEnabled: Bool {

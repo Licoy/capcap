@@ -586,3 +586,5 @@
 "settingsIdleLensCoordinateModeLabel" = "Coordinates mode";
 "settingsIdleLensCoordinateModePoints" = "Points";
 "settingsIdleLensCoordinateModePixels" = "Pixels";
+"settingsIdleLensCrosshairLabel" = "Crosshair";
+"settingsIdleLensCrosshairHint" = "Center indicator inside the magnified area";
