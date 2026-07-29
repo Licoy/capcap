@@ -2998,7 +2998,6 @@ class SettingsView: NSView {
         inner.alignment = .leading
         inner.spacing = 6
         inner.translatesAutoresizingMaskIntoConstraints = false
-        inner.edgeInsets = NSEdgeInsets(top: 8, left: 10, bottom: 10, right: 10)
 
         let titleLabel = NSTextField(labelWithString: title)
         titleLabel.font = .systemFont(ofSize: 11, weight: .semibold)
@@ -3007,10 +3006,10 @@ class SettingsView: NSView {
 
         box.addSubview(inner)
         NSLayoutConstraint.activate([
-            inner.topAnchor.constraint(equalTo: box.topAnchor),
-            inner.bottomAnchor.constraint(equalTo: box.bottomAnchor),
-            inner.leadingAnchor.constraint(equalTo: box.leadingAnchor),
-            inner.trailingAnchor.constraint(equalTo: box.trailingAnchor),
+            inner.topAnchor.constraint(equalTo: box.topAnchor, constant: 8),
+            inner.bottomAnchor.constraint(equalTo: box.bottomAnchor, constant: -10),
+            inner.leadingAnchor.constraint(equalTo: box.leadingAnchor, constant: 10),
+            inner.trailingAnchor.constraint(equalTo: box.trailingAnchor, constant: -10),
         ])
         return (box, inner)
     }
