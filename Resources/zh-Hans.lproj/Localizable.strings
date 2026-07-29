@@ -587,5 +587,10 @@
 "settingsIdleLensCoordinateModePoints" = "逻辑点";
 "settingsIdleLensCoordinateModePixels" = "物理像素";
 "settingsIdleLensCoordinateModeHint" = "Points 以屏幕左下角为原点，Pixels 以图像左上角为原点";
+"settingsIdleLensMagnifierLabel" = "放大镜";
+"settingsIdleLensAppearanceLabel" = "外观";
+"settingsIdleLensKeyboardActionLabel" = "键盘操作";
+"settingsIdleLensLivePreviewTitle" = "实时预览";
+"settingsIdleLensLivePreviewHint" = "将鼠标悬停在触发图标上时，放大镜面板的实时预览";
 "settingsIdleLensCrosshairLabel" = "十字线";
 "settingsIdleLensCrosshairHint" = "放大区域中心的定位指示器";

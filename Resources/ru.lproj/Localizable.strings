@@ -587,5 +587,10 @@
 "settingsIdleLensCoordinateModePoints" = "Точки";
 "settingsIdleLensCoordinateModePixels" = "Пиксели";
 "settingsIdleLensCoordinateModeHint" = "Points отсчитываются от левого нижнего угла. Pixels — от левого верхнего угла";
+"settingsIdleLensMagnifierLabel" = "Лупа";
+"settingsIdleLensAppearanceLabel" = "Внешний вид";
+"settingsIdleLensKeyboardActionLabel" = "Действие клавиш";
+"settingsIdleLensLivePreviewTitle" = "Живой просмотр";
+"settingsIdleLensLivePreviewHint" = "Предпросмотр панели лупы в реальном времени при наведении на значок";
 "settingsIdleLensCrosshairLabel" = "Перекрестие";
 "settingsIdleLensCrosshairHint" = "Центральный индикатор в увеличенной области";

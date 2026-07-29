@@ -1,13 +1,13 @@
 import SwiftUI
 import AppKit
 
-/// SwiftUI preview of the idle magnifier color picker used in
+/// SwiftUI preview of the magnifier panel used in
 /// Settings → General. The right-hand side hosts the **real**
 /// `IdleColorLensView` (via `NSViewRepresentable`) so the preview
 /// reflects the production panel's rendering path; the left-hand
 /// side is capcap's real AppIcon loaded from the bundle. Hover over
 /// the icon to drive the lens with real-time pixel sampling.
-struct IdleLensPreviewView: View {
+struct MagnifierPreviewView: View {
 
     let iconImage: NSImage
     let mockSnapshot: CGImage
@@ -32,49 +32,50 @@ struct IdleLensPreviewView: View {
         let scaleX = CGFloat(mockSnapshot.width) / iconPt
         let scaleY = CGFloat(mockSnapshot.height) / iconPt
 
-        return HStack(alignment: .center, spacing: 18) {
-            // Capcap logo — the "subject" being magnified.
-            // A fake cursor sits on top when idle so the preview
-            // never looks empty; it hides during real hover.
-            ZStack {
-                Image(nsImage: iconImage)
-                    .resizable()
-                    .frame(width: iconPt, height: iconPt)
-                    .clipShape(RoundedRectangle(cornerRadius: 17))
-
-                // Fake cursor — hidden when the real mouse is hovering.
-                if hoverLocation == nil {
-                    let cursorImg = NSCursor.arrow.image
-                    Image(nsImage: cursorImg)
+        return VStack(spacing: 0) {
+            HStack(alignment: .center, spacing: 18) {
+                // Capcap logo — the "subject" being magnified.
+                // A fake cursor sits on top when idle so the preview
+                // never looks empty; it hides during real hover.
+                ZStack {
+                    Image(nsImage: iconImage)
                         .resizable()
-                        .frame(width: 22, height: 22)
-                        .offset(x: 7, y: 8)
-                        .shadow(radius: 2)
+                        .frame(width: iconPt, height: iconPt)
+                        .clipShape(RoundedRectangle(cornerRadius: 17))
+
+                    // Fake cursor — hidden when the real mouse is hovering.
+                    if hoverLocation == nil {
+                        let cursorImg = NSCursor.arrow.image
+                        Image(nsImage: cursorImg)
+                            .resizable()
+                            .frame(width: 22, height: 22)
+                            .offset(x: 7, y: 8)
+                            .shadow(radius: 2)
+                    }
                 }
-            }
-            .onContinuousHover { phase in
-                switch phase {
-                case .active(let location):
-                    // location is in the ZStack's coordinate space
-                    // (0 … 76). Clamp and map to CGImage pixels.
-                    let cx = min(max(0, location.x), iconPt)
-                    let cy = min(max(0, location.y), iconPt)
-                    hoverLocation = CGPoint(x: cx * scaleX, y: cy * scaleY)
-                case .ended:
-                    hoverLocation = nil
+                .onContinuousHover { phase in
+                    switch phase {
+                    case .active(let location):
+                        let cx = min(max(0, location.x), iconPt)
+                        let cy = min(max(0, location.y), iconPt)
+                        hoverLocation = CGPoint(x: cx * scaleX, y: cy * scaleY)
+                    case .ended:
+                        hoverLocation = nil
+                    }
                 }
+
+                // The real lens view, hosted via NSViewRepresentable.
+                LensRepresentable(
+                    snapshot: mockSnapshot,
+                    hoverLocation: hoverLocation,
+                    showCopyHint: showCopyHint,
+                    showShiftHint: showShiftHint,
+                    magnifiedSize: magnifiedSize,
+                    changeToken: changeToken
+                )
+                .frame(width: lensSize.width, height: lensSize.height)
             }
 
-            // The real lens view, hosted via NSViewRepresentable.
-            LensRepresentable(
-                snapshot: mockSnapshot,
-                hoverLocation: hoverLocation,
-                showCopyHint: showCopyHint,
-                showShiftHint: showShiftHint,
-                magnifiedSize: magnifiedSize,
-                changeToken: changeToken
-            )
-            .frame(width: lensSize.width, height: lensSize.height)
         }
         .padding(16)
         .frame(width: requiredWidth(lensSize: lensSize),

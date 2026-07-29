@@ -587,5 +587,10 @@
 "settingsIdleLensCoordinateModePoints" = "논리 포인트";
 "settingsIdleLensCoordinateModePixels" = "물리 픽셀";
 "settingsIdleLensCoordinateModeHint" = "Points는 화면 왼쪽 아래를 원점으로, Pixels는 이미지 왼쪽 위를 원점으로 합니다";
+"settingsIdleLensMagnifierLabel" = "돋보기";
+"settingsIdleLensAppearanceLabel" = "외관";
+"settingsIdleLensKeyboardActionLabel" = "키보드 동작";
+"settingsIdleLensLivePreviewTitle" = "실시간 미리보기";
+"settingsIdleLensLivePreviewHint" = "트리거 아이콘에 마우스를 올리면 돋보기 패널 실시간 미리보기";
 "settingsIdleLensCrosshairLabel" = "십자선";
 "settingsIdleLensCrosshairHint" = "확대 영역 중앙의 위치 표시기";

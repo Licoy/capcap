@@ -215,6 +215,11 @@ enum L10n {
     static var settingsIdleLensCoordinateModePoints: String { s("settingsIdleLensCoordinateModePoints") }
     static var settingsIdleLensCoordinateModePixels: String { s("settingsIdleLensCoordinateModePixels") }
     static var settingsIdleLensCoordinateModeHint: String { s("settingsIdleLensCoordinateModeHint") }
+    static var settingsIdleLensMagnifierLabel: String { s("settingsIdleLensMagnifierLabel") }
+    static var settingsIdleLensAppearanceLabel: String { s("settingsIdleLensAppearanceLabel") }
+    static var settingsIdleLensKeyboardActionLabel: String { s("settingsIdleLensKeyboardActionLabel") }
+    static var settingsIdleLensLivePreviewTitle: String { s("settingsIdleLensLivePreviewTitle") }
+    static var settingsIdleLensLivePreviewHint: String { s("settingsIdleLensLivePreviewHint") }
     static var settingsIdleLensCrosshairLabel: String { s("settingsIdleLensCrosshairLabel") }
     static var settingsIdleLensCrosshairHint: String { s("settingsIdleLensCrosshairHint") }
 

@@ -86,7 +86,7 @@ class SettingsView: NSView {
     private var idleLensCrosshairWell: NSColorWell!
     private var idleLensCrosshairAlphaSlider: NSSlider!
     private var idleLensCrosshairWidthField: NSTextField!
-    private var idleLensPreview: NSHostingView<IdleLensPreviewView>!
+    private var idleLensPreview: NSHostingView<MagnifierPreviewView>!
 
     private var idleLensLastEditedIsDark: Bool = true
     private var historyCacheSlider: SettingsTickSlider!
@@ -935,9 +935,17 @@ class SettingsView: NSView {
         let optionsColumn = NSStackView()
         optionsColumn.orientation = .vertical
         optionsColumn.alignment = .leading
-        optionsColumn.spacing = 10
+        optionsColumn.spacing = 12
         optionsColumn.translatesAutoresizingMaskIntoConstraints = false
         splitRow.addArrangedSubview(optionsColumn)
+        // Give the options column a minimum width so it doesn't get
+        // squeezed when the window is narrow.
+        optionsColumn.widthAnchor.constraint(greaterThanOrEqualToConstant: 260).isActive = true
+
+        // ── Magnifier sub-card ──────────────────────────────
+        let (magnifierCard, magnifierInner) = makeSubCard(title: L10n.settingsIdleLensMagnifierLabel)
+        optionsColumn.addArrangedSubview(magnifierCard)
+        magnifierCard.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
 
         // ----- Magnified area size picker
         let sizeLabel = primaryLabel(L10n.settingsIdleLensMagnifiedSizeLabel)
@@ -957,8 +965,8 @@ class SettingsView: NSView {
         sizeRow.translatesAutoresizingMaskIntoConstraints = false
         sizeRow.addArrangedSubview(sizeLabel)
         sizeRow.addArrangedSubview(sizePopup)
-        optionsColumn.addArrangedSubview(sizeRow)
-        sizeRow.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
+        magnifierInner.addArrangedSubview(sizeRow)
+        sizeRow.widthAnchor.constraint(equalTo: magnifierInner.widthAnchor).isActive = true
 
         // ----- Magnification picker
         let magLabel = primaryLabel(L10n.settingsIdleLensMagnificationLabel)
@@ -978,8 +986,8 @@ class SettingsView: NSView {
         magRow.translatesAutoresizingMaskIntoConstraints = false
         magRow.addArrangedSubview(magLabel)
         magRow.addArrangedSubview(magPopup)
-        optionsColumn.addArrangedSubview(magRow)
-        magRow.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
+        magnifierInner.addArrangedSubview(magRow)
+        magRow.widthAnchor.constraint(equalTo: magnifierInner.widthAnchor).isActive = true
 
         // ----- Coordinate mode picker
         let coordLabel = primaryLabel(L10n.settingsIdleLensCoordinateModeLabel)
@@ -998,16 +1006,16 @@ class SettingsView: NSView {
         coordRow.translatesAutoresizingMaskIntoConstraints = false
         coordRow.addArrangedSubview(coordLabel)
         coordRow.addArrangedSubview(coordPopup)
-        optionsColumn.addArrangedSubview(coordRow)
-        coordRow.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
+        magnifierInner.addArrangedSubview(coordRow)
+        coordRow.widthAnchor.constraint(equalTo: magnifierInner.widthAnchor).isActive = true
 
         let coordHint = NSTextField(labelWithString: L10n.settingsIdleLensCoordinateModeHint)
         coordHint.font = .systemFont(ofSize: 11)
         coordHint.textColor = .secondaryLabelColor
         coordHint.translatesAutoresizingMaskIntoConstraints = false
-        optionsColumn.setCustomSpacing(2, after: coordRow)
-        optionsColumn.addArrangedSubview(coordHint)
-        optionsColumn.setCustomSpacing(10, after: coordHint)
+        magnifierInner.setCustomSpacing(2, after: coordRow)
+        magnifierInner.addArrangedSubview(coordHint)
+        magnifierInner.setCustomSpacing(8, after: coordHint)
 
         // ----- Panel offset X / Y
         let offsetLabel = primaryLabel(L10n.settingsIdleLensPanelOffsetLabel)
@@ -1033,19 +1041,30 @@ class SettingsView: NSView {
         offsetRow.addArrangedSubview(offsetLabel)
         offsetRow.addArrangedSubview(xField)
         offsetRow.addArrangedSubview(yField)
-        optionsColumn.addArrangedSubview(offsetRow)
-        offsetRow.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
+        magnifierInner.addArrangedSubview(offsetRow)
+        offsetRow.widthAnchor.constraint(equalTo: magnifierInner.widthAnchor).isActive = true
 
-        // --- separator: panel layout → appearance ---
-        let div1 = rowDivider()
-        optionsColumn.setCustomSpacing(14, after: offsetRow)
-        optionsColumn.addArrangedSubview(div1)
-        div1.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
-        optionsColumn.setCustomSpacing(14, after: div1)
+        // ----- Crosshair (inside Magnifier sub-card)
+        let crosshairHeader = primaryLabel(L10n.settingsIdleLensCrosshairLabel)
+        magnifierInner.addArrangedSubview(crosshairHeader)
 
-        // ----- Background section
-        let bgHeader = primaryLabel(L10n.settingsIdleLensBackgroundLabel)
-        optionsColumn.addArrangedSubview(bgHeader)
+        let crosshairHint = NSTextField(labelWithString: L10n.settingsIdleLensCrosshairHint)
+        crosshairHint.font = .systemFont(ofSize: 11)
+        crosshairHint.textColor = .secondaryLabelColor
+        crosshairHint.translatesAutoresizingMaskIntoConstraints = false
+        magnifierInner.addArrangedSubview(crosshairHint)
+
+        let crosshairRow = makeCrosshairColorRow()
+        idleLensCrosshairWell = crosshairRow.well
+        idleLensCrosshairAlphaSlider = crosshairRow.slider
+        idleLensCrosshairWidthField = crosshairRow.widthField
+        magnifierInner.addArrangedSubview(crosshairRow.row)
+        crosshairRow.row.widthAnchor.constraint(equalTo: magnifierInner.widthAnchor).isActive = true
+
+        // ── Appearance sub-card ─────────────────────────────
+        let (appearanceCard, appearanceInner) = makeSubCard(title: L10n.settingsIdleLensAppearanceLabel)
+        optionsColumn.addArrangedSubview(appearanceCard)
+        appearanceCard.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
 
         let followRow = makeToggleRow(
             title: L10n.settingsIdleLensFollowSystemAppearanceTitle,
@@ -1054,8 +1073,8 @@ class SettingsView: NSView {
             action: #selector(idleLensFollowSystemToggled(_:))
         )
         idleLensFollowSystemSwitch = followRow.toggle
-        optionsColumn.addArrangedSubview(followRow.row)
-        followRow.row.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
+        appearanceInner.addArrangedSubview(followRow.row)
+        followRow.row.widthAnchor.constraint(equalTo: appearanceInner.widthAnchor).isActive = true
 
         let darkColorRow = makeBackgroundColorRow(
             label: L10n.settingsIdleLensDarkBackgroundLabel,
@@ -1063,8 +1082,8 @@ class SettingsView: NSView {
         )
         idleLensDarkBackgroundWell = darkColorRow.well
         idleLensDarkAlphaSlider = darkColorRow.slider
-        optionsColumn.addArrangedSubview(darkColorRow.row)
-        darkColorRow.row.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
+        appearanceInner.addArrangedSubview(darkColorRow.row)
+        darkColorRow.row.widthAnchor.constraint(equalTo: appearanceInner.widthAnchor).isActive = true
 
         let lightColorRow = makeBackgroundColorRow(
             label: L10n.settingsIdleLensLightBackgroundLabel,
@@ -1072,41 +1091,14 @@ class SettingsView: NSView {
         )
         idleLensLightBackgroundWell = lightColorRow.well
         idleLensLightAlphaSlider = lightColorRow.slider
-        optionsColumn.addArrangedSubview(lightColorRow.row)
-        lightColorRow.row.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
+        appearanceInner.addArrangedSubview(lightColorRow.row)
+        lightColorRow.row.widthAnchor.constraint(equalTo: appearanceInner.widthAnchor).isActive = true
 
-        // --- separator: background → crosshair ---
-        let div2 = rowDivider()
-        optionsColumn.setCustomSpacing(14, after: lightColorRow.row)
-        optionsColumn.addArrangedSubview(div2)
-        div2.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
-        optionsColumn.setCustomSpacing(14, after: div2)
+        // ── Keyboard action sub-card ────────────────────────
+        let (keyboardCard, keyboardInner) = makeSubCard(title: L10n.settingsIdleLensKeyboardActionLabel)
+        optionsColumn.addArrangedSubview(keyboardCard)
+        keyboardCard.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
 
-        // ----- Crosshair
-        let crosshairHeader = primaryLabel(L10n.settingsIdleLensCrosshairLabel)
-        optionsColumn.addArrangedSubview(crosshairHeader)
-
-        let crosshairHint = NSTextField(labelWithString: L10n.settingsIdleLensCrosshairHint)
-        crosshairHint.font = .systemFont(ofSize: 11)
-        crosshairHint.textColor = .secondaryLabelColor
-        crosshairHint.translatesAutoresizingMaskIntoConstraints = false
-        optionsColumn.addArrangedSubview(crosshairHint)
-
-        let crosshairRow = makeCrosshairColorRow()
-        idleLensCrosshairWell = crosshairRow.well
-        idleLensCrosshairAlphaSlider = crosshairRow.slider
-        idleLensCrosshairWidthField = crosshairRow.widthField
-        optionsColumn.addArrangedSubview(crosshairRow.row)
-        crosshairRow.row.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
-
-        // --- separator: crosshair → hints ---
-        let div3 = rowDivider()
-        optionsColumn.setCustomSpacing(14, after: crosshairRow.row)
-        optionsColumn.addArrangedSubview(div3)
-        div3.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
-        optionsColumn.setCustomSpacing(14, after: div3)
-
-        // ----- Hint toggles
         let copyHintRow = makeToggleRow(
             title: L10n.idleLensCopyHint,
             subtitle: nil,
@@ -1114,8 +1106,8 @@ class SettingsView: NSView {
             action: #selector(idleLensShowCopyHintToggled(_:))
         )
         idleLensShowCopyHintSwitch = copyHintRow.toggle
-        optionsColumn.addArrangedSubview(copyHintRow.row)
-        copyHintRow.row.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
+        keyboardInner.addArrangedSubview(copyHintRow.row)
+        copyHintRow.row.widthAnchor.constraint(equalTo: keyboardInner.widthAnchor).isActive = true
 
         let shiftHintRow = makeToggleRow(
             title: L10n.idleLensShiftHint,
@@ -1124,29 +1116,69 @@ class SettingsView: NSView {
             action: #selector(idleLensShowShiftHintToggled(_:))
         )
         idleLensShowShiftHintSwitch = shiftHintRow.toggle
-        optionsColumn.addArrangedSubview(shiftHintRow.row)
-        shiftHintRow.row.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
+        keyboardInner.addArrangedSubview(shiftHintRow.row)
+        shiftHintRow.row.widthAnchor.constraint(equalTo: keyboardInner.widthAnchor).isActive = true
 
         // ----- Preview (right side) — SwiftUI view hosting the real
         // IdleColorLensView via NSViewRepresentable.
-        let previewSize = IdleLensPreviewView.requiredSize()
+        let previewSize = MagnifierPreviewView.requiredSize()
         let iconImage = Self.loadAppIconForPreview()
         let mockSnapshot = iconImage.cgImage(
             forProposedRect: nil,
             context: nil,
             hints: nil
         ) ?? Self.fallbackCGImage()
-        let swiftUIPreview = IdleLensPreviewView(
+        let swiftUIPreview = MagnifierPreviewView(
             iconImage: iconImage,
             mockSnapshot: mockSnapshot
         )
+
+        let previewColumn = NSStackView()
+        previewColumn.orientation = .vertical
+        previewColumn.alignment = .leading
+        previewColumn.spacing = 4
+        previewColumn.translatesAutoresizingMaskIntoConstraints = false
+
+        // Live Preview subtitle with green status dot
+        let liveTitleRow = NSStackView()
+        liveTitleRow.orientation = .horizontal
+        liveTitleRow.alignment = .centerY
+        liveTitleRow.spacing = 6
+        liveTitleRow.translatesAutoresizingMaskIntoConstraints = false
+
+        let dot = NSView()
+        dot.wantsLayer = true
+        dot.layer?.backgroundColor = NSColor.systemGreen.cgColor
+        dot.layer?.cornerRadius = 6
+        dot.translatesAutoresizingMaskIntoConstraints = false
+        dot.widthAnchor.constraint(equalToConstant: 12).isActive = true
+        dot.heightAnchor.constraint(equalToConstant: 12).isActive = true
+        liveTitleRow.addArrangedSubview(dot)
+
+        let liveTitle = NSTextField(labelWithString: L10n.settingsIdleLensLivePreviewTitle)
+        liveTitle.font = .systemFont(ofSize: 12, weight: .semibold)
+        liveTitle.textColor = .secondaryLabelColor
+        liveTitleRow.addArrangedSubview(liveTitle)
+
+        previewColumn.addArrangedSubview(liveTitleRow)
+
+        let liveHint = NSTextField(labelWithString: L10n.settingsIdleLensLivePreviewHint)
+        liveHint.font = .systemFont(ofSize: 10)
+        liveHint.textColor = .tertiaryLabelColor
+        liveHint.lineBreakMode = .byWordWrapping
+        liveHint.preferredMaxLayoutWidth = previewSize.width
+        previewColumn.addArrangedSubview(liveHint)
+        previewColumn.setCustomSpacing(8, after: liveHint)
+
         let hosting = NSHostingView(rootView: swiftUIPreview)
         hosting.translatesAutoresizingMaskIntoConstraints = false
         hosting.setFrameSize(previewSize)
         idleLensPreview = hosting
-        splitRow.addArrangedSubview(hosting)
+        previewColumn.addArrangedSubview(hosting)
         hosting.widthAnchor.constraint(equalToConstant: previewSize.width).isActive = true
         hosting.heightAnchor.constraint(equalToConstant: previewSize.height).isActive = true
+
+        splitRow.addArrangedSubview(previewColumn)
 
         stack.addArrangedSubview(card)
         card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
@@ -2947,6 +2979,40 @@ class SettingsView: NSView {
         v.translatesAutoresizingMaskIntoConstraints = false
         v.heightAnchor.constraint(equalToConstant: 1).isActive = true
         return v
+    }
+
+    /// Creates a rounded-bordered sub-card container for grouping related
+    /// settings inside the idle-lens card.
+    private func makeSubCard(title: String) -> (NSBox, NSStackView) {
+        let box = NSBox()
+        box.boxType = .custom
+        box.cornerRadius = 8
+        box.borderWidth = 1
+        box.borderColor = NSColor.white.withAlphaComponent(0.06)
+        box.fillColor = NSColor.white.withAlphaComponent(0.02)
+        box.titlePosition = .noTitle
+        box.translatesAutoresizingMaskIntoConstraints = false
+
+        let inner = NSStackView()
+        inner.orientation = .vertical
+        inner.alignment = .leading
+        inner.spacing = 6
+        inner.translatesAutoresizingMaskIntoConstraints = false
+        inner.edgeInsets = NSEdgeInsets(top: 8, left: 10, bottom: 10, right: 10)
+
+        let titleLabel = NSTextField(labelWithString: title)
+        titleLabel.font = .systemFont(ofSize: 11, weight: .semibold)
+        titleLabel.textColor = .secondaryLabelColor
+        inner.addArrangedSubview(titleLabel)
+
+        box.addSubview(inner)
+        NSLayoutConstraint.activate([
+            inner.topAnchor.constraint(equalTo: box.topAnchor),
+            inner.bottomAnchor.constraint(equalTo: box.bottomAnchor),
+            inner.leadingAnchor.constraint(equalTo: box.leadingAnchor),
+            inner.trailingAnchor.constraint(equalTo: box.trailingAnchor),
+        ])
+        return (box, inner)
     }
 
     private func flexSpacer() -> NSView {
