@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.18] - 2026-07-29
+
+### Added
+- Add a shortcut to toggle the history panel keyboard guide (ddcc65d)
+
+### Fixed
+- Prevent capture overlay surfaces from moving or resizing (0ac6a57)
+
 ## [1.6.17] - 2026-07-26
 
 ### Added
