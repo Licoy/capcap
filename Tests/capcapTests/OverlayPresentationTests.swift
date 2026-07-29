@@ -235,6 +235,33 @@ final class OverlayPresentationTests: XCTestCase {
         secondController.cancel()
     }
 
+    func testOverlaySurfaceCannotBeMovedOrResizedByScreenEdgeDrag() throws {
+        _ = NSApplication.shared
+        let screen = try XCTUnwrap(NSScreen.screens.first)
+        let panel = OverlayPanel(
+            contentRect: screen.frame,
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+
+        panel.prepareSurface(for: screen)
+
+        XCTAssertFalse(panel.isMovable)
+        XCTAssertFalse(panel.isMovableByWindowBackground)
+        XCTAssertFalse(panel.styleMask.contains(.resizable))
+        XCTAssertEqual(panel.minSize, screen.frame.size)
+        XCTAssertEqual(panel.maxSize, screen.frame.size)
+        XCTAssertEqual(panel.contentMinSize, screen.frame.size)
+        XCTAssertEqual(panel.contentMaxSize, screen.frame.size)
+        XCTAssertTrue(panel.delegate === panel)
+        XCTAssertEqual(
+            panel.windowWillResize(panel, to: NSSize(width: 320, height: 240)),
+            screen.frame.size
+        )
+        panel.close()
+    }
+
     func testScreenParameterChangeCancelsSelectionSession() {
         _ = NSApplication.shared
         let provider = ControlledScreenSnapshotProvider(delay: 2)

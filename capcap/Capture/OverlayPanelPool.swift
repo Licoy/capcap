@@ -307,7 +307,7 @@ private final class OverlayWarmupView: NSView {
 
 /// The selection shell stays nonactivating; editor code may explicitly make
 /// it key only after the frozen screenshot is ready.
-final class OverlayPanel: NSPanel {
+final class OverlayPanel: NSPanel, NSWindowDelegate {
     private struct SurfaceSignature: Equatable {
         let frame: NSRect
         let scale: CGFloat
@@ -324,9 +324,25 @@ final class OverlayPanel: NSPanel {
             presentedSurface = nil
         }
         surfacePresentationToken &+= 1
+        // The frozen desktop fills this panel. Lock both frame movement and
+        // live resizing so screen-edge drags always reach SelectionView instead
+        // of moving or scaling the pre-captured background.
+        isMovable = false
+        isMovableByWindowBackground = false
+        styleMask.remove(.resizable)
         setFrame(screen.frame, display: false)
+        minSize = screen.frame.size
+        maxSize = screen.frame.size
+        contentMinSize = screen.frame.size
+        contentMaxSize = screen.frame.size
         configuredSurface = signature
+        delegate = self
         return surfacePresentationToken
+    }
+
+    func windowWillResize(_ sender: NSWindow, to frameSize: NSSize) -> NSSize {
+        guard sender === self, let configuredSurface else { return frameSize }
+        return configuredSurface.frame.size
     }
 
     func isConfigured(for screen: NSScreen) -> Bool {
