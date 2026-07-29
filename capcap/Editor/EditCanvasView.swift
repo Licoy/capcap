@@ -438,6 +438,13 @@ class EditCanvasView: NSView {
     private var redoStack: [EditorSnapshot] = []
     var canUndo: Bool { !undoStack.isEmpty }
     var canRedo: Bool { !redoStack.isEmpty }
+    /// State immediately before the first click in a possible double-click.
+    ///
+    /// Drawing tools handle a single click eagerly: pen/marker can add a dot,
+    /// numbered/emoji can add an item, and text can open an editor. If the
+    /// second click confirms the screenshot, restore this state first so that
+    /// the double-click gesture itself never changes the copied image.
+    private var confirmDoubleClickBaseline: RestorableState?
     /// Stash for drag-style operations and text edits — captured before the
     /// mutation begins, then either committed (drag actually moved / text
     /// edit produced a change) or discarded (just a click / cancel).
@@ -476,6 +483,42 @@ class EditCanvasView: NSView {
         needsDisplay = true
         notifyHistoryStateChanged()
         refreshCursorAtCurrentLocation()
+    }
+
+    /// Tracks a possible confirm double-click before the click reaches the
+    /// canvas. Returns `true` only for the second click after restoring the
+    /// pre-gesture state.
+    ///
+    /// Existing text annotations keep their established double-click-to-edit
+    /// behavior. Selection handles and action buttons also remain ordinary
+    /// editor controls rather than screenshot-confirm targets.
+    func handlePotentialConfirmDoubleClick(clickCount: Int, at point: NSPoint) -> Bool {
+        if clickCount == 1 {
+            confirmDoubleClickBaseline = nil
+            guard activeTextField == nil,
+                  hitTestSelectionHandle(at: point) == nil,
+                  hitTestSelectionAction(at: point) == nil
+            else {
+                return false
+            }
+            if let index = hitTestAnnotation(at: point),
+               annotations[index] is TextAnnotation {
+                return false
+            }
+            confirmDoubleClickBaseline = restorableState()
+            return false
+        }
+
+        guard clickCount >= 2, let baseline = confirmDoubleClickBaseline else {
+            return false
+        }
+        confirmDoubleClickBaseline = nil
+        restoreState(baseline)
+        return true
+    }
+
+    func discardPotentialConfirmDoubleClick() {
+        confirmDoubleClickBaseline = nil
     }
 
     private func apply(_ snapshot: EditorSnapshot) {

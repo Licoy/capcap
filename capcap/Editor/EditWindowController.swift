@@ -2069,6 +2069,57 @@ class EditWindowController {
         confirm()
     }
 
+    /// Called by the overlay's local mouse monitor before AppKit dispatches a
+    /// left click. This lets the editor preserve the selection's established
+    /// double-click-to-copy gesture even while the annotation canvas owns the
+    /// event.
+    func handleCanvasConfirmDoubleClick(_ event: NSEvent) -> Bool {
+        guard let canvasView, let hostSelectionView else { return false }
+
+        guard !isScrollCaptureBusy,
+              !isCropping,
+              hostSelectionView.selectionLocked,
+              hostSelectionView.selectionInteractionEnabled,
+              event.window === hostSelectionView.window
+        else {
+            canvasView.discardPotentialConfirmDoubleClick()
+            return false
+        }
+
+        let canvasPoint = canvasView.convert(event.locationInWindow, from: nil)
+        guard canvasView.visibleRect.contains(canvasPoint) else {
+            canvasView.discardPotentialConfirmDoubleClick()
+            return false
+        }
+
+        if event.clickCount >= 2 {
+            return canvasView.handlePotentialConfirmDoubleClick(
+                clickCount: event.clickCount,
+                at: canvasPoint
+            )
+        }
+
+        guard event.clickCount == 1 else {
+            canvasView.discardPotentialConfirmDoubleClick()
+            return false
+        }
+
+        let hostPoint = hostSelectionView.convert(event.locationInWindow, from: nil)
+        let hitView = hostSelectionView.hitTest(hostPoint)
+        let isEditorSurface = hitView === hostSelectionView
+            || hitView === canvasView
+            || hitView?.isDescendant(of: canvasView) == true
+        guard isEditorSurface else {
+            canvasView.discardPotentialConfirmDoubleClick()
+            return false
+        }
+
+        return canvasView.handlePotentialConfirmDoubleClick(
+            clickCount: event.clickCount,
+            at: canvasPoint
+        )
+    }
+
     /// Save-to-file (⌘S) entry point — mirrors `confirmFromKeyboard`'s phased
     /// behavior so the hotkey works regardless of which stage the editor is in.
     func saveFromKeyboard() {
@@ -2202,6 +2253,7 @@ class EditWindowController {
         hostSelectionView?.window?.ignoresMouseEvents = false
         canvasScrollView?.removeFromSuperview()
         canvasScrollView = nil
+        canvasView?.discardPotentialConfirmDoubleClick()
         canvasView = nil
         selectionChromeOverlay?.removeFromSuperview()
         selectionChromeOverlay = nil
