@@ -1754,12 +1754,11 @@ struct Defaults {
 
     /// Whether to show the magnifier color picker on the overlay's idle state
     /// (replaces the legacy "drag to screenshot" cursor chip when enabled).
-    /// Default is `false` so existing users keep the chip behavior unless they
-    /// explicitly opt in via Settings.
+    /// Default is `true` so new users get the magnifier experience immediately.
     static var idleColorLensEnabled: Bool {
         get {
             if defaults.object(forKey: "idleColorLensEnabled") == nil {
-                return false
+                return true
             }
             return defaults.bool(forKey: "idleColorLensEnabled")
         }
