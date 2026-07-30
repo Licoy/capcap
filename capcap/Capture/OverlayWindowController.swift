@@ -455,6 +455,9 @@ class OverlayWindowController {
         switch event {
         case .image(let displayID, let image):
             screenSnapshots[displayID] = image
+            if magnifierLensPanel != nil {
+                refreshMagnifierLensPanelContent()
+            }
             if let selectionView = selectionViewsByDisplayID[displayID] {
                 selectionView.setBackgroundSnapshot(
                     cgImage: image,
@@ -517,7 +520,7 @@ class OverlayWindowController {
     private func presentOverlay(generation: Int) {
         guard windows.isEmpty else { return }
 
-        // Cache each screen's AppKit frame so the idle color lens can map a
+        // Cache each screen's AppKit frame so the magnifier lens panel can map a
         // global mouse location onto the matching snapshot's pixel coords.
         screenFramesByDisplayID.removeAll(keepingCapacity: true)
         for screen in NSScreen.screens {
@@ -587,14 +590,13 @@ class OverlayWindowController {
         CATransaction.commit()
         triggerContext?.mark(.overlayOrderedFront)
 
-        chipWindow = CursorChipWindow(text: currentCursorChipText)
         if shouldShowMagnifierLensPanel {
             // Lens replaces the drag-to-screenshot hint while the overlay is
             // sitting in the idle state. Chip stays nil so its text doesn't
             // double up with the lens.
-            chipWindow = nil
             setupMagnifierLensPanel()
         } else {
+            chipWindow = CursorChipWindow(text: currentCursorChipText)
             chipWindow?.show()
         }
 
@@ -603,7 +605,7 @@ class OverlayWindowController {
                 return event
             }
             if self?.handleMagnifierLensPanelCopyShortcut(for: event) == true {
-                return nil
+                return event
             }
             if self?.editController?.confirmCropFromKeyboard(for: event) == true {
                 return nil
