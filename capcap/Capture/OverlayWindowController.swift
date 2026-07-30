@@ -1160,7 +1160,6 @@ class OverlayWindowController {
         let lens = MagnifierLensPanelWindow()
         magnifierLensPanel = lens
         magnifierLensPanelFormat = .hex
-        lens.setFormat(magnifierLensPanelFormat)
         lens.show()
         refreshMagnifierLensPanelContent()
     }
