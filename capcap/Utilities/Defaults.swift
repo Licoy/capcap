@@ -206,7 +206,6 @@ enum L10n {
     static var settingsMagnifierLensPanelMagnifiedSizeLabel: String { s("settingsMagnifierLensPanelMagnifiedSizeLabel") }
     static var settingsMagnifierLensPanelMagnificationLabel: String { s("settingsMagnifierLensPanelMagnificationLabel") }
     static var settingsMagnifierLensPanelOffsetLabel: String { s("settingsMagnifierLensPanelOffsetLabel") }
-    static var settingsMagnifierLensPanelBackgroundLabel: String { s("settingsMagnifierLensPanelBackgroundLabel") }
     static var settingsMagnifierLensPanelFollowSystemAppearanceTitle: String { s("settingsMagnifierLensPanelFollowSystemAppearanceTitle") }
     static var settingsMagnifierLensPanelFollowSystemAppearanceHint: String { s("settingsMagnifierLensPanelFollowSystemAppearanceHint") }
     static var settingsMagnifierLensPanelDarkBackgroundLabel: String { s("settingsMagnifierLensPanelDarkBackgroundLabel") }
@@ -1683,6 +1682,19 @@ struct Defaults {
         min(max(width, editorLineWidthMin), markerLineWidthMax)
     }
 
+    private static func clampedUnitInterval(_ value: Double) -> Double {
+        min(1, max(0, value))
+    }
+
+    private static func normalizedMagnifierLensPanelMagnifiedSize(_ value: Int) -> Int {
+        switch value {
+        case 96, 144, 192:
+            return value
+        default:
+            return 144
+        }
+    }
+
     static var lastBeautifyPresetID: String? {
         get { defaults.string(forKey: "lastBeautifyPresetID") }
         set { defaults.set(newValue, forKey: "lastBeautifyPresetID") }
@@ -1772,38 +1784,38 @@ struct Defaults {
     /// Stored as 0–1 RGBA components. Default: black with 70% alpha.
     static var magnifierLensPanelDarkBackgroundRed: Double {
         get { defaults.object(forKey: "magnifierLensPanelDarkBackgroundRed") == nil ? 0 : defaults.double(forKey: "magnifierLensPanelDarkBackgroundRed") }
-        set { defaults.set(newValue, forKey: "magnifierLensPanelDarkBackgroundRed") }
+        set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelDarkBackgroundRed") }
     }
     static var magnifierLensPanelDarkBackgroundGreen: Double {
         get { defaults.object(forKey: "magnifierLensPanelDarkBackgroundGreen") == nil ? 0 : defaults.double(forKey: "magnifierLensPanelDarkBackgroundGreen") }
-        set { defaults.set(newValue, forKey: "magnifierLensPanelDarkBackgroundGreen") }
+        set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelDarkBackgroundGreen") }
     }
     static var magnifierLensPanelDarkBackgroundBlue: Double {
         get { defaults.object(forKey: "magnifierLensPanelDarkBackgroundBlue") == nil ? 0 : defaults.double(forKey: "magnifierLensPanelDarkBackgroundBlue") }
-        set { defaults.set(newValue, forKey: "magnifierLensPanelDarkBackgroundBlue") }
+        set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelDarkBackgroundBlue") }
     }
     static var magnifierLensPanelDarkBackgroundAlpha: Double {
         get { defaults.object(forKey: "magnifierLensPanelDarkBackgroundAlpha") == nil ? 0.7 : defaults.double(forKey: "magnifierLensPanelDarkBackgroundAlpha") }
-        set { defaults.set(min(1, max(0, newValue)), forKey: "magnifierLensPanelDarkBackgroundAlpha") }
+        set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelDarkBackgroundAlpha") }
     }
 
     /// Background color used in light mode (when `magnifierLensPanelFollowSystemAppearance` is on).
     /// Stored as 0–1 RGBA components. Default: white with 80% alpha.
     static var magnifierLensPanelLightBackgroundRed: Double {
         get { defaults.object(forKey: "magnifierLensPanelLightBackgroundRed") == nil ? 1 : defaults.double(forKey: "magnifierLensPanelLightBackgroundRed") }
-        set { defaults.set(newValue, forKey: "magnifierLensPanelLightBackgroundRed") }
+        set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelLightBackgroundRed") }
     }
     static var magnifierLensPanelLightBackgroundGreen: Double {
         get { defaults.object(forKey: "magnifierLensPanelLightBackgroundGreen") == nil ? 1 : defaults.double(forKey: "magnifierLensPanelLightBackgroundGreen") }
-        set { defaults.set(newValue, forKey: "magnifierLensPanelLightBackgroundGreen") }
+        set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelLightBackgroundGreen") }
     }
     static var magnifierLensPanelLightBackgroundBlue: Double {
         get { defaults.object(forKey: "magnifierLensPanelLightBackgroundBlue") == nil ? 1 : defaults.double(forKey: "magnifierLensPanelLightBackgroundBlue") }
-        set { defaults.set(newValue, forKey: "magnifierLensPanelLightBackgroundBlue") }
+        set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelLightBackgroundBlue") }
     }
     static var magnifierLensPanelLightBackgroundAlpha: Double {
         get { defaults.object(forKey: "magnifierLensPanelLightBackgroundAlpha") == nil ? 0.8 : defaults.double(forKey: "magnifierLensPanelLightBackgroundAlpha") }
-        set { defaults.set(min(1, max(0, newValue)), forKey: "magnifierLensPanelLightBackgroundAlpha") }
+        set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelLightBackgroundAlpha") }
     }
 
     /// When `true`, the lens picks the dark/light background color based on the
@@ -1826,10 +1838,10 @@ struct Defaults {
             if defaults.object(forKey: "magnifierLensPanelMagnifiedSize") == nil {
                 return 144
             }
-            return defaults.integer(forKey: "magnifierLensPanelMagnifiedSize")
+            return normalizedMagnifierLensPanelMagnifiedSize(defaults.integer(forKey: "magnifierLensPanelMagnifiedSize"))
         }
         set {
-            defaults.set(newValue, forKey: "magnifierLensPanelMagnifiedSize")
+            defaults.set(normalizedMagnifierLensPanelMagnifiedSize(newValue), forKey: "magnifierLensPanelMagnifiedSize")
         }
     }
 
@@ -1925,19 +1937,19 @@ struct Defaults {
     /// Default: #A8BDFC at 65% alpha.
     static var magnifierLensPanelCrosshairRed: Double {
         get { defaults.object(forKey: "magnifierLensPanelCrosshairRed") == nil ? 0xA8 / 255.0 : defaults.double(forKey: "magnifierLensPanelCrosshairRed") }
-        set { defaults.set(newValue, forKey: "magnifierLensPanelCrosshairRed") }
+        set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelCrosshairRed") }
     }
     static var magnifierLensPanelCrosshairGreen: Double {
         get { defaults.object(forKey: "magnifierLensPanelCrosshairGreen") == nil ? 0xBD / 255.0 : defaults.double(forKey: "magnifierLensPanelCrosshairGreen") }
-        set { defaults.set(newValue, forKey: "magnifierLensPanelCrosshairGreen") }
+        set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelCrosshairGreen") }
     }
     static var magnifierLensPanelCrosshairBlue: Double {
         get { defaults.object(forKey: "magnifierLensPanelCrosshairBlue") == nil ? 0xFC / 255.0 : defaults.double(forKey: "magnifierLensPanelCrosshairBlue") }
-        set { defaults.set(newValue, forKey: "magnifierLensPanelCrosshairBlue") }
+        set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelCrosshairBlue") }
     }
     static var magnifierLensPanelCrosshairAlpha: Double {
         get { defaults.object(forKey: "magnifierLensPanelCrosshairAlpha") == nil ? 0.65 : defaults.double(forKey: "magnifierLensPanelCrosshairAlpha") }
-        set { defaults.set(min(1, max(0, newValue)), forKey: "magnifierLensPanelCrosshairAlpha") }
+        set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelCrosshairAlpha") }
     }
 
     /// Crosshair line width in points. Default 6, clamped to 1–30.

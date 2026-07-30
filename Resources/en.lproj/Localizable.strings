@@ -578,7 +578,6 @@
 "settingsMagnifierLensPanelMagnifiedSizeLabel" = "Magnified area size";
 "settingsMagnifierLensPanelMagnificationLabel" = "Magnification";
 "settingsMagnifierLensPanelOffsetLabel" = "Panel offset (X, Y)";
-"settingsMagnifierLensPanelBackgroundLabel" = "Background colour";
 "settingsMagnifierLensPanelFollowSystemAppearanceTitle" = "Follow system appearance";
 "settingsMagnifierLensPanelFollowSystemAppearanceHint" = "Auto-pick the dark or light background based on the current macOS appearance";
 "settingsMagnifierLensPanelDarkBackgroundLabel" = "Dark mode";

@@ -578,7 +578,6 @@
 "settingsMagnifierLensPanelMagnifiedSizeLabel" = "확대 영역 크기";
 "settingsMagnifierLensPanelMagnificationLabel" = "확대 배율";
 "settingsMagnifierLensPanelOffsetLabel" = "패널 오프셋 (X, Y)";
-"settingsMagnifierLensPanelBackgroundLabel" = "배경색";
 "settingsMagnifierLensPanelFollowSystemAppearanceTitle" = "시스템 모양 따라가기";
 "settingsMagnifierLensPanelFollowSystemAppearanceHint" = "현재 macOS 모양에 따라 어두움/밝음 배경 자동 선택";
 "settingsMagnifierLensPanelDarkBackgroundLabel" = "다크 모드";

@@ -88,7 +88,6 @@ class SettingsView: NSView {
     private var magnifierLensPanelCrosshairWidthField: NSTextField!
     private var magnifierLensPanelPreview: MagnifierPreviewView!
 
-    private var magnifierLensPanelLastEditedIsDark: Bool = true
     private var historyCacheSlider: SettingsTickSlider!
     private var historyCacheValueLabel: NSTextField!
     private var clipboardTextHistoryLimitSlider: SettingsTickSlider!

@@ -578,7 +578,6 @@
 "settingsMagnifierLensPanelMagnifiedSizeLabel" = "Kích thước vùng phóng to";
 "settingsMagnifierLensPanelMagnificationLabel" = "Độ phóng đại";
 "settingsMagnifierLensPanelOffsetLabel" = "Lệch bảng (X, Y)";
-"settingsMagnifierLensPanelBackgroundLabel" = "Màu nền";
 "settingsMagnifierLensPanelFollowSystemAppearanceTitle" = "Theo giao diện hệ thống";
 "settingsMagnifierLensPanelFollowSystemAppearanceHint" = "Tự chọn nền sáng hoặc tối theo giao diện macOS hiện tại";
 "settingsMagnifierLensPanelDarkBackgroundLabel" = "Chế độ tối";

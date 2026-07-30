@@ -578,7 +578,6 @@
 "settingsMagnifierLensPanelMagnifiedSizeLabel" = "放大区尺寸";
 "settingsMagnifierLensPanelMagnificationLabel" = "放大倍率";
 "settingsMagnifierLensPanelOffsetLabel" = "面板偏移 (X, Y)";
-"settingsMagnifierLensPanelBackgroundLabel" = "背景颜色";
 "settingsMagnifierLensPanelFollowSystemAppearanceTitle" = "跟随系统外观";
 "settingsMagnifierLensPanelFollowSystemAppearanceHint" = "根据 macOS 当前外观自动选择深色或浅色背景";
 "settingsMagnifierLensPanelDarkBackgroundLabel" = "深色模式";

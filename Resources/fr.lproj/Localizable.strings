@@ -578,7 +578,6 @@
 "settingsMagnifierLensPanelMagnifiedSizeLabel" = "Taille de la zone agrandie";
 "settingsMagnifierLensPanelMagnificationLabel" = "Grossissement";
 "settingsMagnifierLensPanelOffsetLabel" = "Décalage du panneau (X, Y)";
-"settingsMagnifierLensPanelBackgroundLabel" = "Couleur de fond";
 "settingsMagnifierLensPanelFollowSystemAppearanceTitle" = "Suivre l'apparence du système";
 "settingsMagnifierLensPanelFollowSystemAppearanceHint" = "Choisit automatiquement le fond sombre ou clair selon l'apparence macOS";
 "settingsMagnifierLensPanelDarkBackgroundLabel" = "Mode sombre";

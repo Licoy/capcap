@@ -578,7 +578,6 @@
 "settingsMagnifierLensPanelMagnifiedSizeLabel" = "拡大エリアのサイズ";
 "settingsMagnifierLensPanelMagnificationLabel" = "拡大倍率";
 "settingsMagnifierLensPanelOffsetLabel" = "パネルオフセット (X, Y)";
-"settingsMagnifierLensPanelBackgroundLabel" = "背景色";
 "settingsMagnifierLensPanelFollowSystemAppearanceTitle" = "システムの外観に追従";
 "settingsMagnifierLensPanelFollowSystemAppearanceHint" = "現在の macOS 外観に応じてダーク/ライト背景を自動選択";
 "settingsMagnifierLensPanelDarkBackgroundLabel" = "ダークモード";

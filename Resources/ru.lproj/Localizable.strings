@@ -578,7 +578,6 @@
 "settingsMagnifierLensPanelMagnifiedSizeLabel" = "Размер области увеличения";
 "settingsMagnifierLensPanelMagnificationLabel" = "Увеличение";
 "settingsMagnifierLensPanelOffsetLabel" = "Смещение панели (X, Y)";
-"settingsMagnifierLensPanelBackgroundLabel" = "Цвет фона";
 "settingsMagnifierLensPanelFollowSystemAppearanceTitle" = "Следовать оформлению системы";
 "settingsMagnifierLensPanelFollowSystemAppearanceHint" = "Авто-выбор тёмного или светлого фона по текущему оформлению macOS";
 "settingsMagnifierLensPanelDarkBackgroundLabel" = "Тёмное оформление";
