@@ -384,6 +384,7 @@ enum L10n {
     static var tipQRCode: String { s("tipQRCode") }
     static var tipEmoji: String { s("tipEmoji") }
     static var tipMoreEmoji: String { s("tipMoreEmoji") }
+    static var tipMoreBeautifyPresets: String { s("tipMoreBeautifyPresets") }
     static var tipInsertImage: String { s("tipInsertImage") }
     static var tipColorPicker: String { s("tipColorPicker") }
     static var tipPickedInkBottle: String { s("tipPickedInkBottle") }
@@ -414,6 +415,20 @@ enum L10n {
     static var beautifyPresetDeepPurple: String { s("beautifyPresetDeepPurple") }
     static var beautifyPresetNeutralGray: String { s("beautifyPresetNeutralGray") }
     static var beautifyPresetWallpaper: String { s("beautifyPresetWallpaper") }
+    static var beautifyPresetAurora: String { s("beautifyPresetAurora") }
+    static var beautifyPresetSunsetGlow: String { s("beautifyPresetSunsetGlow") }
+    static var beautifyPresetOceanBlue: String { s("beautifyPresetOceanBlue") }
+    static var beautifyPresetLavenderMist: String { s("beautifyPresetLavenderMist") }
+    static var beautifyPresetForestMint: String { s("beautifyPresetForestMint") }
+    static var beautifyPresetRoseGold: String { s("beautifyPresetRoseGold") }
+    static var beautifyPresetMorningSky: String { s("beautifyPresetMorningSky") }
+    static var beautifyPresetCandyPop: String { s("beautifyPresetCandyPop") }
+    static var beautifyPresetCitrusGlow: String { s("beautifyPresetCitrusGlow") }
+    static var beautifyPresetMidnight: String { s("beautifyPresetMidnight") }
+    static var beautifyPresetCoralBloom: String { s("beautifyPresetCoralBloom") }
+    static var beautifyPresetArcticIce: String { s("beautifyPresetArcticIce") }
+    static var beautifyPresetSageCream: String { s("beautifyPresetSageCream") }
+    static var beautifyPresetGraphite: String { s("beautifyPresetGraphite") }
     static var beautifyShadowEffect: String { s("beautifyShadowEffect") }
     static var beautifyAutoToggleLabel: String { s("beautifyAutoToggleLabel") }
     static var beautifyAutoToggleHint: String { s("beautifyAutoToggleHint") }
@@ -1684,6 +1699,23 @@ struct Defaults {
         set { defaults.set(newValue, forKey: "lastBeautifyPresetID") }
     }
 
+    static var beautifyToolbarPresetIDs: [String] {
+        get {
+            normalizedUniqueStringList(
+                defaults.stringArray(forKey: "beautifyToolbarPresetIDs") ?? [],
+                limit: 8
+            )
+        }
+        set {
+            let normalized = normalizedUniqueStringList(newValue, limit: 8)
+            if normalized.isEmpty {
+                defaults.removeObject(forKey: "beautifyToolbarPresetIDs")
+            } else {
+                defaults.set(normalized, forKey: "beautifyToolbarPresetIDs")
+            }
+        }
+    }
+
     static var lastBeautifyPadding: Double {
         get {
             if defaults.object(forKey: "lastBeautifyPadding") == nil {
@@ -1707,6 +1739,17 @@ struct Defaults {
         set {
             defaults.set(newValue, forKey: "lastBeautifyShadowEnabled")
         }
+    }
+
+    private static func normalizedUniqueStringList(_ values: [String], limit: Int) -> [String] {
+        var result: [String] = []
+        for value in values {
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty, !result.contains(trimmed) else { continue }
+            result.append(trimmed)
+            if result.count == limit { break }
+        }
+        return result
     }
 
     /// When true, the annotation editor opens with beautify already active,

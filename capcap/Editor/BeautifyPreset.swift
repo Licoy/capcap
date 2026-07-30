@@ -52,8 +52,11 @@ struct BeautifyPreset: Equatable {
         isWallpaper: true
     )
 
-    static let defaults: [BeautifyPreset] = [
+    /// Compact set shown directly in the editor and Settings. The expanded
+    /// picker exposes `defaults`, which appends the larger gradient catalog.
+    static let primaryPresets: [BeautifyPreset] = [
         transparent,
+        wallpaper,
         BeautifyPreset(
             id: "peach-blue",
             displayName: L10n.beautifyPresetPeachBlue,
@@ -110,8 +113,98 @@ struct BeautifyPreset: Equatable {
             endColor:   NSColor(red: 0xCE/255.0, green: 0xD4/255.0, blue: 0xDA/255.0, alpha: 1),
             angleDegrees: 135
         ),
-        wallpaper,
     ]
+
+    static let additionalPresets: [BeautifyPreset] = [
+        gradient(
+            id: "aurora",
+            displayName: L10n.beautifyPresetAurora,
+            startHex: 0xA8E6CF,
+            endHex: 0x8B80F9
+        ),
+        gradient(
+            id: "sunset-glow",
+            displayName: L10n.beautifyPresetSunsetGlow,
+            startHex: 0xFFB36B,
+            endHex: 0xF26CA7
+        ),
+        gradient(
+            id: "ocean-blue",
+            displayName: L10n.beautifyPresetOceanBlue,
+            startHex: 0x7FDBFF,
+            endHex: 0x5B7CFA
+        ),
+        gradient(
+            id: "lavender-mist",
+            displayName: L10n.beautifyPresetLavenderMist,
+            startHex: 0xD8C7FF,
+            endHex: 0xF6C1E7
+        ),
+        gradient(
+            id: "forest-mint",
+            displayName: L10n.beautifyPresetForestMint,
+            startHex: 0x6BCB9A,
+            endHex: 0xD7F5C8
+        ),
+        gradient(
+            id: "rose-gold",
+            displayName: L10n.beautifyPresetRoseGold,
+            startHex: 0xF6C1C7,
+            endHex: 0xD9A66F
+        ),
+        gradient(
+            id: "morning-sky",
+            displayName: L10n.beautifyPresetMorningSky,
+            startHex: 0xBEE9FF,
+            endHex: 0xC8C4FF
+        ),
+        gradient(
+            id: "candy-pop",
+            displayName: L10n.beautifyPresetCandyPop,
+            startHex: 0xFF9ECD,
+            endHex: 0x9B8CFF
+        ),
+        gradient(
+            id: "citrus-glow",
+            displayName: L10n.beautifyPresetCitrusGlow,
+            startHex: 0xFFE27A,
+            endHex: 0xFF9F5A
+        ),
+        gradient(
+            id: "midnight",
+            displayName: L10n.beautifyPresetMidnight,
+            startHex: 0x243B6B,
+            endHex: 0x6B4FB3
+        ),
+        gradient(
+            id: "coral-bloom",
+            displayName: L10n.beautifyPresetCoralBloom,
+            startHex: 0xFF8A7A,
+            endHex: 0xFFC3A0
+        ),
+        gradient(
+            id: "arctic-ice",
+            displayName: L10n.beautifyPresetArcticIce,
+            startHex: 0x9CECFB,
+            endHex: 0x65C7F7
+        ),
+        gradient(
+            id: "sage-cream",
+            displayName: L10n.beautifyPresetSageCream,
+            startHex: 0xB8D8BA,
+            endHex: 0xF3E9C9
+        ),
+        gradient(
+            id: "graphite",
+            displayName: L10n.beautifyPresetGraphite,
+            startHex: 0x53565F,
+            endHex: 0x1F2430
+        ),
+    ]
+
+    static var defaults: [BeautifyPreset] {
+        primaryPresets + additionalPresets
+    }
 
     static func preset(forID id: String?) -> BeautifyPreset? {
         guard let id else { return nil }
@@ -119,6 +212,77 @@ struct BeautifyPreset: Equatable {
     }
 
     static var defaultPreset: BeautifyPreset {
-        preset(forID: Defaults.lastBeautifyPresetID) ?? defaults[0]
+        preset(forID: Defaults.lastBeautifyPresetID) ?? primaryPresets[0]
+    }
+
+    static func toolbarPresets(preferredIDs: [String]) -> [BeautifyPreset] {
+        let pinnedPresets = [transparent, wallpaper]
+        let pinnedIDs = Set(pinnedPresets.map(\.id))
+        var movablePresets: [BeautifyPreset] = []
+
+        for id in preferredIDs + primaryPresets.map(\.id) {
+            guard
+                !pinnedIDs.contains(id),
+                let preset = preset(forID: id),
+                !movablePresets.contains(where: { $0.id == preset.id })
+            else {
+                continue
+            }
+            movablePresets.append(preset)
+            if movablePresets.count == primaryPresets.count - pinnedPresets.count {
+                break
+            }
+        }
+
+        return pinnedPresets + movablePresets
+    }
+
+    static func promotedToolbarPresetIDs(
+        selecting presetID: String,
+        currentIDs: [String]
+    ) -> [String] {
+        let pinnedIDs = Set([transparent.id, wallpaper.id])
+        let currentMovableIDs = toolbarPresets(preferredIDs: currentIDs)
+            .map(\.id)
+            .filter { !pinnedIDs.contains($0) }
+
+        guard preset(forID: presetID) != nil, !pinnedIDs.contains(presetID) else {
+            return currentMovableIDs
+        }
+
+        return Array(
+            ([presetID] + currentMovableIDs.filter { $0 != presetID })
+                .prefix(primaryPresets.count - pinnedIDs.count)
+        )
+    }
+
+    static func pickerPresets(excluding toolbarPresets: [BeautifyPreset]) -> [BeautifyPreset] {
+        let toolbarPresetIDs = Set(toolbarPresets.map(\.id))
+        return defaults.filter { !toolbarPresetIDs.contains($0.id) }
+    }
+
+    private static func gradient(
+        id: String,
+        displayName: String,
+        startHex: UInt32,
+        endHex: UInt32,
+        angleDegrees: CGFloat = 135
+    ) -> BeautifyPreset {
+        BeautifyPreset(
+            id: id,
+            displayName: displayName,
+            startColor: color(hex: startHex),
+            endColor: color(hex: endHex),
+            angleDegrees: angleDegrees
+        )
+    }
+
+    private static func color(hex: UInt32) -> NSColor {
+        NSColor(
+            red: CGFloat((hex >> 16) & 0xFF) / 255,
+            green: CGFloat((hex >> 8) & 0xFF) / 255,
+            blue: CGFloat(hex & 0xFF) / 255,
+            alpha: 1
+        )
     }
 }

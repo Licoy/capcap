@@ -148,6 +148,8 @@ class EditWindowController {
     private var currentEmoji: String?
     private var recentEmojis: [String] = Defaults.recentEmojis
     private var emojiPopover: NSPopover?
+    private var beautifyPresetPopover: NSPopover?
+    private var beautifyToolbarPresetIDs: [String] = Defaults.beautifyToolbarPresetIDs
     /// Last color sampled from the toolbar eyedropper. Persisted locally and
     /// shown as an ink-bottle control for color-capable annotation tools.
     private var pickedColorSwatch: NSColor?
@@ -539,6 +541,7 @@ class EditWindowController {
 
     private func showSubToolbar(for tool: EditTool) {
         dismissEmojiPopover()
+        dismissBeautifyPresetPopover()
         subToolbarView?.removeFromSuperview()
         subToolbarView = nil
 
@@ -851,6 +854,7 @@ class EditWindowController {
     }
 
     private func showEmojiPicker(anchoredTo anchor: NSView, subToolbar: EmojiSubToolbar?) {
+        dismissBeautifyPresetPopover()
         dismissEmojiPopover()
 
         let picker = EmojiPickerView(
@@ -877,6 +881,11 @@ class EditWindowController {
     private func dismissEmojiPopover() {
         emojiPopover?.performClose(nil)
         emojiPopover = nil
+    }
+
+    private func dismissBeautifyPresetPopover() {
+        beautifyPresetPopover?.performClose(nil)
+        beautifyPresetPopover = nil
     }
 
     private func promoteRecentEmoji(_ emoji: String) {
@@ -1038,6 +1047,7 @@ class EditWindowController {
         guard let canvasView, let container = beautifyContainerView else {
             return
         }
+        dismissBeautifyPresetPopover()
         currentBeautifyPreset = nil
 
         canvasView.beautifyCornerRadius = nil
@@ -1115,9 +1125,13 @@ class EditWindowController {
             return
         }
 
+        dismissBeautifyPresetPopover()
         beautifySubToolbarView?.removeFromSuperview()
 
-        let width = BeautifySubToolbar.preferredWidth(presetCount: BeautifyPreset.defaults.count)
+        let toolbarPresets = BeautifyPreset.toolbarPresets(
+            preferredIDs: beautifyToolbarPresetIDs
+        )
+        let width = BeautifySubToolbar.preferredWidth(presetCount: toolbarPresets.count)
         let height: CGFloat = 36
         let subRect = subToolbarRect(
             width: width,
@@ -1128,14 +1142,18 @@ class EditWindowController {
 
         let view = BeautifySubToolbar(
             frame: subRect,
-            presets: BeautifyPreset.defaults,
+            presets: toolbarPresets,
             screen: screen,
             initialPadding: currentBeautifyPadding,
             initialShadowEnabled: currentBeautifyShadowEnabled
         )
         view.currentPresetID = preset.id
         view.onPresetSelected = { [weak self] selected in
+            self?.dismissBeautifyPresetPopover()
             self?.applyBeautifyPreset(selected)
+        }
+        view.onMoreRequested = { [weak self, weak view] anchor in
+            self?.showBeautifyPresetPicker(anchoredTo: anchor, subToolbar: view)
         }
         view.onPaddingChanged = { [weak self] padding in
             self?.applyBeautifyPadding(padding)
@@ -1146,6 +1164,61 @@ class EditWindowController {
         styleFloatingHUD(view)
         hostSelectionView.addSubview(view)
         beautifySubToolbarView = view
+    }
+
+    private func showBeautifyPresetPicker(
+        anchoredTo anchor: NSView,
+        subToolbar: BeautifySubToolbar?
+    ) {
+        dismissEmojiPopover()
+        dismissBeautifyPresetPopover()
+
+        let toolbarPresets = subToolbar?.presets ?? BeautifyPreset.toolbarPresets(
+            preferredIDs: beautifyToolbarPresetIDs
+        )
+        let pickerPresets = BeautifyPreset.pickerPresets(
+            excluding: toolbarPresets
+        )
+        let pickerSize = BeautifyPresetPickerView.preferredSize(
+            itemCount: pickerPresets.count
+        )
+        let picker = BeautifyPresetPickerView(
+            frame: NSRect(origin: .zero, size: pickerSize),
+            presets: pickerPresets,
+            screen: screen,
+            selectedPresetID: currentBeautifyPreset?.id
+        )
+        picker.onPresetSelected = { [weak self, weak subToolbar] preset in
+            self?.promoteBeautifyPresetToToolbar(preset, subToolbar: subToolbar)
+            self?.applyBeautifyPreset(preset)
+            self?.dismissBeautifyPresetPopover()
+        }
+
+        let viewController = NSViewController()
+        viewController.view = picker
+
+        let popover = NSPopover()
+        popover.behavior = .transient
+        popover.animates = true
+        popover.contentSize = pickerSize
+        popover.contentViewController = viewController
+        popover.show(relativeTo: anchor.bounds, of: anchor, preferredEdge: .maxY)
+        beautifyPresetPopover = popover
+    }
+
+    private func promoteBeautifyPresetToToolbar(
+        _ preset: BeautifyPreset,
+        subToolbar: BeautifySubToolbar?
+    ) {
+        beautifyToolbarPresetIDs = BeautifyPreset.promotedToolbarPresetIDs(
+            selecting: preset.id,
+            currentIDs: beautifyToolbarPresetIDs
+        )
+        Defaults.beautifyToolbarPresetIDs = beautifyToolbarPresetIDs
+        subToolbar?.updatePresets(
+            BeautifyPreset.toolbarPresets(preferredIDs: beautifyToolbarPresetIDs)
+        )
+        subToolbar?.currentPresetID = preset.id
     }
 
     private func updateCanvasFrameForBeautify() {
@@ -2264,6 +2337,7 @@ class EditWindowController {
         toolbarView = nil
         sideToolbarView = nil
         dismissEmojiPopover()
+        dismissBeautifyPresetPopover()
         subToolbarView?.removeFromSuperview()
         subToolbarView = nil
         beautifySubToolbarView?.removeFromSuperview()
@@ -3359,9 +3433,7 @@ private final class ScrollPreviewWindow: NSPanel {
 private final class EmojiSubToolbar: NSView {
     static let preferredVisibleWidth: CGFloat = horizontalPad * 2
         + moreButtonSize
-        + moreSeparatorGap
-        + separatorWidth
-        + emojiSeparatorGap
+        + moreButtonGap
         + CGFloat(visibleEmojiCount) * itemSize
         + CGFloat(visibleEmojiCount - 1) * itemGap
     static let minimumVisibleWidth: CGFloat = preferredVisibleWidth
@@ -3375,8 +3447,10 @@ private final class EmojiSubToolbar: NSView {
     var onEmojiSelected: ((String) -> Void)?
     var onMoreRequested: ((NSView) -> Void)?
 
-    private let moreButton = EmojiMoreButton(frame: .zero)
-    private let separatorView = AdaptiveSeparatorView()
+    private let moreButton = MoreOptionsButton(
+        frame: .zero,
+        toolTip: L10n.tipMoreEmoji
+    )
     private var emojiViews: [EmojiChoiceView] = []
 
     private static let visibleEmojiCount = 10
@@ -3384,9 +3458,7 @@ private final class EmojiSubToolbar: NSView {
     private static let itemGap: CGFloat = 4
     private static let horizontalPad: CGFloat = 8
     private static let moreButtonSize: CGFloat = 30
-    private static let moreSeparatorGap: CGFloat = 8
-    private static let emojiSeparatorGap: CGFloat = 8
-    private static let separatorWidth: CGFloat = 1
+    private static let moreButtonGap: CGFloat = 8
 
     init(frame: NSRect, emojis: [String], selectedEmoji: String?) {
         self.emojis = emojis
@@ -3405,8 +3477,6 @@ private final class EmojiSubToolbar: NSView {
         moreButton.target = self
         moreButton.action = #selector(showMoreEmojiPicker)
         addSubview(moreButton)
-
-        addSubview(separatorView)
 
         rebuildEmojiViews()
     }
@@ -3431,14 +3501,6 @@ private final class EmojiSubToolbar: NSView {
             y: centerY - Self.moreButtonSize / 2,
             width: Self.moreButtonSize,
             height: Self.moreButtonSize
-        )
-
-        let separatorX = moreButton.frame.minX - Self.moreSeparatorGap - Self.separatorWidth
-        separatorView.frame = NSRect(
-            x: separatorX,
-            y: 8,
-            width: Self.separatorWidth,
-            height: max(1, bounds.height - 16)
         )
     }
 
@@ -3651,33 +3713,37 @@ private final class EmojiChoiceView: NSView {
     }
 }
 
-private final class EmojiMoreButton: NSButton {
+private final class MoreOptionsButton: NSButton {
+    var isActive = false {
+        didSet { needsDisplay = true }
+    }
+
     private var hoverTrackingArea: NSTrackingArea?
     private var isHovering = false {
         didSet { needsDisplay = true }
     }
 
-    override init(frame frameRect: NSRect) {
+    init(frame frameRect: NSRect, toolTip: String) {
         super.init(frame: frameRect)
-        commonInit()
+        configure(toolTip: toolTip)
     }
 
     required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        commonInit()
+        fatalError("init(coder:) has not been implemented")
     }
 
-    private func commonInit() {
+    private func configure(toolTip: String) {
         bezelStyle = .regularSquare
         isBordered = false
         setButtonType(.momentaryPushIn)
         imagePosition = .imageOnly
-        toolTip = L10n.tipMoreEmoji
+        self.toolTip = toolTip
+        setAccessibilityLabel(toolTip)
         contentTintColor = .secondaryLabelColor
         wantsLayer = true
         (cell as? NSButtonCell)?.highlightsBy = []
 
-        if let image = NSImage(systemSymbolName: "ellipsis.circle", accessibilityDescription: L10n.tipMoreEmoji) {
+        if let image = NSImage(systemSymbolName: "ellipsis.circle", accessibilityDescription: toolTip) {
             self.image = image.withSymbolConfiguration(
                 NSImage.SymbolConfiguration(pointSize: 17, weight: .medium)
             )
@@ -3715,12 +3781,17 @@ private final class EmojiMoreButton: NSButton {
     }
 
     override func draw(_ dirtyRect: NSRect) {
-        let active = isHovering || isHighlighted
-        contentTintColor = active ? .labelColor : .secondaryLabelColor
-        if active {
+        let emphasized = isHovering || isHighlighted || isActive
+        contentTintColor = isActive ? accentGreen : (emphasized ? .labelColor : .secondaryLabelColor)
+        if emphasized {
             let bg = NSBezierPath(roundedRect: bounds.insetBy(dx: 1.5, dy: 1.5), xRadius: 7, yRadius: 7)
-            AdaptiveChrome.subtleFill.setFill()
+            (isActive ? AdaptiveChrome.selectedFill : AdaptiveChrome.subtleFill).setFill()
             bg.fill()
+            if isActive {
+                accentGreen.setStroke()
+                bg.lineWidth = 1.2
+                bg.stroke()
+            }
         }
         super.draw(dirtyRect)
     }
@@ -5281,6 +5352,7 @@ private final class HUDCheckboxButton: NSButton {
 
 private class BeautifySubToolbar: NSView {
     var onPresetSelected: ((BeautifyPreset) -> Void)?
+    var onMoreRequested: ((NSView) -> Void)?
     var currentPresetID: String? {
         didSet { updateSelection() }
     }
@@ -5289,19 +5361,34 @@ private class BeautifySubToolbar: NSView {
     var onShadowEnabledChanged: ((Bool) -> Void)?
 
     private var swatchButtons: [BeautifySwatchView] = []
-    private let presets: [BeautifyPreset]
+    private(set) var presets: [BeautifyPreset]
     private let initialPadding: CGFloat
     private let initialShadowEnabled: Bool
     private let screen: NSScreen
+    private let moreButton = MoreOptionsButton(
+        frame: .zero,
+        toolTip: L10n.tipMoreBeautifyPresets
+    )
     private var paddingSlider: HUDSlider?
     private var shadowCheckbox: HUDCheckboxButton?
-    private let swatchDiameter: CGFloat = 24
-    private let swatchSpacing: CGFloat = 8
-    private let innerPadding: CGFloat = 12
-    private let sliderWidth: CGFloat = 120
-    private let sliderHeight: CGFloat = 20
+    private let swatchDiameter: CGFloat = BeautifySubToolbar.swatchDiameter
+    private let swatchSpacing: CGFloat = BeautifySubToolbar.swatchSpacing
+    private let innerPadding: CGFloat = BeautifySubToolbar.innerPadding
+    private let sliderWidth: CGFloat = BeautifySubToolbar.sliderWidth
+    private let sliderHeight: CGFloat = BeautifySubToolbar.sliderHeight
     private let checkboxWidth: CGFloat = BeautifySubToolbar.preferredCheckboxWidth()
-    private let checkboxHeight: CGFloat = 20
+    private let checkboxHeight: CGFloat = BeautifySubToolbar.checkboxHeight
+
+    private static let swatchDiameter: CGFloat = 24
+    private static let swatchSpacing: CGFloat = 8
+    private static let innerPadding: CGFloat = 12
+    private static let sectionGap: CGFloat = 6
+    private static let separatorWidth: CGFloat = 1
+    private static let moreButtonSize: CGFloat = 30
+    private static let sliderWidth: CGFloat = 120
+    private static let sliderHeight: CGFloat = 20
+    private static let checkboxHeight: CGFloat = 20
+    private static let trailingPadding: CGFloat = 12
 
     init(
         frame: NSRect,
@@ -5325,15 +5412,16 @@ private class BeautifySubToolbar: NSView {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     static func preferredWidth(presetCount: Int) -> CGFloat {
-        let diameter: CGFloat = 24
-        let spacing: CGFloat = 8
-        let innerPad: CGFloat = 12
-        let separatorGap: CGFloat = 10
-        let sliderWidth: CGFloat = 120
         let checkboxWidth: CGFloat = preferredCheckboxWidth()
-        let trailingPad: CGFloat = 12
-        let swatches = CGFloat(presetCount) * diameter + CGFloat(max(presetCount - 1, 0)) * spacing
-        return innerPad + swatches + separatorGap + sliderWidth + separatorGap + checkboxWidth + trailingPad
+        let swatches = CGFloat(presetCount) * swatchDiameter
+            + CGFloat(max(presetCount - 1, 0)) * swatchSpacing
+        let moreButtonSection = sectionGap + moreButtonSize
+        let separatedSlider = sectionGap + separatorWidth + sectionGap
+            + sliderWidth
+        let separatedCheckbox = sectionGap + separatorWidth + sectionGap
+            + checkboxWidth
+        return innerPadding + swatches + moreButtonSection + separatedSlider
+            + separatedCheckbox + trailingPadding
     }
 
     private static func preferredCheckboxWidth() -> CGFloat {
@@ -5343,43 +5431,25 @@ private class BeautifySubToolbar: NSView {
     }
 
     private func setup() {
-        var x: CGFloat = innerPadding
+        rebuildSwatches()
+
+        var x = innerPadding
+            + CGFloat(presets.count) * swatchDiameter
+            + CGFloat(max(presets.count - 1, 0)) * swatchSpacing
         let midY = bounds.midY
-        for (i, preset) in presets.enumerated() {
-            let rect = NSRect(
-                x: x,
-                y: midY - swatchDiameter / 2,
-                width: swatchDiameter,
-                height: swatchDiameter
-            )
-            let swatch = BeautifySwatchView(
-                frame: rect,
-                preset: preset,
-                isSelected: preset.id == currentPresetID
-            )
-            swatch.itemIndex = i
-            if preset.isWallpaper {
-                BeautifyRenderer.loadWallpaperImage(for: screen) { [weak swatch] image in
-                    swatch?.wallpaperThumbnail = image
-                }
-            }
-            let click = NSClickGestureRecognizer(target: self, action: #selector(swatchTapped(_:)))
-            swatch.addGestureRecognizer(click)
-            addSubview(swatch)
-            swatchButtons.append(swatch)
-            x += swatchDiameter + swatchSpacing
-        }
+        x += Self.sectionGap
 
-        // After the loop, `x` has an extra swatchSpacing; back up to the right
-        // edge of the last swatch, then lay out: 4 px gap → 1 px separator →
-        // 5 px gap → slider. Total = separatorGap (10 px).
-        let lastSwatchRightEdge = x - swatchSpacing
-        let sepX = lastSwatchRightEdge + 4
-        let sep = AdaptiveSeparatorView(frame: NSRect(x: sepX, y: 6, width: 1, height: bounds.height - 12))
-        addSubview(sep)
+        moreButton.frame = NSRect(
+            x: x,
+            y: midY - Self.moreButtonSize / 2,
+            width: Self.moreButtonSize,
+            height: Self.moreButtonSize
+        )
+        moreButton.target = self
+        moreButton.action = #selector(showMorePresets)
+        addSubview(moreButton)
+        x = addSeparator(after: moreButton.frame.maxX)
 
-        // Horizontal padding slider, 5 px to the right of the separator.
-        let sliderX = sepX + 1 + 5
         let slider = HUDSlider(
             value: Double(initialPadding),
             minValue: Double(BeautifyRenderer.paddingSliderMin),
@@ -5389,7 +5459,7 @@ private class BeautifySubToolbar: NSView {
         )
         slider.isContinuous = true
         slider.frame = NSRect(
-            x: sliderX,
+            x: x,
             y: midY - sliderHeight / 2,
             width: sliderWidth,
             height: sliderHeight
@@ -5397,13 +5467,11 @@ private class BeautifySubToolbar: NSView {
         addSubview(slider)
         paddingSlider = slider
 
-        let shadowSepX = sliderX + sliderWidth + 5
-        let shadowSep = AdaptiveSeparatorView(frame: NSRect(x: shadowSepX, y: 6, width: 1, height: bounds.height - 12))
-        addSubview(shadowSep)
+        x = addSeparator(after: slider.frame.maxX)
 
         let checkbox = HUDCheckboxButton(
             frame: NSRect(
-                x: shadowSepX + 1 + 6,
+                x: x,
                 y: midY - checkboxHeight / 2,
                 width: checkboxWidth,
                 height: checkboxHeight
@@ -5415,6 +5483,61 @@ private class BeautifySubToolbar: NSView {
         checkbox.state = initialShadowEnabled ? .on : .off
         addSubview(checkbox)
         shadowCheckbox = checkbox
+        updateSelection()
+    }
+
+    func updatePresets(_ presets: [BeautifyPreset]) {
+        self.presets = presets
+        rebuildSwatches()
+    }
+
+    private func rebuildSwatches() {
+        for swatch in swatchButtons {
+            swatch.removeFromSuperview()
+        }
+        swatchButtons.removeAll()
+
+        var x: CGFloat = innerPadding
+        let midY = bounds.midY
+        for (index, preset) in presets.enumerated() {
+            let rect = NSRect(
+                x: x,
+                y: midY - swatchDiameter / 2,
+                width: swatchDiameter,
+                height: swatchDiameter
+            )
+            let swatch = BeautifySwatchView(
+                frame: rect,
+                preset: preset,
+                isSelected: preset.id == currentPresetID
+            )
+            swatch.itemIndex = index
+            if preset.isWallpaper {
+                BeautifyRenderer.loadWallpaperImage(for: screen) { [weak swatch] image in
+                    swatch?.wallpaperThumbnail = image
+                }
+            }
+            let click = NSClickGestureRecognizer(target: self, action: #selector(swatchTapped(_:)))
+            swatch.addGestureRecognizer(click)
+            addSubview(swatch)
+            swatchButtons.append(swatch)
+            x += swatchDiameter + swatchSpacing
+        }
+        updateSelection()
+    }
+
+    private func addSeparator(after rightEdge: CGFloat) -> CGFloat {
+        let separatorX = rightEdge + Self.sectionGap
+        let separator = AdaptiveSeparatorView(
+            frame: NSRect(
+                x: separatorX,
+                y: 6,
+                width: Self.separatorWidth,
+                height: bounds.height - 12
+            )
+        )
+        addSubview(separator)
+        return separatorX + Self.separatorWidth + Self.sectionGap
     }
 
     @objc private func swatchTapped(_ gesture: NSGestureRecognizer) {
@@ -5438,16 +5561,128 @@ private class BeautifySubToolbar: NSView {
         onShadowEnabledChanged?(sender.state == .on)
     }
 
+    @objc private func showMorePresets() {
+        onMoreRequested?(moreButton)
+    }
+
     private func updateSelection() {
         for swatch in swatchButtons {
             swatch.isSelected = (swatch.preset.id == currentPresetID)
         }
+        moreButton.isActive = currentPresetID.map { selectedID in
+            !presets.contains(where: { $0.id == selectedID })
+        } ?? false
     }
 
     override func draw(_ dirtyRect: NSRect) {
         let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 2, dy: 2), xRadius: 8, yRadius: 8)
         AdaptiveChrome.toolbarBackground.setFill()
         path.fill()
+    }
+}
+
+private final class BeautifyPresetPickerView: NSView {
+    var selectedPresetID: String? {
+        didSet { updateSelection() }
+    }
+    var onPresetSelected: ((BeautifyPreset) -> Void)?
+
+    private let presets: [BeautifyPreset]
+    private let screen: NSScreen
+    private var swatchViews: [BeautifySwatchView] = []
+
+    private static let gridColumns = 6
+    private static let swatchDiameter: CGFloat = 32
+    private static let columnGap: CGFloat = 18
+    private static let rowGap: CGFloat = 12
+    private static let horizontalPadding: CGFloat = 18
+    private static let verticalPadding: CGFloat = 18
+    private static let maxGridItems = 24
+
+    static func preferredSize(itemCount: Int) -> NSSize {
+        let visibleCount = min(max(itemCount, 1), maxGridItems)
+        let rowCount = (visibleCount + gridColumns - 1) / gridColumns
+        let height = verticalPadding * 2
+            + CGFloat(rowCount) * swatchDiameter
+            + CGFloat(max(rowCount - 1, 0)) * rowGap
+        return NSSize(width: 318, height: height)
+    }
+
+    init(
+        frame: NSRect,
+        presets: [BeautifyPreset],
+        screen: NSScreen,
+        selectedPresetID: String?
+    ) {
+        self.presets = presets
+        self.screen = screen
+        self.selectedPresetID = selectedPresetID
+        super.init(frame: frame)
+        setup()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    private func setup() {
+        wantsLayer = true
+
+        let firstRowY = bounds.maxY - Self.verticalPadding - Self.swatchDiameter
+        for (index, preset) in presets.prefix(Self.maxGridItems).enumerated() {
+            let row = index / Self.gridColumns
+            let column = index % Self.gridColumns
+            let swatch = BeautifySwatchView(
+                frame: NSRect(
+                    x: Self.horizontalPadding
+                        + CGFloat(column) * (Self.swatchDiameter + Self.columnGap),
+                    y: firstRowY
+                        - CGFloat(row) * (Self.swatchDiameter + Self.rowGap),
+                    width: Self.swatchDiameter,
+                    height: Self.swatchDiameter
+                ),
+                preset: preset,
+                isSelected: preset.id == selectedPresetID
+            )
+            swatch.itemIndex = index
+            if preset.isWallpaper {
+                BeautifyRenderer.loadWallpaperImage(for: screen) { [weak swatch] image in
+                    swatch?.wallpaperThumbnail = image
+                }
+            }
+            let click = NSClickGestureRecognizer(target: self, action: #selector(swatchTapped(_:)))
+            swatch.addGestureRecognizer(click)
+            addSubview(swatch)
+            swatchViews.append(swatch)
+        }
+    }
+
+    @objc private func swatchTapped(_ gesture: NSGestureRecognizer) {
+        guard let swatch = gesture.view as? BeautifySwatchView else { return }
+        let index = swatch.itemIndex
+        guard presets.indices.contains(index) else { return }
+        let preset = presets[index]
+        selectedPresetID = preset.id
+        onPresetSelected?(preset)
+    }
+
+    private func updateSelection() {
+        for swatch in swatchViews {
+            swatch.isSelected = swatch.preset.id == selectedPresetID
+        }
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let rect = bounds.insetBy(dx: 1, dy: 1)
+        let path = NSBezierPath(roundedRect: rect, xRadius: 14, yRadius: 14)
+        AdaptiveChrome.popoverBackground.setFill()
+        path.fill()
+
+        AdaptiveChrome.border.setStroke()
+        path.lineWidth = 1
+        path.stroke()
     }
 }
 
@@ -5465,6 +5700,8 @@ private class BeautifySwatchView: NSView {
         self.preset = preset
         self.isSelected = isSelected
         super.init(frame: frame)
+        toolTip = preset.displayName
+        setAccessibilityLabel(preset.displayName)
     }
 
     required init?(coder: NSCoder) {
@@ -5472,6 +5709,11 @@ private class BeautifySwatchView: NSView {
     }
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        addCursorRect(bounds, cursor: .pointingHand)
+    }
 
     override func draw(_ dirtyRect: NSRect) {
         let inset: CGFloat = isSelected ? 1 : 2

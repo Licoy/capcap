@@ -880,8 +880,11 @@ class SettingsView: NSView {
         swatchRow.translatesAutoresizingMaskIntoConstraints = false
 
         let selectedID = Defaults.lastBeautifyPresetID ?? BeautifyPreset.defaultPreset.id
+        let visiblePresets = BeautifyPreset.toolbarPresets(
+            preferredIDs: Defaults.beautifyToolbarPresetIDs
+        )
         beautifyPresetSwatches = []
-        for preset in BeautifyPreset.defaults {
+        for preset in visiblePresets {
             let swatch = BeautifySettingsSwatchView(preset: preset)
             swatch.isSelected = (preset.id == selectedID)
             swatch.target = self
@@ -5620,6 +5623,8 @@ private final class BeautifySettingsSwatchView: NSView {
     init(preset: BeautifyPreset) {
         self.preset = preset
         super.init(frame: .zero)
+        toolTip = preset.displayName
+        setAccessibilityLabel(preset.displayName)
     }
 
     required init?(coder: NSCoder) {
@@ -5627,6 +5632,11 @@ private final class BeautifySettingsSwatchView: NSView {
     }
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        addCursorRect(bounds, cursor: .pointingHand)
+    }
 
     override func mouseDown(with event: NSEvent) {
         if let action {
