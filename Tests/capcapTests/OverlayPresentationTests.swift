@@ -45,6 +45,14 @@ final class OverlayPresentationTests: XCTestCase {
         XCTAssertEqual(provider.cancellationCount, 1)
     }
 
+    func testCursorChipIsExcludedFromScreenSnapshots() {
+        _ = NSApplication.shared
+        let chip = CursorChipWindow()
+
+        XCTAssertEqual(chip.sharingType, .none)
+        chip.close()
+    }
+
     func testEventTrackingCaptureWaitsForSnapshotBeforeDismissingPopup() throws {
         _ = NSApplication.shared
         let provider = ControlledScreenSnapshotProvider()
@@ -225,6 +233,33 @@ final class OverlayPresentationTests: XCTestCase {
         XCTAssertEqual(firstPanels.count, secondPanels.count)
         XCTAssertTrue(zip(firstPanels, secondPanels).allSatisfy { $0 === $1 })
         secondController.cancel()
+    }
+
+    func testOverlaySurfaceCannotBeMovedOrResizedByScreenEdgeDrag() throws {
+        _ = NSApplication.shared
+        let screen = try XCTUnwrap(NSScreen.screens.first)
+        let panel = OverlayPanel(
+            contentRect: screen.frame,
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+
+        panel.prepareSurface(for: screen)
+
+        XCTAssertFalse(panel.isMovable)
+        XCTAssertFalse(panel.isMovableByWindowBackground)
+        XCTAssertFalse(panel.styleMask.contains(.resizable))
+        XCTAssertEqual(panel.minSize, screen.frame.size)
+        XCTAssertEqual(panel.maxSize, screen.frame.size)
+        XCTAssertEqual(panel.contentMinSize, screen.frame.size)
+        XCTAssertEqual(panel.contentMaxSize, screen.frame.size)
+        XCTAssertTrue(panel.delegate === panel)
+        XCTAssertEqual(
+            panel.windowWillResize(panel, to: NSSize(width: 320, height: 240)),
+            screen.frame.size
+        )
+        panel.close()
     }
 
     func testScreenParameterChangeCancelsSelectionSession() {

@@ -74,6 +74,7 @@ class OverlayWindowController {
     private var screenFramesByDisplayID: [CGDirectDisplayID: NSRect] = [:]
     private var escLocalMonitor: Any?
     private var escGlobalMonitor: Any?
+    private var leftMouseLocalMonitor: Any?
     private var rightMouseLocalMonitor: Any?
     private var rightMouseGlobalMonitor: Any?
     private var editController: EditWindowController?
@@ -648,6 +649,13 @@ class OverlayWindowController {
             }
             return event
         }
+        leftMouseLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
+            guard self?.editController?.handleCanvasConfirmDoubleClick(event) == true else {
+                return event
+            }
+            self?.editController?.confirmFromKeyboard()
+            return nil
+        }
         escGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if self?.editController?.isTextEditing == true {
                 return
@@ -1105,6 +1113,7 @@ class OverlayWindowController {
         if let m = magnifierLensPanelKeyDownGlobalMonitor { NSEvent.removeMonitor(m); magnifierLensPanelKeyDownGlobalMonitor = nil }
         if let m = mouseMovedLocalMonitor { NSEvent.removeMonitor(m); mouseMovedLocalMonitor = nil }
         if let m = mouseMovedGlobalMonitor { NSEvent.removeMonitor(m); mouseMovedGlobalMonitor = nil }
+        if let m = leftMouseLocalMonitor { NSEvent.removeMonitor(m); leftMouseLocalMonitor = nil }
         if let m = rightMouseLocalMonitor { NSEvent.removeMonitor(m); rightMouseLocalMonitor = nil }
         if let m = rightMouseGlobalMonitor { NSEvent.removeMonitor(m); rightMouseGlobalMonitor = nil }
 

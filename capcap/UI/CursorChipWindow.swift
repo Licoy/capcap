@@ -21,6 +21,7 @@ class CursorChipWindow: NSPanel {
         hasShadow = true
         ignoresMouseEvents = true
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        sharingType = .none
 
         contentView = chipView
     }

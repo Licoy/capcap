@@ -18,6 +18,59 @@ bash scripts/rebuild-and-open.sh
 
 This script builds the app bundle, kills any running instance, launches the new build, and confirms it started.
 
+## Reliable Interactive UI Testing
+
+capcap is an `LSUIElement` menu-bar app, so the macOS frontmost application is
+often ChatGPT, Terminal, Finder, or another unrelated app even while a capcap
+panel is visible. Do not infer the UI automation target from the frontmost app.
+The stable Computer Use workflow is:
+
+1. Build, install, and launch the current code with
+   `bash scripts/rebuild-and-open.sh`.
+2. Confirm that the intended capcap surface exists before sending input:
+
+   ```bash
+   /Applications/capcap.app/Contents/MacOS/capcap agent windows \
+     --owner capcap --all --pretty
+   ```
+
+   Verify `ownerName`, `ownerPID`, window frame, and layer. A shallow
+   Accessibility tree is normal for custom AppKit panels and is not evidence
+   that another app should be targeted.
+3. Initialize Computer Use once, then lock every state read and UI action to the
+   exact installed app path:
+
+   ```js
+   var capcapTarget = "/Applications/capcap.app"
+   await sky.get_app_state({ app: capcapTarget, disableDiff: true })
+   ```
+
+   Every later `click`, `drag`, `press_key`, `type_text`, and `get_app_state`
+   call must include `app: capcapTarget`. Do not begin with a generic frontmost
+   app, reuse another app's element index, or operate ChatGPT/Terminal/Finder to
+   bring capcap forward. Use `list_apps` only if the exact path fails.
+4. After every action, read capcap state again before choosing the next action.
+   Accessibility element indices are snapshots; reacquire them after rebuilds,
+   relaunches, panel transitions, or layout changes.
+5. `press_key` uses xdotool-style key strings. Use `"super+k"`, `"space"`,
+   `"Return"`, etc. Do not pass a separate `modifiers` field because it is
+   ignored by this interface.
+
+Computer Use has no move-only mouse action. Its `drag` action holds the mouse
+button and must not be treated as proof that ordinary `mouseMoved`,
+`mouseEntered`, or hover behavior works. Verify hover-sensitive behavior with
+real pointer movement when possible. If automation needs deterministic access
+to an otherwise unreachable panel or hover state, add a narrowly scoped
+`#if DEBUG` launch argument or keyboard hook, compile and rebuild, use it only
+to isolate the relevant behavior, then remove it before final verification.
+Search for the unique hook name afterward so temporary test code cannot ship.
+
+For runtime-sensitive work, final verification must use the clean installed
+app after all debug hooks have been removed: run the compile check, relevant
+tests, `git diff --check`, and `bash scripts/rebuild-and-open.sh`. Treat
+incomplete Computer Use observations as a limitation, not as proof that an
+`LSUIElement` surface passed or failed.
+
 ## Project Structure
 
 - `capcap/App/` — Entry point (`main.swift`, `AppDelegate.swift`, `Info.plist`)

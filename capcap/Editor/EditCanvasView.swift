@@ -4,6 +4,7 @@ enum EditTool {
     case none
     case pen
     case marker
+    case spotlight
     case mosaic
     case eraser
     case magnifier
@@ -311,7 +312,8 @@ class EditCanvasView: NSView {
     /// cleanly.
     private struct HandleDragState {
         enum Kind {
-            case rotate, curve, tip, textCalloutTip, magnifierSource, arrowStart, arrowEnd
+            case rotate, curve, tip, textCalloutTip, secondTextCalloutTip
+            case magnifierSource, arrowStart, arrowEnd
             case resize(ResizeAnchor)
         }
         let kind: Kind
@@ -406,6 +408,7 @@ class EditCanvasView: NSView {
                 hasStroke: annotation.hasStroke,
                 hasCallout: annotation.hasCallout,
                 calloutTip: annotation.calloutTip,
+                secondCalloutTip: annotation.secondCalloutTip,
                 initialText: annotation.text,
                 rotation: annotation.rotation,
                 replacingIndex: index
@@ -437,6 +440,13 @@ class EditCanvasView: NSView {
     private var redoStack: [EditorSnapshot] = []
     var canUndo: Bool { !undoStack.isEmpty }
     var canRedo: Bool { !redoStack.isEmpty }
+    /// State immediately before the first click in a possible double-click.
+    ///
+    /// Drawing tools handle a single click eagerly: pen/marker can add a dot,
+    /// numbered/emoji can add an item, and text can open an editor. If the
+    /// second click confirms the screenshot, restore this state first so that
+    /// the double-click gesture itself never changes the copied image.
+    private var confirmDoubleClickBaseline: RestorableState?
     /// Stash for drag-style operations and text edits — captured before the
     /// mutation begins, then either committed (drag actually moved / text
     /// edit produced a change) or discarded (just a click / cancel).
@@ -475,6 +485,42 @@ class EditCanvasView: NSView {
         needsDisplay = true
         notifyHistoryStateChanged()
         refreshCursorAtCurrentLocation()
+    }
+
+    /// Tracks a possible confirm double-click before the click reaches the
+    /// canvas. Returns `true` only for the second click after restoring the
+    /// pre-gesture state.
+    ///
+    /// Existing text annotations keep their established double-click-to-edit
+    /// behavior. Selection handles and action buttons also remain ordinary
+    /// editor controls rather than screenshot-confirm targets.
+    func handlePotentialConfirmDoubleClick(clickCount: Int, at point: NSPoint) -> Bool {
+        if clickCount == 1 {
+            confirmDoubleClickBaseline = nil
+            guard activeTextField == nil,
+                  hitTestSelectionHandle(at: point) == nil,
+                  hitTestSelectionAction(at: point) == nil
+            else {
+                return false
+            }
+            if let index = hitTestAnnotation(at: point),
+               annotations[index] is TextAnnotation {
+                return false
+            }
+            confirmDoubleClickBaseline = restorableState()
+            return false
+        }
+
+        guard clickCount >= 2, let baseline = confirmDoubleClickBaseline else {
+            return false
+        }
+        confirmDoubleClickBaseline = nil
+        restoreState(baseline)
+        return true
+    }
+
+    func discardPotentialConfirmDoubleClick() {
+        confirmDoubleClickBaseline = nil
     }
 
     private func apply(_ snapshot: EditorSnapshot) {
@@ -887,7 +933,9 @@ class EditCanvasView: NSView {
             return a.text == b.text && a.origin == b.origin
                 && a.fontSize == b.fontSize && a.rotation == b.rotation
                 && a.color == b.color && a.hasStroke == b.hasStroke
-                && a.hasCallout == b.hasCallout && a.calloutTip == b.calloutTip
+                && a.hasCallout == b.hasCallout
+                && a.calloutTip == b.calloutTip
+                && a.secondCalloutTip == b.secondCalloutTip
         }
         if let a = a as? PenAnnotation, let b = b as? PenAnnotation {
             return a.path === b.path && a.lineWidth == b.lineWidth
@@ -925,6 +973,9 @@ class EditCanvasView: NSView {
         }
         if let a = a as? MosaicAnnotation, let b = b as? MosaicAnnotation {
             return a.rect == b.rect && a.blockSize == b.blockSize
+        }
+        if let a = a as? SpotlightAnnotation, let b = b as? SpotlightAnnotation {
+            return a.rect == b.rect
         }
         if let a = a as? MagnifierAnnotation, let b = b as? MagnifierAnnotation {
             return a.center == b.center && a.radius == b.radius
@@ -1085,7 +1136,7 @@ class EditCanvasView: NSView {
             shapeCurrent = point
             shapeRoughSeed = RoughShapeStyle.randomSeed()
 
-        case .arrow, .line, .mosaic:
+        case .arrow, .line, .spotlight, .mosaic:
             shapeStart = point
             shapeCurrent = point
             shapeRoughSeed = nil
@@ -1179,7 +1230,7 @@ class EditCanvasView: NSView {
             appendStrokePoint(point, to: &currentMarkerPoints)
             needsDisplay = true
 
-        case .rectangle, .ellipse, .arrow, .line, .mosaic, .magnifier:
+        case .rectangle, .ellipse, .arrow, .line, .spotlight, .mosaic, .magnifier:
             shapeCurrent = point
             needsDisplay = true
         }
@@ -1302,6 +1353,17 @@ class EditCanvasView: NSView {
                 ))
                 currentMarkerPoints = nil
             }
+
+        case .spotlight:
+            if let start = shapeStart, let end = shapeCurrent {
+                let rect = rectFromTwoPoints(start, end)
+                if rect.width > 2, rect.height > 2 {
+                    recordUndo()
+                    annotations.append(SpotlightAnnotation(rect: rect))
+                }
+            }
+            shapeStart = nil
+            shapeCurrent = nil
 
         case .mosaic:
             if let start = shapeStart, let end = shapeCurrent {
@@ -1467,10 +1529,20 @@ class EditCanvasView: NSView {
             image.draw(in: NSRect(origin: .zero, size: bounds.size))
         }
 
-        // Draw all committed annotations (rotation applied via helper)
-        for annotation in annotations {
-            annotation.drawApplyingTransforms(in: context, bounds: bounds)
-        }
+        let liveSpotlightRect: NSRect? = {
+            guard
+                activeTool == .spotlight,
+                let start = shapeStart,
+                let current = shapeCurrent
+            else { return nil }
+            let rect = rectFromTwoPoints(start, current)
+            return rect.width > 0 && rect.height > 0 ? rect : nil
+        }()
+        drawCommittedAnnotations(
+            in: context,
+            bounds: bounds,
+            additionalSpotlightRect: liveSpotlightRect
+        )
 
         drawActiveTextCalloutBackground(in: context)
 
@@ -1554,6 +1626,10 @@ class EditCanvasView: NSView {
                 let rect = rectFromTwoPoints(start, current)
                 context.setFillColor(NSColor.gray.withAlphaComponent(0.5).cgColor)
                 context.fill(rect)
+            case .spotlight:
+                // The preview is composited with committed spotlights above,
+                // so multiple highlight windows share one dimming layer.
+                break
             case .line:
                 context.setLineCap(.round)
                 context.move(to: start)
@@ -1649,7 +1725,8 @@ class EditCanvasView: NSView {
             rotation: field.rotation,
             hasStroke: field.hasStroke,
             hasCallout: field.hasCallout,
-            calloutTip: field.calloutTip
+            calloutTip: field.calloutTip,
+            secondCalloutTip: field.secondCalloutTip
         ).drawCalloutBackgroundOnly(in: context, bodyRect: field.frame)
     }
 
@@ -1676,6 +1753,29 @@ class EditCanvasView: NSView {
         }
 
         enclosingScrollView?.scrollWheel(with: event)
+    }
+
+    private func drawCommittedAnnotations(
+        in context: CGContext,
+        bounds: NSRect,
+        additionalSpotlightRect: NSRect? = nil
+    ) {
+        var spotlightRects: [NSRect] = []
+        for annotation in annotations {
+            if let spotlight = annotation as? SpotlightAnnotation {
+                spotlightRects.append(spotlight.rect)
+            } else {
+                annotation.drawApplyingTransforms(in: context, bounds: bounds)
+            }
+        }
+        if let additionalSpotlightRect {
+            spotlightRects.append(additionalSpotlightRect)
+        }
+        SpotlightAnnotation.drawDimmingOverlay(
+            highlightRects: spotlightRects,
+            in: context,
+            bounds: bounds
+        )
     }
 
     // MARK: - Composite
@@ -1723,9 +1823,7 @@ class EditCanvasView: NSView {
                 let scaleY = imageBounds.height / annotationBounds.height
                 context.scaleBy(x: scaleX, y: scaleY)
             }
-            for annotation in annotations {
-                annotation.drawApplyingTransforms(in: context, bounds: annotationBounds)
-            }
+            drawCommittedAnnotations(in: context, bounds: annotationBounds)
             context.restoreGState()
             graphicsContext.flushGraphics()
 
@@ -1955,6 +2053,7 @@ class EditCanvasView: NSView {
         hasStroke: Bool,
         hasCallout: Bool,
         calloutTip: NSPoint? = nil,
+        secondCalloutTip: NSPoint? = nil,
         initialText: String = "",
         rotation: CGFloat = 0,
         replacingIndex: Int? = nil
@@ -2005,6 +2104,7 @@ class EditCanvasView: NSView {
         field.hasStroke = hasStroke
         field.hasCallout = hasCallout
         field.calloutTip = calloutTip
+        field.secondCalloutTip = secondCalloutTip
         field.rotation = rotation
         field.stringValue = initialText
         field.onCommit = { [weak self, weak field] text in
@@ -2056,7 +2156,8 @@ class EditCanvasView: NSView {
                 rotation: field.rotation,
                 hasStroke: field.hasStroke,
                 hasCallout: field.hasCallout,
-                calloutTip: field.calloutTip
+                calloutTip: field.calloutTip,
+                secondCalloutTip: field.secondCalloutTip
             )
             if let idx = editingOriginalIndex {
                 let safeIdx = min(idx, annotations.count)
@@ -2261,6 +2362,13 @@ class EditCanvasView: NSView {
     private func textCalloutHandleCenter(for annotation: Annotation) -> NSPoint? {
         guard let text = annotation as? TextAnnotation, text.hasCallout else { return nil }
         return rotated(text.calloutHandlePoint, for: annotation)
+    }
+
+    /// A second callout leader starts as an add handle to the left of the
+    /// bubble, away from the primary bottom handle and rotation/action chrome.
+    private func secondTextCalloutHandleCenter(for annotation: Annotation) -> NSPoint? {
+        guard let text = annotation as? TextAnnotation, text.hasCallout else { return nil }
+        return rotated(text.secondCalloutHandlePoint, for: annotation)
     }
 
     /// Center source control for a magnifier. It starts in the middle of the
@@ -2514,7 +2622,29 @@ class EditCanvasView: NSView {
             )
         }
 
-        // 4b. Magnifier source handle — starts at the lens center and can be
+        // 4b. Second text-callout add/tip handle. Before the second leader
+        // exists, use a green plus so the extra affordance is explicit.
+        if let tip = secondTextCalloutHandleCenter(for: annotation),
+           let text = annotation as? TextAnnotation {
+            let isAddHandle = !text.hasSecondCalloutArrow
+            drawHandleDot(
+                at: tip,
+                size: EditCanvasView.textCalloutHandleSize,
+                fill: isAddHandle ? accentGreen : text.color,
+                stroke: NSColor.white.withAlphaComponent(0.95),
+                in: context
+            )
+            if isAddHandle {
+                drawSymbolGlyph(
+                    "plus",
+                    at: tip,
+                    pointSize: 8,
+                    in: context
+                )
+            }
+        }
+
+        // 4c. Magnifier source handle — starts at the lens center and can be
         // pulled out to magnify another part of the captured image.
         if let source = magnifierSourceHandleCenter(for: annotation) {
             drawHandleDot(
@@ -2526,7 +2656,7 @@ class EditCanvasView: NSView {
             )
         }
 
-        // 4c. Arrow endpoint handles — re-anchor the tail / redirect the tip.
+        // 4d. Arrow endpoint handles — re-anchor the tail / redirect the tip.
         if let start = arrowStartHandleCenter(for: annotation) {
             drawHandleDot(
                 at: start,
@@ -2732,6 +2862,7 @@ class EditCanvasView: NSView {
     private func isResizable(_ annotation: Annotation) -> Bool {
         annotation is RectAnnotation
             || annotation is EllipseAnnotation
+            || annotation is SpotlightAnnotation
             || annotation is MosaicAnnotation
             || annotation is MagnifierAnnotation
             || annotation is ImageAnnotation
@@ -2791,6 +2922,12 @@ class EditCanvasView: NSView {
             let r = EditCanvasView.textCalloutHandleSize / 2 + 4
             if hypot(point.x - tip.x, point.y - tip.y) <= r {
                 return .textCalloutTip
+            }
+        }
+        if let tip = secondTextCalloutHandleCenter(for: annotation) {
+            let r = EditCanvasView.textCalloutHandleSize / 2 + 4
+            if hypot(point.x - tip.x, point.y - tip.y) <= r {
+                return .secondTextCalloutTip
             }
         }
 
@@ -2892,6 +3029,21 @@ class EditCanvasView: NSView {
                 annotations[state.index] = text.withCalloutTip(point)
             }
 
+        case .secondTextCalloutTip:
+            guard let text = state.original as? TextAnnotation, text.hasCallout else { return }
+            let point = text.unrotate(currentMouse)
+            if text.calloutBodyRect.insetBy(dx: -2, dy: -2).contains(point) {
+                annotations[state.index] = text.withSecondCalloutTip(nil)
+                break
+            }
+            let anchor = text.calloutAnchorPoint(for: point)
+            let dist = hypot(point.x - anchor.x, point.y - anchor.y)
+            if dist <= TextAnnotation.calloutArrowMinDistance {
+                annotations[state.index] = text.withSecondCalloutTip(nil)
+            } else {
+                annotations[state.index] = text.withSecondCalloutTip(point)
+            }
+
         case .magnifierSource:
             guard let magnifier = state.original as? MagnifierAnnotation else { return }
             let point = clampedToCanvas(currentMouse)
@@ -2943,6 +3095,15 @@ class EditCanvasView: NSView {
                 )
                 guard r >= MagnifierAnnotation.minRadius else { return }
                 annotations[state.index] = magnifier.withRadius(r)
+            } else if let spotlight = state.original as? SpotlightAnnotation {
+                let newRect = resizedRect(
+                    from: spotlight.rect,
+                    anchor: anchor,
+                    currentMouse: currentMouse,
+                    minimumSize: 4
+                )
+                guard newRect.width >= 4, newRect.height >= 4 else { return }
+                annotations[state.index] = spotlight.withRect(newRect)
             } else if let mosaic = state.original as? MosaicAnnotation {
                 // Move only the edge(s) this grip owns; the opposite edge(s)
                 // stay pinned. min/abs keep the rect valid if the user drags a
@@ -3531,6 +3692,9 @@ final class EditableTextField: NSTextField, NSTextFieldDelegate {
         }
     }
     var calloutTip: NSPoint? {
+        didSet { onChange?() }
+    }
+    var secondCalloutTip: NSPoint? {
         didSet { onChange?() }
     }
     /// Rotation carried by an existing text annotation while it is being edited.
