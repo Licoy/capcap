@@ -592,5 +592,6 @@
 "settingsIdleLensKeyboardActionLabel" = "Действие клавиш";
 "settingsIdleLensLivePreviewTitle" = "Живой просмотр";
 "settingsIdleLensLivePreviewHint" = "Предпросмотр панели лупы в реальном времени при наведении на значок";
+"settingsIdleLensPreviewHint" = "Предпросмотр обновляется в соответствии с настройками. Изменения применяются мгновенно для точной настройки";
 "settingsIdleLensCrosshairLabel" = "Перекрестие";
 "settingsIdleLensCrosshairHint" = "Центральный индикатор в увеличенной области";

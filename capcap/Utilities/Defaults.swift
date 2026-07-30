@@ -220,6 +220,7 @@ enum L10n {
     static var settingsIdleLensKeyboardActionLabel: String { s("settingsIdleLensKeyboardActionLabel") }
     static var settingsIdleLensLivePreviewTitle: String { s("settingsIdleLensLivePreviewTitle") }
     static var settingsIdleLensLivePreviewHint: String { s("settingsIdleLensLivePreviewHint") }
+    static var settingsIdleLensPreviewHint: String { s("settingsIdleLensPreviewHint") }
     static var settingsIdleLensCrosshairLabel: String { s("settingsIdleLensCrosshairLabel") }
     static var settingsIdleLensCrosshairHint: String { s("settingsIdleLensCrosshairHint") }
 

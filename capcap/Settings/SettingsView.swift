@@ -1119,8 +1119,7 @@ class SettingsView: NSView {
         keyboardInner.addArrangedSubview(shiftHintRow.row)
         shiftHintRow.row.widthAnchor.constraint(equalTo: keyboardInner.widthAnchor).isActive = true
 
-        // ----- Preview (right side) — SwiftUI view hosting the real
-        // IdleColorLensView via NSViewRepresentable.
+        // ----- Preview (right side) wrapped in a rounded sub-card.
         let previewSize = MagnifierPreviewView.requiredSize()
         let iconImage = Self.loadAppIconForPreview()
         let mockSnapshot = iconImage.cgImage(
@@ -1132,6 +1131,15 @@ class SettingsView: NSView {
             iconImage: iconImage,
             mockSnapshot: mockSnapshot
         )
+
+        let previewBox = NSBox()
+        previewBox.boxType = .custom
+        previewBox.cornerRadius = 8
+        previewBox.borderWidth = 1
+        previewBox.borderColor = NSColor.white.withAlphaComponent(0.06)
+        previewBox.fillColor = NSColor.white.withAlphaComponent(0.02)
+        previewBox.titlePosition = .noTitle
+        previewBox.translatesAutoresizingMaskIntoConstraints = false
 
         let previewColumn = NSStackView()
         previewColumn.orientation = .vertical
@@ -1178,7 +1186,41 @@ class SettingsView: NSView {
         hosting.widthAnchor.constraint(equalToConstant: previewSize.width).isActive = true
         hosting.heightAnchor.constraint(equalToConstant: previewSize.height).isActive = true
 
-        splitRow.addArrangedSubview(previewColumn)
+        // Footer hint: preview is live, changes apply instantly.
+        let footerRow = NSStackView()
+        footerRow.orientation = .horizontal
+        footerRow.alignment = .top
+        footerRow.spacing = 6
+        footerRow.translatesAutoresizingMaskIntoConstraints = false
+
+        let wandIcon = NSImageView(image: NSImage(systemSymbolName: "wand.and.stars", accessibilityDescription: nil)!)
+        wandIcon.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 10, weight: .regular)
+        wandIcon.contentTintColor = .tertiaryLabelColor
+        wandIcon.translatesAutoresizingMaskIntoConstraints = false
+        wandIcon.widthAnchor.constraint(equalToConstant: 14).isActive = true
+        wandIcon.heightAnchor.constraint(equalToConstant: 14).isActive = true
+        footerRow.addArrangedSubview(wandIcon)
+
+        let footerText = NSTextField(labelWithString: L10n.settingsIdleLensPreviewHint)
+        footerText.font = .systemFont(ofSize: 10)
+        footerText.textColor = .tertiaryLabelColor
+        footerText.lineBreakMode = .byWordWrapping
+        footerText.preferredMaxLayoutWidth = previewSize.width - 20
+        footerRow.addArrangedSubview(footerText)
+
+        previewColumn.setCustomSpacing(8, after: hosting)
+        previewColumn.addArrangedSubview(footerRow)
+        footerRow.widthAnchor.constraint(equalTo: previewColumn.widthAnchor).isActive = true
+
+        previewBox.addSubview(previewColumn)
+        NSLayoutConstraint.activate([
+            previewColumn.topAnchor.constraint(equalTo: previewBox.topAnchor, constant: 8),
+            previewColumn.bottomAnchor.constraint(equalTo: previewBox.bottomAnchor, constant: -10),
+            previewColumn.leadingAnchor.constraint(equalTo: previewBox.leadingAnchor, constant: 10),
+            previewColumn.trailingAnchor.constraint(equalTo: previewBox.trailingAnchor, constant: -10),
+        ])
+
+        splitRow.addArrangedSubview(previewBox)
 
         stack.addArrangedSubview(card)
         card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true

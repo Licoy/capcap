@@ -592,5 +592,6 @@
 "settingsIdleLensKeyboardActionLabel" = "キーボード操作";
 "settingsIdleLensLivePreviewTitle" = "ライブプレビュー";
 "settingsIdleLensLivePreviewHint" = "トリガーアイコンにカーソルを合わせると拡大鏡パネルをリアルタイムプレビュー";
+"settingsIdleLensPreviewHint" = "設定に基づいてプレビューが更新されます。変更は即座に反映され、細かく調整できます";
 "settingsIdleLensCrosshairLabel" = "クロスヘア";
 "settingsIdleLensCrosshairHint" = "拡大領域の中央インジケーター";

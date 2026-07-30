@@ -592,5 +592,6 @@
 "settingsIdleLensKeyboardActionLabel" = "Keyboard action";
 "settingsIdleLensLivePreviewTitle" = "Live Preview";
 "settingsIdleLensLivePreviewHint" = "Real-time preview of the magnifier panel when hovering over the trigger icon";
+"settingsIdleLensPreviewHint" = "The preview updates based on your settings. Changes apply instantly so you can fine-tune your experience";
 "settingsIdleLensCrosshairLabel" = "Crosshair";
 "settingsIdleLensCrosshairHint" = "Center indicator inside the magnified area";

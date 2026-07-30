@@ -592,5 +592,6 @@
 "settingsIdleLensKeyboardActionLabel" = "Action clavier";
 "settingsIdleLensLivePreviewTitle" = "Aperçu en direct";
 "settingsIdleLensLivePreviewHint" = "Aperçu en temps réel du panneau de loupe en survolant l'icône";
+"settingsIdleLensPreviewHint" = "L'aperçu se met à jour selon vos réglages. Les modifications s'appliquent instantanément pour affiner votre expérience";
 "settingsIdleLensCrosshairLabel" = "Réticule";
 "settingsIdleLensCrosshairHint" = "Indicateur central dans la zone agrandie";

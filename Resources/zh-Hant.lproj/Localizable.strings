@@ -592,5 +592,6 @@
 "settingsIdleLensKeyboardActionLabel" = "鍵盤操作";
 "settingsIdleLensLivePreviewTitle" = "即時預覽";
 "settingsIdleLensLivePreviewHint" = "將滑鼠懸停在觸發圖示上時，放大鏡面板的即時預覽";
+"settingsIdleLensPreviewHint" = "預覽會根據你的設定即時更新，修改即時生效，方便你精細調整體驗";
 "settingsIdleLensCrosshairLabel" = "十字線";
 "settingsIdleLensCrosshairHint" = "放大區域中心的定位指示器";
