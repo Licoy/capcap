@@ -135,7 +135,7 @@ final class IdleColorLensTests: XCTestCase {
             screenFrame: screenFrame,
             snapshotSize: snapshotSize
         )
-        XCTAssertEqual(mapped.y, 1799, accuracy: 0.5)
+        XCTAssertEqual(mapped.y, 0, accuracy: 0.001)
     }
 
     func testSampleReturnsNilForOutOfBoundsPoint() throws {
@@ -181,12 +181,12 @@ final class IdleColorLensTests: XCTestCase {
         XCTAssertTrue(rgb.contains("23"))
     }
 
-    func testDefaultsIdleColorLensEnabledIsOffByDefault() {
-        // Wipe any persisted value and ensure the default is false so the
-        // legacy "drag to screenshot" chip remains the default behavior.
+    func testDefaultsIdleColorLensEnabledIsOnByDefault() {
+        // Wipe any persisted value and ensure the default is true so new users
+        // get the magnifier experience immediately.
         let key = "idleColorLensEnabled"
         UserDefaults.standard.removeObject(forKey: key)
-        XCTAssertFalse(Defaults.idleColorLensEnabled)
+        XCTAssertTrue(Defaults.idleColorLensEnabled)
         UserDefaults.standard.removeObject(forKey: key)
     }
 
