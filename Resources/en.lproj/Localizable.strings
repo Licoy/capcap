@@ -588,7 +588,7 @@
 "settingsIdleLensCoordinateModePixels" = "Pixels";
 "settingsIdleLensCoordinateModeHint" = "Points measure from bottom-left. Pixels measure from top-left";
 "settingsIdleLensMagnifierLabel" = "Magnifier";
-"settingsIdleLensAppearanceLabel" = "Appearance";
+"settingsIdleLensAppearanceLabel" = "Panel Appearance";
 "settingsIdleLensKeyboardActionLabel" = "Keyboard action";
 "settingsIdleLensLivePreviewTitle" = "Live Preview";
 "settingsIdleLensLivePreviewHint" = "Real-time preview of the magnifier panel when hovering over the trigger icon";

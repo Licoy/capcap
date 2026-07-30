@@ -588,7 +588,7 @@
 "settingsIdleLensCoordinateModePixels" = "物理像素";
 "settingsIdleLensCoordinateModeHint" = "Points 以螢幕左下角為原點，Pixels 以圖像左上角為原點";
 "settingsIdleLensMagnifierLabel" = "放大鏡";
-"settingsIdleLensAppearanceLabel" = "外觀";
+"settingsIdleLensAppearanceLabel" = "面板外觀";
 "settingsIdleLensKeyboardActionLabel" = "鍵盤操作";
 "settingsIdleLensLivePreviewTitle" = "即時預覽";
 "settingsIdleLensLivePreviewHint" = "將滑鼠懸停在觸發圖示上時，放大鏡面板的即時預覽";

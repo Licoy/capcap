@@ -588,7 +588,7 @@
 "settingsIdleLensCoordinateModePixels" = "Điểm ảnh";
 "settingsIdleLensCoordinateModeHint" = "Points tính từ góc dưới bên trái. Pixels tính từ góc trên bên trái";
 "settingsIdleLensMagnifierLabel" = "Kính lúp";
-"settingsIdleLensAppearanceLabel" = "Giao diện";
+"settingsIdleLensAppearanceLabel" = "Giao diện bảng";
 "settingsIdleLensKeyboardActionLabel" = "Thao tác bàn phím";
 "settingsIdleLensLivePreviewTitle" = "Xem trực tiếp";
 "settingsIdleLensLivePreviewHint" = "Xem trước thời gian thực của bảng kính lúp khi di chuột qua biểu tượng";

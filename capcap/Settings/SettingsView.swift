@@ -1044,23 +1044,6 @@ class SettingsView: NSView {
         magnifierInner.addArrangedSubview(offsetRow)
         offsetRow.widthAnchor.constraint(equalTo: magnifierInner.widthAnchor).isActive = true
 
-        // ----- Crosshair (inside Magnifier sub-card)
-        let crosshairHeader = primaryLabel(L10n.settingsIdleLensCrosshairLabel)
-        magnifierInner.addArrangedSubview(crosshairHeader)
-
-        let crosshairHint = NSTextField(labelWithString: L10n.settingsIdleLensCrosshairHint)
-        crosshairHint.font = .systemFont(ofSize: 11)
-        crosshairHint.textColor = .secondaryLabelColor
-        crosshairHint.translatesAutoresizingMaskIntoConstraints = false
-        magnifierInner.addArrangedSubview(crosshairHint)
-
-        let crosshairRow = makeCrosshairColorRow()
-        idleLensCrosshairWell = crosshairRow.well
-        idleLensCrosshairAlphaSlider = crosshairRow.slider
-        idleLensCrosshairWidthField = crosshairRow.widthField
-        magnifierInner.addArrangedSubview(crosshairRow.row)
-        crosshairRow.row.widthAnchor.constraint(equalTo: magnifierInner.widthAnchor).isActive = true
-
         // ── Appearance sub-card ─────────────────────────────
         let (appearanceCard, appearanceInner) = makeSubCard(title: L10n.settingsIdleLensAppearanceLabel)
         optionsColumn.addArrangedSubview(appearanceCard)
@@ -1093,6 +1076,23 @@ class SettingsView: NSView {
         idleLensLightAlphaSlider = lightColorRow.slider
         appearanceInner.addArrangedSubview(lightColorRow.row)
         lightColorRow.row.widthAnchor.constraint(equalTo: appearanceInner.widthAnchor).isActive = true
+
+        // ----- Crosshair
+        let crosshairHeader = primaryLabel(L10n.settingsIdleLensCrosshairLabel)
+        appearanceInner.addArrangedSubview(crosshairHeader)
+
+        let crosshairHint = NSTextField(labelWithString: L10n.settingsIdleLensCrosshairHint)
+        crosshairHint.font = .systemFont(ofSize: 11)
+        crosshairHint.textColor = .secondaryLabelColor
+        crosshairHint.translatesAutoresizingMaskIntoConstraints = false
+        appearanceInner.addArrangedSubview(crosshairHint)
+
+        let crosshairRow = makeCrosshairColorRow()
+        idleLensCrosshairWell = crosshairRow.well
+        idleLensCrosshairAlphaSlider = crosshairRow.slider
+        idleLensCrosshairWidthField = crosshairRow.widthField
+        appearanceInner.addArrangedSubview(crosshairRow.row)
+        crosshairRow.row.widthAnchor.constraint(equalTo: appearanceInner.widthAnchor).isActive = true
 
         // ── Keyboard action sub-card ────────────────────────
         let (keyboardCard, keyboardInner) = makeSubCard(title: L10n.settingsIdleLensKeyboardActionLabel)
@@ -1193,13 +1193,13 @@ class SettingsView: NSView {
         footerRow.spacing = 6
         footerRow.translatesAutoresizingMaskIntoConstraints = false
 
-        let wandIcon = NSImageView(image: NSImage(systemSymbolName: "wand.and.stars", accessibilityDescription: nil)!)
-        wandIcon.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 10, weight: .regular)
-        wandIcon.contentTintColor = .tertiaryLabelColor
-        wandIcon.translatesAutoresizingMaskIntoConstraints = false
-        wandIcon.widthAnchor.constraint(equalToConstant: 14).isActive = true
-        wandIcon.heightAnchor.constraint(equalToConstant: 14).isActive = true
-        footerRow.addArrangedSubview(wandIcon)
+        let sparkleIcon = NSImageView(image: NSImage(systemSymbolName: "sparkles", accessibilityDescription: nil)!)
+        sparkleIcon.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 10, weight: .regular)
+        sparkleIcon.contentTintColor = NSColor(calibratedRed: 0x9B/255.0, green: 0x5E/255.0, blue: 0xFF/255.0, alpha: 1.0)
+        sparkleIcon.translatesAutoresizingMaskIntoConstraints = false
+        sparkleIcon.widthAnchor.constraint(equalToConstant: 14).isActive = true
+        sparkleIcon.heightAnchor.constraint(equalToConstant: 14).isActive = true
+        footerRow.addArrangedSubview(sparkleIcon)
 
         let footerText = NSTextField(labelWithString: L10n.settingsIdleLensPreviewHint)
         footerText.font = .systemFont(ofSize: 10)

@@ -588,7 +588,7 @@
 "settingsIdleLensCoordinateModePixels" = "Pixels";
 "settingsIdleLensCoordinateModeHint" = "Points mesurent depuis le coin inférieur gauche. Pixels mesurent depuis le coin supérieur gauche";
 "settingsIdleLensMagnifierLabel" = "Loupe";
-"settingsIdleLensAppearanceLabel" = "Apparence";
+"settingsIdleLensAppearanceLabel" = "Apparence du panneau";
 "settingsIdleLensKeyboardActionLabel" = "Action clavier";
 "settingsIdleLensLivePreviewTitle" = "Aperçu en direct";
 "settingsIdleLensLivePreviewHint" = "Aperçu en temps réel du panneau de loupe en survolant l'icône";

@@ -588,7 +588,7 @@
 "settingsIdleLensCoordinateModePixels" = "物理ピクセル";
 "settingsIdleLensCoordinateModeHint" = "Pointsは画面左下を原点とし、Pixelsは画像左上を原点とします";
 "settingsIdleLensMagnifierLabel" = "拡大鏡";
-"settingsIdleLensAppearanceLabel" = "外観";
+"settingsIdleLensAppearanceLabel" = "パネル外観";
 "settingsIdleLensKeyboardActionLabel" = "キーボード操作";
 "settingsIdleLensLivePreviewTitle" = "ライブプレビュー";
 "settingsIdleLensLivePreviewHint" = "トリガーアイコンにカーソルを合わせると拡大鏡パネルをリアルタイムプレビュー";
