@@ -1,7 +1,6 @@
 import AppKit
 import Carbon
 import PermissionFlow
-import SwiftUI
 
 // MARK: - Tab model
 
@@ -86,7 +85,7 @@ class SettingsView: NSView {
     private var idleLensCrosshairWell: NSColorWell!
     private var idleLensCrosshairAlphaSlider: NSSlider!
     private var idleLensCrosshairWidthField: NSTextField!
-    private var idleLensPreview: NSHostingView<MagnifierPreviewView>!
+    private var idleLensPreview: MagnifierPreviewView!
 
     private var idleLensLastEditedIsDark: Bool = true
     private var historyCacheSlider: SettingsTickSlider!
@@ -665,7 +664,7 @@ class SettingsView: NSView {
     // MARK: - Pane builders
 
     /// Loads capcap's bundled AppIcon for the idle-lens preview, falling
-    /// back to a 1×1 transparent `NSImage` so the SwiftUI preview can
+    /// back to a 1×1 transparent `NSImage` so the AppKit preview can
     /// still render during unit tests.
     private static func loadAppIconForPreview() -> NSImage {
         if let bundleIcon = NSImage(named: "AppIcon") {
@@ -1127,10 +1126,7 @@ class SettingsView: NSView {
             context: nil,
             hints: nil
         ) ?? Self.fallbackCGImage()
-        let swiftUIPreview = MagnifierPreviewView(
-            iconImage: iconImage,
-            mockSnapshot: mockSnapshot
-        )
+        let preview = MagnifierPreviewView(iconImage: iconImage, mockSnapshot: mockSnapshot)
 
         let previewBox = NSBox()
         previewBox.boxType = .custom
@@ -1178,13 +1174,12 @@ class SettingsView: NSView {
         previewColumn.addArrangedSubview(liveHint)
         previewColumn.setCustomSpacing(8, after: liveHint)
 
-        let hosting = NSHostingView(rootView: swiftUIPreview)
-        hosting.translatesAutoresizingMaskIntoConstraints = false
-        hosting.setFrameSize(previewSize)
-        idleLensPreview = hosting
-        previewColumn.addArrangedSubview(hosting)
-        hosting.widthAnchor.constraint(equalToConstant: previewSize.width).isActive = true
-        hosting.heightAnchor.constraint(equalToConstant: previewSize.height).isActive = true
+        preview.translatesAutoresizingMaskIntoConstraints = false
+        preview.setFrameSize(previewSize)
+        idleLensPreview = preview
+        previewColumn.addArrangedSubview(preview)
+        preview.widthAnchor.constraint(equalToConstant: previewSize.width).isActive = true
+        preview.heightAnchor.constraint(equalToConstant: previewSize.height).isActive = true
 
         // Footer hint: preview is live, changes apply instantly.
         let footerRow = NSStackView()
@@ -1208,7 +1203,7 @@ class SettingsView: NSView {
         footerText.preferredMaxLayoutWidth = previewSize.width - 20
         footerRow.addArrangedSubview(footerText)
 
-        previewColumn.setCustomSpacing(8, after: hosting)
+        previewColumn.setCustomSpacing(8, after: preview)
         previewColumn.addArrangedSubview(footerRow)
         footerRow.widthAnchor.constraint(equalTo: previewColumn.widthAnchor).isActive = true
 
