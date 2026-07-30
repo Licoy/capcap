@@ -8,7 +8,7 @@ Project: capcap
 
 Add a magnifier color picker (lens) to the screenshot overlay. When the user has triggered an overlay session, the cursor is followed by a configurable panel that shows the current pixel coordinates, RGB/HEX value, and a magnified view of the area around the cursor. The lens is visible in three states: (1) idle (before any selection), (2) during drag-to-select, and (3) while resizing or moving an existing selection rectangle. The user can press `⌘+C` to copy the currently displayed value, or `Shift` (single tap) to toggle between HEX and RGB display. Clicking the cursor still triggers the existing window-selection capture. Pressing `Esc` cancels as before. The lens replaces the legacy "drag to screenshot" cursor chip while the overlay is active.
 
-The feature is opt-in via a `Defaults.idleColorLensEnabled` toggle (default `false` so existing users keep the legacy "drag to screenshot" chip until they explicitly enable the lens) and reuses the existing `backgroundSnapshot` for pixel sampling, so no new screen-capture permission is required.
+The feature is controlled by a `Defaults.idleColorLensEnabled` toggle (default `true` so new users get the magnifier experience immediately). Users who prefer the legacy "drag to screenshot" chip can disable it in **Settings → General → Show magnifier while selecting**. The lens reuses the existing `backgroundSnapshot` for pixel sampling, so no new screen-capture permission is required.
 
 ## Goals
 
@@ -122,10 +122,10 @@ Global monitors only observe — they cannot prevent the foreground app from rec
 
 ## Settings
 
-New `Defaults.idleColorLensEnabled: Bool` (default `false`).
+New `Defaults.idleColorLensEnabled: Bool` (default `true`).
 
-- When `true`: `OverlayWindowController` creates the lens instead of the `dragToScreenshot` cursor chip in idle.
-- When `false` (default): legacy `CursorChipWindow` chip with `L10n.dragToScreenshot` text is shown.
+- When `true` (default): `OverlayWindowController` creates the lens instead of the `dragToScreenshot` cursor chip in idle.
+- When `false`: legacy `CursorChipWindow` chip with `L10n.dragToScreenshot` text is shown.
 
 The feature has its own **dedicated card** in Settings → General (see below), with a master toggle, configurable options, and a live preview of the lens.
 
@@ -187,7 +187,7 @@ All options live on `Defaults` and take effect the next time the lens is created
 
 | Key | Type | Default | Purpose |
 | --- | --- | --- | --- |
-| `idleColorLensEnabled` | `Bool` | `false` | Master toggle. When off, the legacy "drag to screenshot" cursor chip is shown. |
+| `idleColorLensEnabled` | `Bool` | `true` | Master toggle. When off, the legacy "drag to screenshot" cursor chip is shown. |
 | `idleLensMagnifiedSize` | `Int` | `144` | Side length of the magnified square. Choices: 96, 144, 192. |
 | `idleLensPanelOffsetX` | `Double` | `15` | Horizontal offset (in points) between the cursor and the panel's left edge. |
 | `idleLensPanelOffsetY` | `Double` | `14` | Vertical offset (in points) between the cursor and the panel's top edge (when below the cursor). |
@@ -261,3 +261,4 @@ The right side of the card hosts an `IdleLensPreviewView` (defined in `capcap/Se
 - v9 — **top-edge pixel fix**: `CGRect.contains` replaced with inclusive boundary check (`min <= x <= max`) in `refreshIdleColorLensContent` because the half-open `[min, max)` interval excluded cursor positions at the absolute edge.
 - v10 — **lens during selection adjustment**: `SelectionView.mouseDown` calls `selectionDidStart()` for `.resize` and `.move` paths; `selectionDidStart` recreates the lens if it was dismissed by a previous `selectionDidComplete`. Lens now visible while dragging resize handles or moving an existing selection.
 - v11 — **Points/Pixels coordinate mode**: `Defaults.IdleLensCoordinateMode` enum (`.points`/`.pixels`), Settings popup, L10n keys in 8 languages. `drawInfo` switches between `mouseLocation` (points) and `currentPixelPoint` (pixels) based on the setting.
+- v12 — **default flipped to enabled**: `Defaults.idleColorLensEnabled` flipped from `false` to `true` so new users see the magnifier lens by default instead of the legacy "drag to screenshot" chip. Existing users who prefer the old behavior can disable the toggle in **Settings → General → Show magnifier while selecting**. Documentation updated to reflect the new default (Summary + Settings + Configurable Options table).
