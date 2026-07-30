@@ -125,6 +125,52 @@ final class MagnifierLensPanelTests: XCTestCase {
         )
     }
 
+    func testSampleRespectsXAxisOrientation() throws {
+        let width = 4
+        let height = 1
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue
+        let bytesPerRow = 4 * width
+        let pixels: [UInt8] = [
+            255, 0, 0, 255,
+            0, 255, 0, 255,
+            0, 0, 255, 255,
+            255, 255, 0, 255,
+        ]
+        let data = Data(pixels)
+        let provider = CGDataProvider(data: data as CFData)!
+        let image = CGImage(
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bitsPerPixel: 32,
+            bytesPerRow: bytesPerRow,
+            space: colorSpace,
+            bitmapInfo: CGBitmapInfo(rawValue: bitmapInfo),
+            provider: provider,
+            decode: nil,
+            shouldInterpolate: false,
+            intent: .defaultIntent
+        )!
+
+        XCTAssertEqual(
+            MagnifierLensPanelSampler.sample(image: image, at: CGPoint(x: 0, y: 0)),
+            MagnifierLensPanelWindow.Sample(r: 255, g: 0, b: 0)
+        )
+        XCTAssertEqual(
+            MagnifierLensPanelSampler.sample(image: image, at: CGPoint(x: 1, y: 0)),
+            MagnifierLensPanelWindow.Sample(r: 0, g: 255, b: 0)
+        )
+        XCTAssertEqual(
+            MagnifierLensPanelSampler.sample(image: image, at: CGPoint(x: 2, y: 0)),
+            MagnifierLensPanelWindow.Sample(r: 0, g: 0, b: 255)
+        )
+        XCTAssertEqual(
+            MagnifierLensPanelSampler.sample(image: image, at: CGPoint(x: 3, y: 0)),
+            MagnifierLensPanelWindow.Sample(r: 255, g: 255, b: 0)
+        )
+    }
+
     func testPixelCoordinateClampsToValidRange() {
         // Mouse on the very top edge of the screen should map to the top row
         // (y=0), not out-of-bounds.
@@ -191,9 +237,32 @@ final class MagnifierLensPanelTests: XCTestCase {
     }
 
     func testDefaultsLensVisualDefaults() {
+        let keys = [
+            "magnifierLensPanelMagnifiedSize",
+            "magnifierLensPanelOffsetX",
+            "magnifierLensPanelOffsetY",
+            "magnifierLensPanelShowCopyHint",
+            "magnifierLensPanelShowShiftHint",
+            "magnifierLensPanelFollowSystemAppearance",
+            "magnifierLensPanelDarkBackgroundAlpha",
+            "magnifierLensPanelLightBackgroundAlpha",
+            "magnifierLensPanelDarkBackgroundRed",
+            "magnifierLensPanelLightBackgroundGreen",
+            "magnifierLensPanelCrosshairBlue",
+        ]
+        defer {
+            for key in keys {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+        }
+
         // Magnified size defaults to 144.
         UserDefaults.standard.removeObject(forKey: "magnifierLensPanelMagnifiedSize")
         XCTAssertEqual(Defaults.magnifierLensPanelMagnifiedSize, 144)
+        Defaults.magnifierLensPanelMagnifiedSize = 123
+        XCTAssertEqual(Defaults.magnifierLensPanelMagnifiedSize, 144)
+        Defaults.magnifierLensPanelMagnifiedSize = 192
+        XCTAssertEqual(Defaults.magnifierLensPanelMagnifiedSize, 192)
         // Offsets default to (15, 14).
         UserDefaults.standard.removeObject(forKey: "magnifierLensPanelOffsetX")
         UserDefaults.standard.removeObject(forKey: "magnifierLensPanelOffsetY")
@@ -216,5 +285,17 @@ final class MagnifierLensPanelTests: XCTestCase {
         XCTAssertEqual(Defaults.magnifierLensPanelDarkBackgroundAlpha, 1.0, accuracy: 0.001)
         Defaults.magnifierLensPanelDarkBackgroundAlpha = -1
         XCTAssertEqual(Defaults.magnifierLensPanelDarkBackgroundAlpha, 0.0, accuracy: 0.001)
+        Defaults.magnifierLensPanelDarkBackgroundRed = 5
+        XCTAssertEqual(Defaults.magnifierLensPanelDarkBackgroundRed, 1.0, accuracy: 0.001)
+        Defaults.magnifierLensPanelDarkBackgroundRed = -1
+        XCTAssertEqual(Defaults.magnifierLensPanelDarkBackgroundRed, 0.0, accuracy: 0.001)
+        Defaults.magnifierLensPanelLightBackgroundGreen = 5
+        XCTAssertEqual(Defaults.magnifierLensPanelLightBackgroundGreen, 1.0, accuracy: 0.001)
+        Defaults.magnifierLensPanelLightBackgroundGreen = -1
+        XCTAssertEqual(Defaults.magnifierLensPanelLightBackgroundGreen, 0.0, accuracy: 0.001)
+        Defaults.magnifierLensPanelCrosshairBlue = 5
+        XCTAssertEqual(Defaults.magnifierLensPanelCrosshairBlue, 1.0, accuracy: 0.001)
+        Defaults.magnifierLensPanelCrosshairBlue = -1
+        XCTAssertEqual(Defaults.magnifierLensPanelCrosshairBlue, 0.0, accuracy: 0.001)
     }
 }
