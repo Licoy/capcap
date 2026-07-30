@@ -62,15 +62,15 @@ class OverlayWindowController {
 
     private var windows: [NSWindow] = []
     private var chipWindow: CursorChipWindow?
-    private var idleColorLens: IdleColorLensWindow?
-    private var idleColorLensFormat: IdleColorLensWindow.Format = .hex
+    private var magnifierLensPanel: MagnifierLensPanelWindow?
+    private var magnifierLensPanelFormat: MagnifierLensPanelWindow.Format = .hex
     private var mouseMovedLocalMonitor: Any?
     private var mouseMovedGlobalMonitor: Any?
-    private var idleLensFlagsChangedLocalMonitor: Any?
-    private var idleLensFlagsChangedGlobalMonitor: Any?
-    private var idleLensKeyDownGlobalMonitor: Any?
-    private var lastIdleLensShiftDown: TimeInterval = 0
-    private var idleColorLensActive: Bool { idleColorLens != nil }
+    private var magnifierLensPanelFlagsChangedLocalMonitor: Any?
+    private var magnifierLensPanelFlagsChangedGlobalMonitor: Any?
+    private var magnifierLensPanelKeyDownGlobalMonitor: Any?
+    private var lastMagnifierLensPanelShiftDown: TimeInterval = 0
+    private var magnifierLensPanelActive: Bool { magnifierLensPanel != nil }
     private var screenFramesByDisplayID: [CGDirectDisplayID: NSRect] = [:]
     private var escLocalMonitor: Any?
     private var escGlobalMonitor: Any?
@@ -588,12 +588,12 @@ class OverlayWindowController {
         triggerContext?.mark(.overlayOrderedFront)
 
         chipWindow = CursorChipWindow(text: currentCursorChipText)
-        if presetImage == nil && suspendedDraft == nil && Defaults.idleColorLensEnabled {
+        if shouldShowMagnifierLensPanel {
             // Lens replaces the drag-to-screenshot hint while the overlay is
             // sitting in the idle state. Chip stays nil so its text doesn't
             // double up with the lens.
             chipWindow = nil
-            setupIdleColorLens()
+            setupMagnifierLensPanel()
         } else {
             chipWindow?.show()
         }
@@ -602,7 +602,7 @@ class OverlayWindowController {
             if self?.editController?.isTextEditing == true {
                 return event
             }
-            if self?.handleIdleLensCopyShortcut(for: event) == true {
+            if self?.handleMagnifierLensPanelCopyShortcut(for: event) == true {
                 return nil
             }
             if self?.editController?.confirmCropFromKeyboard(for: event) == true {
@@ -654,26 +654,26 @@ class OverlayWindowController {
                 self?.cancel()
             }
         }
-        idleLensFlagsChangedLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
-            self?.handleIdleLensShiftFlagsChanged(event)
+        magnifierLensPanelFlagsChangedLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            self?.handleMagnifierLensPanelShiftFlagsChanged(event)
             return event
         }
         // The overlay is a non-activating panel, so keyboard events routed
         // to the foreground app never reach our local monitor. Mirror the
         // Shift and ⌘+C handling with global monitors so they still fire
         // when the user has Gemini (or any other app) focused underneath.
-        idleLensFlagsChangedGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
-            self?.handleIdleLensShiftFlagsChanged(event)
+        magnifierLensPanelFlagsChangedGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            self?.handleMagnifierLensPanelShiftFlagsChanged(event)
         }
-        idleLensKeyDownGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            self?.handleIdleLensCopyShortcut(for: event)
+        magnifierLensPanelKeyDownGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            self?.handleMagnifierLensPanelCopyShortcut(for: event)
         }
         mouseMovedLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { [weak self] event in
-            self?.refreshIdleColorLensContent()
+            self?.refreshMagnifierLensPanelContent()
             return event
         }
         mouseMovedGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { [weak self] _ in
-            self?.refreshIdleColorLensContent()
+            self?.refreshMagnifierLensPanelContent()
         }
         rightMouseLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .rightMouseDown) { [weak self] event in
             if self?.editController?.isTextEditing == true {
@@ -1091,16 +1091,16 @@ class OverlayWindowController {
         chipWindow?.dismiss()
         chipWindow = nil
 
-        idleColorLens?.dismiss()
-        idleColorLens = nil
-        idleColorLensFormat = .hex
-        lastIdleLensShiftDown = 0
+        magnifierLensPanel?.dismiss()
+        magnifierLensPanel = nil
+        magnifierLensPanelFormat = .hex
+        lastMagnifierLensPanelShiftDown = 0
 
         if let m = escLocalMonitor { NSEvent.removeMonitor(m); escLocalMonitor = nil }
         if let m = escGlobalMonitor { NSEvent.removeMonitor(m); escGlobalMonitor = nil }
-        if let m = idleLensFlagsChangedLocalMonitor { NSEvent.removeMonitor(m); idleLensFlagsChangedLocalMonitor = nil }
-        if let m = idleLensFlagsChangedGlobalMonitor { NSEvent.removeMonitor(m); idleLensFlagsChangedGlobalMonitor = nil }
-        if let m = idleLensKeyDownGlobalMonitor { NSEvent.removeMonitor(m); idleLensKeyDownGlobalMonitor = nil }
+        if let m = magnifierLensPanelFlagsChangedLocalMonitor { NSEvent.removeMonitor(m); magnifierLensPanelFlagsChangedLocalMonitor = nil }
+        if let m = magnifierLensPanelFlagsChangedGlobalMonitor { NSEvent.removeMonitor(m); magnifierLensPanelFlagsChangedGlobalMonitor = nil }
+        if let m = magnifierLensPanelKeyDownGlobalMonitor { NSEvent.removeMonitor(m); magnifierLensPanelKeyDownGlobalMonitor = nil }
         if let m = mouseMovedLocalMonitor { NSEvent.removeMonitor(m); mouseMovedLocalMonitor = nil }
         if let m = mouseMovedGlobalMonitor { NSEvent.removeMonitor(m); mouseMovedGlobalMonitor = nil }
         if let m = rightMouseLocalMonitor { NSEvent.removeMonitor(m); rightMouseLocalMonitor = nil }
@@ -1144,20 +1144,27 @@ class OverlayWindowController {
         )
     }
 
-    // MARK: - Idle color lens
+    // MARK: - Magnifier lens panel
 
-    private func setupIdleColorLens() {
-        guard idleColorLens == nil else { return }
-        let lens = IdleColorLensWindow()
-        idleColorLens = lens
-        idleColorLensFormat = .hex
-        lens.setFormat(idleColorLensFormat)
-        lens.show()
-        refreshIdleColorLensContent()
+    private var shouldShowMagnifierLensPanel: Bool {
+        guard presetImage == nil,
+              suspendedDraft == nil,
+              Defaults.magnifierLensPanelEnabled else { return false }
+        return postCaptureAction == .edit
     }
 
-    private func refreshIdleColorLensContent() {
-        guard let lens = idleColorLens else { return }
+    private func setupMagnifierLensPanel() {
+        guard magnifierLensPanel == nil else { return }
+        let lens = MagnifierLensPanelWindow()
+        magnifierLensPanel = lens
+        magnifierLensPanelFormat = .hex
+        lens.setFormat(magnifierLensPanelFormat)
+        lens.show()
+        refreshMagnifierLensPanelContent()
+    }
+
+    private func refreshMagnifierLensPanelContent() {
+        guard let lens = magnifierLensPanel else { return }
         let mouseLocation = NSEvent.mouseLocation
         // CGRect.contains uses a half-open [min, max) interval so a cursor
         // sitting on the top or right screen edge is treated as outside.
@@ -1171,58 +1178,58 @@ class OverlayWindowController {
               let displayID = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID,
               let snapshot = screenSnapshots[displayID],
               let screenFrame = screenFramesByDisplayID[displayID] else {
-            lens.update(snapshot: nil, screenFrame: .zero, mouseLocation: mouseLocation, format: idleColorLensFormat)
+            lens.update(snapshot: nil, screenFrame: .zero, mouseLocation: mouseLocation, format: magnifierLensPanelFormat)
             return
         }
         lens.update(
             snapshot: snapshot,
             screenFrame: screenFrame,
             mouseLocation: mouseLocation,
-            format: idleColorLensFormat
+            format: magnifierLensPanelFormat
         )
     }
 
-    private func handleIdleLensShiftFlagsChanged(_ event: NSEvent) {
-        guard idleColorLensActive else { return }
+    private func handleMagnifierLensPanelShiftFlagsChanged(_ event: NSEvent) {
+        guard magnifierLensPanelActive else { return }
         // Shift left/right keyCode is 56 / 60. We accept either.
         guard event.keyCode == 56 || event.keyCode == 60 else { return }
         let shiftIsDown = event.modifierFlags.contains(.shift)
         let now = event.timestamp
         if shiftIsDown {
-            lastIdleLensShiftDown = now
-        } else if lastIdleLensShiftDown > 0 {
-            let duration = now - lastIdleLensShiftDown
-            lastIdleLensShiftDown = 0
+            lastMagnifierLensPanelShiftDown = now
+        } else if lastMagnifierLensPanelShiftDown > 0 {
+            let duration = now - lastMagnifierLensPanelShiftDown
+            lastMagnifierLensPanelShiftDown = 0
             // Tap detection: quick press-and-release of Shift without other keys.
             // 500 ms is generous enough for a deliberate tap but short enough to
             // ignore Shift+letter holds where Shift stays down longer.
             if duration < 0.5 {
-                toggleIdleColorLensFormat()
+                toggleMagnifierLensPanelFormat()
             }
         }
     }
 
-    private func toggleIdleColorLensFormat() {
-        idleColorLensFormat = (idleColorLensFormat == .hex) ? .rgb : .hex
-        idleColorLens?.setFormat(idleColorLensFormat)
+    private func toggleMagnifierLensPanelFormat() {
+        magnifierLensPanelFormat = (magnifierLensPanelFormat == .hex) ? .rgb : .hex
+        magnifierLensPanel?.setFormat(magnifierLensPanelFormat)
     }
 
     /// Returns `true` when the event represents ⌘+C and the lens should claim it.
-    private func handleIdleLensCopyShortcut(for event: NSEvent) -> Bool {
-        guard idleColorLensActive else { return false }
+    private func handleMagnifierLensPanelCopyShortcut(for event: NSEvent) -> Bool {
+        guard magnifierLensPanelActive else { return false }
         guard event.keyCode == 8 else { return false } // kVK_ANSI_C
         let mods = event.modifierFlags.intersection([.command, .option, .control])
         guard mods == .command else { return false }
-        guard let lens = idleColorLens, let sample = lens.currentSample else { return false }
-        copyIdleLensColor(sample)
+        guard let lens = magnifierLensPanel, let sample = lens.currentSample else { return false }
+        copyMagnifierLensPanelColor(sample)
         return true
     }
 
-    private func copyIdleLensColor(_ sample: IdleColorLensWindow.Sample) {
+    private func copyMagnifierLensPanelColor(_ sample: MagnifierLensPanelWindow.Sample) {
         let hex = String(format: "#%02X%02X%02X", sample.r, sample.g, sample.b)
-        let rgb = L10n.idleLensRgbString(r: sample.r, g: sample.g, b: sample.b)
+        let rgb = L10n.magnifierLensPanelRgbString(r: sample.r, g: sample.g, b: sample.b)
         let value: String
-        switch idleColorLensFormat {
+        switch magnifierLensPanelFormat {
         case .hex:
             value = hex
             ClipboardManager.copyColorToClipboard(hex: hex)
@@ -1248,8 +1255,8 @@ extension OverlayWindowController: SelectionViewDelegate {
         // If the lens was dismissed by a previous selection completion
         // (e.g. the user is now resizing or moving an existing selection),
         // bring it back so the drag endpoint can be magnified.
-        if idleColorLens == nil, Defaults.idleColorLensEnabled {
-            setupIdleColorLens()
+        if magnifierLensPanel == nil, shouldShowMagnifierLensPanel {
+            setupMagnifierLensPanel()
         }
     }
 
@@ -1263,8 +1270,8 @@ extension OverlayWindowController: SelectionViewDelegate {
 
     func selectionDidComplete(rect: NSRect, inView view: NSView, isWindowSelection: Bool, windowID: CGWindowID?) {
         // Selection is done — the lens has served its purpose during drag.
-        idleColorLens?.dismiss()
-        idleColorLens = nil
+        magnifierLensPanel?.dismiss()
+        magnifierLensPanel = nil
 
         guard let window = view.window, let screen = window.screen else {
             cancel()

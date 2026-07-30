@@ -2,7 +2,7 @@ import XCTest
 import AppKit
 @testable import capcap
 
-final class IdleColorLensTests: XCTestCase {
+final class MagnifierLensPanelTests: XCTestCase {
 
     func testPixelCoordinateMapsGlobalToImageSpace() {
         // Screen occupies (0, 0) → (1440, 900) in points. Snapshot is 2880×1800
@@ -11,7 +11,7 @@ final class IdleColorLensTests: XCTestCase {
         let snapshotSize = CGSize(width: 2880, height: 1800)
         let globalPoint = NSPoint(x: 720, y: 450)
 
-        let mapped = IdleColorLensSampler.pixelCoordinate(
+        let mapped = MagnifierLensPanelSampler.pixelCoordinate(
             globalPoint: globalPoint,
             screenFrame: screenFrame,
             snapshotSize: snapshotSize
@@ -29,7 +29,7 @@ final class IdleColorLensTests: XCTestCase {
         let snapshotSize = CGSize(width: 1920, height: 1080)
         let globalPoint = NSPoint(x: -960, y: 540)
 
-        let mapped = IdleColorLensSampler.pixelCoordinate(
+        let mapped = MagnifierLensPanelSampler.pixelCoordinate(
             globalPoint: globalPoint,
             screenFrame: screenFrame,
             snapshotSize: snapshotSize
@@ -71,8 +71,8 @@ final class IdleColorLensTests: XCTestCase {
             intent: .defaultIntent
         )!
 
-        let sample = IdleColorLensSampler.sample(image: image, at: CGPoint(x: 2, y: 2))
-        XCTAssertEqual(sample, IdleColorLensWindow.Sample(r: 152, g: 77, b: 23))
+        let sample = MagnifierLensPanelSampler.sample(image: image, at: CGPoint(x: 2, y: 2))
+        XCTAssertEqual(sample, MagnifierLensPanelWindow.Sample(r: 152, g: 77, b: 23))
     }
 
     /// Verifies the y-axis is read correctly: each row of the snapshot
@@ -112,16 +112,16 @@ final class IdleColorLensTests: XCTestCase {
         )!
 
         XCTAssertEqual(
-            IdleColorLensSampler.sample(image: image, at: CGPoint(x: 2, y: 0)),
-            IdleColorLensWindow.Sample(r: 255, g: 0, b: 0)
+            MagnifierLensPanelSampler.sample(image: image, at: CGPoint(x: 2, y: 0)),
+            MagnifierLensPanelWindow.Sample(r: 255, g: 0, b: 0)
         )
         XCTAssertEqual(
-            IdleColorLensSampler.sample(image: image, at: CGPoint(x: 2, y: 3)),
-            IdleColorLensWindow.Sample(r: 0, g: 0, b: 255)
+            MagnifierLensPanelSampler.sample(image: image, at: CGPoint(x: 2, y: 3)),
+            MagnifierLensPanelWindow.Sample(r: 0, g: 0, b: 255)
         )
         XCTAssertEqual(
-            IdleColorLensSampler.sample(image: image, at: CGPoint(x: 2, y: 1)),
-            IdleColorLensWindow.Sample(r: 0, g: 255, b: 0)
+            MagnifierLensPanelSampler.sample(image: image, at: CGPoint(x: 2, y: 1)),
+            MagnifierLensPanelWindow.Sample(r: 0, g: 255, b: 0)
         )
     }
 
@@ -130,7 +130,7 @@ final class IdleColorLensTests: XCTestCase {
         // (y=0), not out-of-bounds.
         let screenFrame = NSRect(x: 0, y: 0, width: 1440, height: 900)
         let snapshotSize = CGSize(width: 2880, height: 1800)
-        let mapped = IdleColorLensSampler.pixelCoordinate(
+        let mapped = MagnifierLensPanelSampler.pixelCoordinate(
             globalPoint: NSPoint(x: 720, y: 900), // top edge in AppKit coords
             screenFrame: screenFrame,
             snapshotSize: snapshotSize
@@ -162,59 +162,59 @@ final class IdleColorLensTests: XCTestCase {
             intent: .defaultIntent
         )!
 
-        XCTAssertNil(IdleColorLensSampler.sample(image: image, at: CGPoint(x: -1, y: 0)))
-        XCTAssertNil(IdleColorLensSampler.sample(image: image, at: CGPoint(x: 0, y: -1)))
-        XCTAssertNil(IdleColorLensSampler.sample(image: image, at: CGPoint(x: 4, y: 0)))
-        XCTAssertNil(IdleColorLensSampler.sample(image: image, at: CGPoint(x: 0, y: 4)))
+        XCTAssertNil(MagnifierLensPanelSampler.sample(image: image, at: CGPoint(x: -1, y: 0)))
+        XCTAssertNil(MagnifierLensPanelSampler.sample(image: image, at: CGPoint(x: 0, y: -1)))
+        XCTAssertNil(MagnifierLensPanelSampler.sample(image: image, at: CGPoint(x: 4, y: 0)))
+        XCTAssertNil(MagnifierLensPanelSampler.sample(image: image, at: CGPoint(x: 0, y: 4)))
     }
 
     func testHexStringFormat() {
-        let sample = IdleColorLensWindow.Sample(r: 0x98, g: 0x4D, b: 0x17)
+        let sample = MagnifierLensPanelWindow.Sample(r: 0x98, g: 0x4D, b: 0x17)
         let hex = String(format: "#%02X%02X%02X", sample.r, sample.g, sample.b)
         XCTAssertEqual(hex, "#984D17")
     }
 
     func testRgbStringFormat() {
-        let rgb = L10n.idleLensRgbString(r: 152, g: 77, b: 23)
+        let rgb = L10n.magnifierLensPanelRgbString(r: 152, g: 77, b: 23)
         XCTAssertTrue(rgb.contains("152"))
         XCTAssertTrue(rgb.contains("77"))
         XCTAssertTrue(rgb.contains("23"))
     }
 
-    func testDefaultsIdleColorLensEnabledIsOnByDefault() {
+    func testDefaultsMagnifierLensPanelEnabledIsOnByDefault() {
         // Wipe any persisted value and ensure the default is true so new users
         // get the magnifier experience immediately.
-        let key = "idleColorLensEnabled"
+        let key = "magnifierLensPanelEnabled"
         UserDefaults.standard.removeObject(forKey: key)
-        XCTAssertTrue(Defaults.idleColorLensEnabled)
+        XCTAssertTrue(Defaults.magnifierLensPanelEnabled)
         UserDefaults.standard.removeObject(forKey: key)
     }
 
     func testDefaultsLensVisualDefaults() {
         // Magnified size defaults to 144.
-        UserDefaults.standard.removeObject(forKey: "idleLensMagnifiedSize")
-        XCTAssertEqual(Defaults.idleLensMagnifiedSize, 144)
+        UserDefaults.standard.removeObject(forKey: "magnifierLensPanelMagnifiedSize")
+        XCTAssertEqual(Defaults.magnifierLensPanelMagnifiedSize, 144)
         // Offsets default to (15, 14).
-        UserDefaults.standard.removeObject(forKey: "idleLensPanelOffsetX")
-        UserDefaults.standard.removeObject(forKey: "idleLensPanelOffsetY")
-        XCTAssertEqual(Defaults.idleLensPanelOffsetX, 15)
-        XCTAssertEqual(Defaults.idleLensPanelOffsetY, 14)
+        UserDefaults.standard.removeObject(forKey: "magnifierLensPanelOffsetX")
+        UserDefaults.standard.removeObject(forKey: "magnifierLensPanelOffsetY")
+        XCTAssertEqual(Defaults.magnifierLensPanelOffsetX, 15)
+        XCTAssertEqual(Defaults.magnifierLensPanelOffsetY, 14)
         // Hint toggles default on.
-        UserDefaults.standard.removeObject(forKey: "idleLensShowCopyHint")
-        UserDefaults.standard.removeObject(forKey: "idleLensShowShiftHint")
-        XCTAssertTrue(Defaults.idleLensShowCopyHint)
-        XCTAssertTrue(Defaults.idleLensShowShiftHint)
+        UserDefaults.standard.removeObject(forKey: "magnifierLensPanelShowCopyHint")
+        UserDefaults.standard.removeObject(forKey: "magnifierLensPanelShowShiftHint")
+        XCTAssertTrue(Defaults.magnifierLensPanelShowCopyHint)
+        XCTAssertTrue(Defaults.magnifierLensPanelShowShiftHint)
         // Follow-system defaults on; dark/light RGBA defaults match docs.
-        UserDefaults.standard.removeObject(forKey: "idleLensFollowSystemAppearance")
-        XCTAssertTrue(Defaults.idleLensFollowSystemAppearance)
-        UserDefaults.standard.removeObject(forKey: "idleLensDarkBackgroundAlpha")
-        UserDefaults.standard.removeObject(forKey: "idleLensLightBackgroundAlpha")
-        XCTAssertEqual(Defaults.idleLensDarkBackgroundAlpha, 0.7, accuracy: 0.001)
-        XCTAssertEqual(Defaults.idleLensLightBackgroundAlpha, 0.8, accuracy: 0.001)
+        UserDefaults.standard.removeObject(forKey: "magnifierLensPanelFollowSystemAppearance")
+        XCTAssertTrue(Defaults.magnifierLensPanelFollowSystemAppearance)
+        UserDefaults.standard.removeObject(forKey: "magnifierLensPanelDarkBackgroundAlpha")
+        UserDefaults.standard.removeObject(forKey: "magnifierLensPanelLightBackgroundAlpha")
+        XCTAssertEqual(Defaults.magnifierLensPanelDarkBackgroundAlpha, 0.7, accuracy: 0.001)
+        XCTAssertEqual(Defaults.magnifierLensPanelLightBackgroundAlpha, 0.8, accuracy: 0.001)
         // Alpha setter clamps to 0…1.
-        Defaults.idleLensDarkBackgroundAlpha = 5
-        XCTAssertEqual(Defaults.idleLensDarkBackgroundAlpha, 1.0, accuracy: 0.001)
-        Defaults.idleLensDarkBackgroundAlpha = -1
-        XCTAssertEqual(Defaults.idleLensDarkBackgroundAlpha, 0.0, accuracy: 0.001)
+        Defaults.magnifierLensPanelDarkBackgroundAlpha = 5
+        XCTAssertEqual(Defaults.magnifierLensPanelDarkBackgroundAlpha, 1.0, accuracy: 0.001)
+        Defaults.magnifierLensPanelDarkBackgroundAlpha = -1
+        XCTAssertEqual(Defaults.magnifierLensPanelDarkBackgroundAlpha, 0.0, accuracy: 0.001)
     }
 }

@@ -72,23 +72,23 @@ class SettingsView: NSView {
     private var historyCacheSwitch: NSSwitch!
     private var clipboardTextCacheSwitch: NSSwitch!
     private var magnifierLensPanelEnabledSwitch: NSSwitch!
-    private var idleLensOptionsContainer: NSView?
-    private var idleLensMagnifiedSizePopup: NSPopUpButton!
-    private var idleLensPanelOffsetXField: NSTextField!
-    private var idleLensPanelOffsetYField: NSTextField!
-    private var idleLensFollowSystemSwitch: NSSwitch!
-    private var idleLensDarkBackgroundWell: NSColorWell!
-    private var idleLensDarkAlphaSlider: NSSlider!
-    private var idleLensLightBackgroundWell: NSColorWell!
-    private var idleLensLightAlphaSlider: NSSlider!
-    private var idleLensShowCopyHintSwitch: NSSwitch!
-    private var idleLensShowShiftHintSwitch: NSSwitch!
-    private var idleLensCrosshairWell: NSColorWell!
-    private var idleLensCrosshairAlphaSlider: NSSlider!
-    private var idleLensCrosshairWidthField: NSTextField!
-    private var idleLensPreview: MagnifierPreviewView!
+    private var magnifierLensPanelOptionsContainer: NSView?
+    private var magnifierLensPanelMagnifiedSizePopup: NSPopUpButton!
+    private var magnifierLensPanelOffsetXField: NSTextField!
+    private var magnifierLensPanelOffsetYField: NSTextField!
+    private var magnifierLensPanelFollowSystemSwitch: NSSwitch!
+    private var magnifierLensPanelDarkBackgroundWell: NSColorWell!
+    private var magnifierLensPanelDarkAlphaSlider: NSSlider!
+    private var magnifierLensPanelLightBackgroundWell: NSColorWell!
+    private var magnifierLensPanelLightAlphaSlider: NSSlider!
+    private var magnifierLensPanelShowCopyHintSwitch: NSSwitch!
+    private var magnifierLensPanelShowShiftHintSwitch: NSSwitch!
+    private var magnifierLensPanelCrosshairWell: NSColorWell!
+    private var magnifierLensPanelCrosshairAlphaSlider: NSSlider!
+    private var magnifierLensPanelCrosshairWidthField: NSTextField!
+    private var magnifierLensPanelPreview: MagnifierPreviewView!
 
-    private var idleLensLastEditedIsDark: Bool = true
+    private var magnifierLensPanelLastEditedIsDark: Bool = true
     private var historyCacheSlider: SettingsTickSlider!
     private var historyCacheValueLabel: NSTextField!
     private var clipboardTextHistoryLimitSlider: SettingsTickSlider!
@@ -682,7 +682,7 @@ class SettingsView: NSView {
     }
 
     /// 1×1 transparent `CGImage` returned when no real icon is available.
-    /// Keeps the lens's `cgImage` argument non-nil so `IdleColorLensView`
+    /// Keeps the lens's `cgImage` argument non-nil so `MagnifierLensPanelView`
     /// can still draw without crashing.
     private static func fallbackCGImage() -> CGImage {
         let space = CGColorSpaceCreateDeviceRGB()
@@ -789,7 +789,7 @@ class SettingsView: NSView {
 
         buildWindowShadowCard(into: stack)
 
-        buildIdleLensCard(into: stack)
+        buildMagnifierLensPanelCard(into: stack)
 
         buildBeautifyDefaultsCard(into: stack)
 
@@ -898,13 +898,13 @@ class SettingsView: NSView {
         windowShadowPreview?.isEffectEnabled = on
     }
 
-    private func updateIdleLensControlsEnabled() {
-        let enabled = (magnifierLensPanelEnabledSwitch?.state ?? (Defaults.idleColorLensEnabled ? .on : .off)) == .on
-        idleLensOptionsContainer?.alphaValue = enabled ? 1.0 : 0.45
-        if let container = idleLensOptionsContainer {
+    private func updateMagnifierLensPanelControlsEnabled() {
+        let enabled = (magnifierLensPanelEnabledSwitch?.state ?? (Defaults.magnifierLensPanelEnabled ? .on : .off)) == .on
+        magnifierLensPanelOptionsContainer?.alphaValue = enabled ? 1.0 : 0.45
+        if let container = magnifierLensPanelOptionsContainer {
             setControls(in: container, enabled: enabled)
         }
-        idleLensPreview?.isPreviewInteractionEnabled = enabled
+        magnifierLensPanelPreview?.isPreviewInteractionEnabled = enabled
     }
 
     private func setControls(in view: NSView, enabled: Bool) {
@@ -916,11 +916,11 @@ class SettingsView: NSView {
         }
     }
 
-    /// Idle magnifier color picker card: master toggle, magnified-area
+    /// Magnifier lens panel card: master toggle, magnified-area
     /// size picker, panel-offset (X/Y) text fields, dark/light background
     /// colour wells with alpha, follow-system-appearance toggle, hint
     /// toggles, and a live preview that mirrors the lens chrome.
-    private func buildIdleLensCard(into stack: NSStackView) {
+    private func buildMagnifierLensPanelCard(into stack: NSStackView) {
         let card = CardView()
         let inner = NSStackView()
         inner.orientation = .vertical
@@ -932,9 +932,9 @@ class SettingsView: NSView {
 
         // ----- Master toggle
         let toggle = makeToggleRow(
-            title: L10n.settingsIdleColorLensTitle,
-            subtitle: L10n.settingsIdleColorLensHint,
-            isOn: Defaults.idleColorLensEnabled,
+            title: L10n.settingsMagnifierLensPanelTitle,
+            subtitle: L10n.settingsMagnifierLensPanelHint,
+            isOn: Defaults.magnifierLensPanelEnabled,
             action: #selector(magnifierLensPanelEnabledToggled(_:))
         )
         magnifierLensPanelEnabledSwitch = toggle.toggle
@@ -949,7 +949,7 @@ class SettingsView: NSView {
         splitRow.translatesAutoresizingMaskIntoConstraints = false
         inner.addArrangedSubview(splitRow)
         splitRow.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
-        idleLensOptionsContainer = splitRow
+        magnifierLensPanelOptionsContainer = splitRow
 
         let optionsColumn = NSStackView()
         optionsColumn.orientation = .vertical
@@ -962,21 +962,21 @@ class SettingsView: NSView {
         optionsColumn.widthAnchor.constraint(greaterThanOrEqualToConstant: 260).isActive = true
 
         // ── Magnifier sub-card ──────────────────────────────
-        let (magnifierCard, magnifierInner) = makeSubCard(title: L10n.settingsIdleLensMagnifierLabel)
+        let (magnifierCard, magnifierInner) = makeSubCard(title: L10n.settingsMagnifierLensPanelMagnifierLabel)
         optionsColumn.addArrangedSubview(magnifierCard)
         magnifierCard.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
 
         // ----- Magnified area size picker
-        let sizeLabel = primaryLabel(L10n.settingsIdleLensMagnifiedSizeLabel)
+        let sizeLabel = primaryLabel(L10n.settingsMagnifierLensPanelMagnifiedSizeLabel)
         let sizePopup = NSPopUpButton(frame: .zero, pullsDown: false)
         for option in [96, 144, 192] {
             sizePopup.addItem(withTitle: "\(option) × \(option)")
         }
-        sizePopup.selectItem(withTitle: "\(Defaults.idleLensMagnifiedSize) × \(Defaults.idleLensMagnifiedSize)")
+        sizePopup.selectItem(withTitle: "\(Defaults.magnifierLensPanelMagnifiedSize) × \(Defaults.magnifierLensPanelMagnifiedSize)")
         sizePopup.controlSize = .small
         sizePopup.target = self
-        sizePopup.action = #selector(idleLensMagnifiedSizeChanged(_:))
-        idleLensMagnifiedSizePopup = sizePopup
+        sizePopup.action = #selector(magnifierLensPanelMagnifiedSizeChanged(_:))
+        magnifierLensPanelMagnifiedSizePopup = sizePopup
         let sizeRow = NSStackView()
         sizeRow.orientation = .horizontal
         sizeRow.alignment = .centerY
@@ -988,16 +988,16 @@ class SettingsView: NSView {
         sizeRow.widthAnchor.constraint(equalTo: magnifierInner.widthAnchor).isActive = true
 
         // ----- Magnification picker
-        let magLabel = primaryLabel(L10n.settingsIdleLensMagnificationLabel)
+        let magLabel = primaryLabel(L10n.settingsMagnifierLensPanelMagnificationLabel)
         let magPopup = NSPopUpButton(frame: .zero, pullsDown: false)
         for option in [4, 6, 8, 10, 12, 16, 20, 24] {
             magPopup.addItem(withTitle: "\(option)×")
         }
-        let currentMag = Int(Defaults.idleLensMagnification)
+        let currentMag = Int(Defaults.magnifierLensPanelMagnification)
         magPopup.selectItem(withTitle: "\(currentMag)×")
         magPopup.controlSize = .small
         magPopup.target = self
-        magPopup.action = #selector(idleLensMagnificationChanged(_:))
+        magPopup.action = #selector(magnifierLensPanelMagnificationChanged(_:))
         let magRow = NSStackView()
         magRow.orientation = .horizontal
         magRow.alignment = .centerY
@@ -1009,15 +1009,15 @@ class SettingsView: NSView {
         magRow.widthAnchor.constraint(equalTo: magnifierInner.widthAnchor).isActive = true
 
         // ----- Coordinate mode picker
-        let coordLabel = primaryLabel(L10n.settingsIdleLensCoordinateModeLabel)
+        let coordLabel = primaryLabel(L10n.settingsMagnifierLensPanelCoordinateModeLabel)
         let coordPopup = NSPopUpButton(frame: .zero, pullsDown: false)
-        coordPopup.addItem(withTitle: L10n.settingsIdleLensCoordinateModePoints)
-        coordPopup.addItem(withTitle: L10n.settingsIdleLensCoordinateModePixels)
-        let currentCoordMode = Defaults.idleLensCoordinateMode
+        coordPopup.addItem(withTitle: L10n.settingsMagnifierLensPanelCoordinateModePoints)
+        coordPopup.addItem(withTitle: L10n.settingsMagnifierLensPanelCoordinateModePixels)
+        let currentCoordMode = Defaults.magnifierLensPanelCoordinateMode
         coordPopup.selectItem(at: currentCoordMode == .points ? 0 : 1)
         coordPopup.controlSize = .small
         coordPopup.target = self
-        coordPopup.action = #selector(idleLensCoordinateModeChanged(_:))
+        coordPopup.action = #selector(magnifierLensPanelCoordinateModeChanged(_:))
         let coordRow = NSStackView()
         coordRow.orientation = .horizontal
         coordRow.alignment = .centerY
@@ -1028,7 +1028,7 @@ class SettingsView: NSView {
         magnifierInner.addArrangedSubview(coordRow)
         coordRow.widthAnchor.constraint(equalTo: magnifierInner.widthAnchor).isActive = true
 
-        let coordHint = NSTextField(labelWithString: L10n.settingsIdleLensCoordinateModeHint)
+        let coordHint = NSTextField(labelWithString: L10n.settingsMagnifierLensPanelCoordinateModeHint)
         coordHint.font = .systemFont(ofSize: 11)
         coordHint.textColor = .secondaryLabelColor
         coordHint.translatesAutoresizingMaskIntoConstraints = false
@@ -1037,21 +1037,21 @@ class SettingsView: NSView {
         magnifierInner.setCustomSpacing(8, after: coordHint)
 
         // ----- Panel offset X / Y
-        let offsetLabel = primaryLabel(L10n.settingsIdleLensPanelOffsetLabel)
-        let xField = NSTextField(string: "\(Int(Defaults.idleLensPanelOffsetX))")
+        let offsetLabel = primaryLabel(L10n.settingsMagnifierLensPanelOffsetLabel)
+        let xField = NSTextField(string: "\(Int(Defaults.magnifierLensPanelOffsetX))")
         xField.alignment = .right
         xField.widthAnchor.constraint(equalToConstant: 44).isActive = true
         xField.controlSize = .small
         xField.target = self
-        xField.action = #selector(idleLensPanelOffsetXChanged(_:))
-        idleLensPanelOffsetXField = xField
-        let yField = NSTextField(string: "\(Int(Defaults.idleLensPanelOffsetY))")
+        xField.action = #selector(magnifierLensPanelOffsetXChanged(_:))
+        magnifierLensPanelOffsetXField = xField
+        let yField = NSTextField(string: "\(Int(Defaults.magnifierLensPanelOffsetY))")
         yField.alignment = .right
         yField.widthAnchor.constraint(equalToConstant: 44).isActive = true
         yField.controlSize = .small
         yField.target = self
-        yField.action = #selector(idleLensPanelOffsetYChanged(_:))
-        idleLensPanelOffsetYField = yField
+        yField.action = #selector(magnifierLensPanelOffsetYChanged(_:))
+        magnifierLensPanelOffsetYField = yField
         let offsetRow = NSStackView()
         offsetRow.orientation = .horizontal
         offsetRow.alignment = .centerY
@@ -1064,77 +1064,77 @@ class SettingsView: NSView {
         offsetRow.widthAnchor.constraint(equalTo: magnifierInner.widthAnchor).isActive = true
 
         // ── Appearance sub-card ─────────────────────────────
-        let (appearanceCard, appearanceInner) = makeSubCard(title: L10n.settingsIdleLensAppearanceLabel)
+        let (appearanceCard, appearanceInner) = makeSubCard(title: L10n.settingsMagnifierLensPanelAppearanceLabel)
         optionsColumn.addArrangedSubview(appearanceCard)
         appearanceCard.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
 
         let followRow = makeToggleRow(
-            title: L10n.settingsIdleLensFollowSystemAppearanceTitle,
-            subtitle: L10n.settingsIdleLensFollowSystemAppearanceHint,
-            isOn: Defaults.idleLensFollowSystemAppearance,
-            action: #selector(idleLensFollowSystemToggled(_:))
+            title: L10n.settingsMagnifierLensPanelFollowSystemAppearanceTitle,
+            subtitle: L10n.settingsMagnifierLensPanelFollowSystemAppearanceHint,
+            isOn: Defaults.magnifierLensPanelFollowSystemAppearance,
+            action: #selector(magnifierLensPanelFollowSystemToggled(_:))
         )
-        idleLensFollowSystemSwitch = followRow.toggle
+        magnifierLensPanelFollowSystemSwitch = followRow.toggle
         appearanceInner.addArrangedSubview(followRow.row)
         followRow.row.widthAnchor.constraint(equalTo: appearanceInner.widthAnchor).isActive = true
 
         let darkColorRow = makeBackgroundColorRow(
-            label: L10n.settingsIdleLensDarkBackgroundLabel,
+            label: L10n.settingsMagnifierLensPanelDarkBackgroundLabel,
             isDark: true
         )
-        idleLensDarkBackgroundWell = darkColorRow.well
-        idleLensDarkAlphaSlider = darkColorRow.slider
+        magnifierLensPanelDarkBackgroundWell = darkColorRow.well
+        magnifierLensPanelDarkAlphaSlider = darkColorRow.slider
         appearanceInner.addArrangedSubview(darkColorRow.row)
         darkColorRow.row.widthAnchor.constraint(equalTo: appearanceInner.widthAnchor).isActive = true
 
         let lightColorRow = makeBackgroundColorRow(
-            label: L10n.settingsIdleLensLightBackgroundLabel,
+            label: L10n.settingsMagnifierLensPanelLightBackgroundLabel,
             isDark: false
         )
-        idleLensLightBackgroundWell = lightColorRow.well
-        idleLensLightAlphaSlider = lightColorRow.slider
+        magnifierLensPanelLightBackgroundWell = lightColorRow.well
+        magnifierLensPanelLightAlphaSlider = lightColorRow.slider
         appearanceInner.addArrangedSubview(lightColorRow.row)
         lightColorRow.row.widthAnchor.constraint(equalTo: appearanceInner.widthAnchor).isActive = true
 
         // ----- Crosshair
-        let crosshairHeader = primaryLabel(L10n.settingsIdleLensCrosshairLabel)
+        let crosshairHeader = primaryLabel(L10n.settingsMagnifierLensPanelCrosshairLabel)
         appearanceInner.addArrangedSubview(crosshairHeader)
 
-        let crosshairHint = NSTextField(labelWithString: L10n.settingsIdleLensCrosshairHint)
+        let crosshairHint = NSTextField(labelWithString: L10n.settingsMagnifierLensPanelCrosshairHint)
         crosshairHint.font = .systemFont(ofSize: 11)
         crosshairHint.textColor = .secondaryLabelColor
         crosshairHint.translatesAutoresizingMaskIntoConstraints = false
         appearanceInner.addArrangedSubview(crosshairHint)
 
         let crosshairRow = makeCrosshairColorRow()
-        idleLensCrosshairWell = crosshairRow.well
-        idleLensCrosshairAlphaSlider = crosshairRow.slider
-        idleLensCrosshairWidthField = crosshairRow.widthField
+        magnifierLensPanelCrosshairWell = crosshairRow.well
+        magnifierLensPanelCrosshairAlphaSlider = crosshairRow.slider
+        magnifierLensPanelCrosshairWidthField = crosshairRow.widthField
         appearanceInner.addArrangedSubview(crosshairRow.row)
         crosshairRow.row.widthAnchor.constraint(equalTo: appearanceInner.widthAnchor).isActive = true
 
         // ── Keyboard action sub-card ────────────────────────
-        let (keyboardCard, keyboardInner) = makeSubCard(title: L10n.settingsIdleLensKeyboardActionLabel)
+        let (keyboardCard, keyboardInner) = makeSubCard(title: L10n.settingsMagnifierLensPanelKeyboardActionLabel)
         optionsColumn.addArrangedSubview(keyboardCard)
         keyboardCard.widthAnchor.constraint(equalTo: optionsColumn.widthAnchor).isActive = true
 
         let copyHintRow = makeToggleRow(
-            title: L10n.idleLensCopyHint,
+            title: L10n.magnifierLensPanelCopyHint,
             subtitle: nil,
-            isOn: Defaults.idleLensShowCopyHint,
-            action: #selector(idleLensShowCopyHintToggled(_:))
+            isOn: Defaults.magnifierLensPanelShowCopyHint,
+            action: #selector(magnifierLensPanelShowCopyHintToggled(_:))
         )
-        idleLensShowCopyHintSwitch = copyHintRow.toggle
+        magnifierLensPanelShowCopyHintSwitch = copyHintRow.toggle
         keyboardInner.addArrangedSubview(copyHintRow.row)
         copyHintRow.row.widthAnchor.constraint(equalTo: keyboardInner.widthAnchor).isActive = true
 
         let shiftHintRow = makeToggleRow(
-            title: L10n.idleLensShiftHint,
+            title: L10n.magnifierLensPanelShiftHint,
             subtitle: nil,
-            isOn: Defaults.idleLensShowShiftHint,
-            action: #selector(idleLensShowShiftHintToggled(_:))
+            isOn: Defaults.magnifierLensPanelShowShiftHint,
+            action: #selector(magnifierLensPanelShowShiftHintToggled(_:))
         )
-        idleLensShowShiftHintSwitch = shiftHintRow.toggle
+        magnifierLensPanelShowShiftHintSwitch = shiftHintRow.toggle
         keyboardInner.addArrangedSubview(shiftHintRow.row)
         shiftHintRow.row.widthAnchor.constraint(equalTo: keyboardInner.widthAnchor).isActive = true
 
@@ -1179,14 +1179,14 @@ class SettingsView: NSView {
         dot.heightAnchor.constraint(equalToConstant: 12).isActive = true
         liveTitleRow.addArrangedSubview(dot)
 
-        let liveTitle = NSTextField(labelWithString: L10n.settingsIdleLensLivePreviewTitle)
+        let liveTitle = NSTextField(labelWithString: L10n.settingsMagnifierLensPanelLivePreviewTitle)
         liveTitle.font = .systemFont(ofSize: 12, weight: .semibold)
         liveTitle.textColor = .secondaryLabelColor
         liveTitleRow.addArrangedSubview(liveTitle)
 
         previewColumn.addArrangedSubview(liveTitleRow)
 
-        let liveHint = NSTextField(labelWithString: L10n.settingsIdleLensLivePreviewHint)
+        let liveHint = NSTextField(labelWithString: L10n.settingsMagnifierLensPanelLivePreviewHint)
         liveHint.font = .systemFont(ofSize: 10)
         liveHint.textColor = .tertiaryLabelColor
         liveHint.lineBreakMode = .byWordWrapping
@@ -1196,7 +1196,7 @@ class SettingsView: NSView {
 
         preview.translatesAutoresizingMaskIntoConstraints = false
         preview.setFrameSize(previewSize)
-        idleLensPreview = preview
+        magnifierLensPanelPreview = preview
         previewColumn.addArrangedSubview(preview)
         preview.widthAnchor.constraint(equalToConstant: previewSize.width).isActive = true
         preview.heightAnchor.constraint(equalToConstant: previewSize.height).isActive = true
@@ -1216,7 +1216,7 @@ class SettingsView: NSView {
         sparkleIcon.heightAnchor.constraint(equalToConstant: 14).isActive = true
         footerRow.addArrangedSubview(sparkleIcon)
 
-        let footerText = NSTextField(labelWithString: L10n.settingsIdleLensPreviewHint)
+        let footerText = NSTextField(labelWithString: L10n.settingsMagnifierLensPanelPreviewHint)
         footerText.font = .systemFont(ofSize: 10)
         footerText.textColor = .tertiaryLabelColor
         footerText.lineBreakMode = .byWordWrapping
@@ -1239,7 +1239,7 @@ class SettingsView: NSView {
 
         stack.addArrangedSubview(card)
         card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
-        updateIdleLensControlsEnabled()
+        updateMagnifierLensPanelControlsEnabled()
     }
 
     /// Builds a labelled row that pairs a color well with an alpha slider.
@@ -1264,8 +1264,8 @@ class SettingsView: NSView {
         well.color = initialColor
         well.target = self
         well.action = isDark
-            ? #selector(idleLensDarkBackgroundWellChanged(_:))
-            : #selector(idleLensLightBackgroundWellChanged(_:))
+            ? #selector(magnifierLensPanelDarkBackgroundWellChanged(_:))
+            : #selector(magnifierLensPanelLightBackgroundWellChanged(_:))
         well.widthAnchor.constraint(equalToConstant: 36).isActive = true
         well.heightAnchor.constraint(equalToConstant: 22).isActive = true
         row.addArrangedSubview(well)
@@ -1276,8 +1276,8 @@ class SettingsView: NSView {
             maxValue: 1,
             target: self,
             action: isDark
-                ? #selector(idleLensDarkAlphaChanged(_:))
-                : #selector(idleLensLightAlphaChanged(_:))
+                ? #selector(magnifierLensPanelDarkAlphaChanged(_:))
+                : #selector(magnifierLensPanelLightAlphaChanged(_:))
         )
         slider.controlSize = .small
         slider.isContinuous = true
@@ -1290,26 +1290,26 @@ class SettingsView: NSView {
     private func currentLensBackgroundColor(isDark: Bool) -> NSColor {
         if isDark {
             return NSColor(
-                srgbRed: CGFloat(Defaults.idleLensDarkBackgroundRed),
-                green: CGFloat(Defaults.idleLensDarkBackgroundGreen),
-                blue: CGFloat(Defaults.idleLensDarkBackgroundBlue),
-                alpha: CGFloat(Defaults.idleLensDarkBackgroundAlpha)
+                srgbRed: CGFloat(Defaults.magnifierLensPanelDarkBackgroundRed),
+                green: CGFloat(Defaults.magnifierLensPanelDarkBackgroundGreen),
+                blue: CGFloat(Defaults.magnifierLensPanelDarkBackgroundBlue),
+                alpha: CGFloat(Defaults.magnifierLensPanelDarkBackgroundAlpha)
             )
         }
         return NSColor(
-            srgbRed: CGFloat(Defaults.idleLensLightBackgroundRed),
-            green: CGFloat(Defaults.idleLensLightBackgroundGreen),
-            blue: CGFloat(Defaults.idleLensLightBackgroundBlue),
-            alpha: CGFloat(Defaults.idleLensLightBackgroundAlpha)
+            srgbRed: CGFloat(Defaults.magnifierLensPanelLightBackgroundRed),
+            green: CGFloat(Defaults.magnifierLensPanelLightBackgroundGreen),
+            blue: CGFloat(Defaults.magnifierLensPanelLightBackgroundBlue),
+            alpha: CGFloat(Defaults.magnifierLensPanelLightBackgroundAlpha)
         )
     }
 
     private func currentLensCrosshairColor() -> NSColor {
         NSColor(
-            srgbRed: CGFloat(Defaults.idleLensCrosshairRed),
-            green: CGFloat(Defaults.idleLensCrosshairGreen),
-            blue: CGFloat(Defaults.idleLensCrosshairBlue),
-            alpha: CGFloat(Defaults.idleLensCrosshairAlpha)
+            srgbRed: CGFloat(Defaults.magnifierLensPanelCrosshairRed),
+            green: CGFloat(Defaults.magnifierLensPanelCrosshairGreen),
+            blue: CGFloat(Defaults.magnifierLensPanelCrosshairBlue),
+            alpha: CGFloat(Defaults.magnifierLensPanelCrosshairAlpha)
         )
     }
 
@@ -1324,7 +1324,7 @@ class SettingsView: NSView {
         let well = NSColorWell(frame: .zero)
         well.color = initialColor
         well.target = self
-        well.action = #selector(idleLensCrosshairWellChanged(_:))
+        well.action = #selector(magnifierLensPanelCrosshairWellChanged(_:))
         well.widthAnchor.constraint(equalToConstant: 36).isActive = true
         well.heightAnchor.constraint(equalToConstant: 22).isActive = true
         row.addArrangedSubview(well)
@@ -1334,24 +1334,24 @@ class SettingsView: NSView {
             minValue: 0,
             maxValue: 1,
             target: self,
-            action: #selector(idleLensCrosshairAlphaChanged(_:))
+            action: #selector(magnifierLensPanelCrosshairAlphaChanged(_:))
         )
         slider.controlSize = .small
         slider.isContinuous = true
         row.addArrangedSubview(slider)
         slider.widthAnchor.constraint(equalToConstant: 80).isActive = true
 
-        let widthLabel = NSTextField(labelWithString: L10n.settingsIdleLensCrosshairWidthLabel)
+        let widthLabel = NSTextField(labelWithString: L10n.settingsMagnifierLensPanelCrosshairWidthLabel)
         widthLabel.font = .systemFont(ofSize: 11)
         row.addArrangedSubview(widthLabel)
 
-        let widthField = NSTextField(string: "\(Int(Defaults.idleLensCrosshairWidth))")
+        let widthField = NSTextField(string: "\(Int(Defaults.magnifierLensPanelCrosshairWidth))")
         widthField.alignment = .right
         widthField.font = .monospacedDigitSystemFont(ofSize: NSFont.smallSystemFontSize, weight: .regular)
         widthField.widthAnchor.constraint(equalToConstant: 36).isActive = true
         widthField.controlSize = .small
         widthField.target = self
-        widthField.action = #selector(idleLensCrosshairWidthChanged(_:))
+        widthField.action = #selector(magnifierLensPanelCrosshairWidthChanged(_:))
         row.addArrangedSubview(widthField)
 
         let pxLabel = NSTextField(labelWithString: "px")
@@ -3582,98 +3582,98 @@ class SettingsView: NSView {
     }
 
     @objc private func magnifierLensPanelEnabledToggled(_ sender: NSSwitch) {
-        Defaults.idleColorLensEnabled = sender.state == .on
-        updateIdleLensControlsEnabled()
+        Defaults.magnifierLensPanelEnabled = sender.state == .on
+        updateMagnifierLensPanelControlsEnabled()
     }
 
-    @objc private func idleLensMagnifiedSizeChanged(_ sender: NSPopUpButton) {
+    @objc private func magnifierLensPanelMagnifiedSizeChanged(_ sender: NSPopUpButton) {
         guard let title = sender.selectedItem?.title,
               let side = Int(title.split(separator: " ").first ?? "") else { return }
-        Defaults.idleLensMagnifiedSize = side
+        Defaults.magnifierLensPanelMagnifiedSize = side
     }
 
-    @objc private func idleLensMagnificationChanged(_ sender: NSPopUpButton) {
+    @objc private func magnifierLensPanelMagnificationChanged(_ sender: NSPopUpButton) {
         guard let title = sender.selectedItem?.title,
               let mag = Double(title.trimmingCharacters(in: CharacterSet(charactersIn: "×"))) else { return }
-        Defaults.idleLensMagnification = mag
+        Defaults.magnifierLensPanelMagnification = mag
     }
 
-    @objc private func idleLensCoordinateModeChanged(_ sender: NSPopUpButton) {
-        Defaults.idleLensCoordinateMode = sender.indexOfSelectedItem == 0 ? .points : .pixels
+    @objc private func magnifierLensPanelCoordinateModeChanged(_ sender: NSPopUpButton) {
+        Defaults.magnifierLensPanelCoordinateMode = sender.indexOfSelectedItem == 0 ? .points : .pixels
     }
 
-    @objc private func idleLensPanelOffsetXChanged(_ sender: NSTextField) {
+    @objc private func magnifierLensPanelOffsetXChanged(_ sender: NSTextField) {
         if let value = Double(sender.stringValue) {
-            Defaults.idleLensPanelOffsetX = value
+            Defaults.magnifierLensPanelOffsetX = value
         }
     }
 
-    @objc private func idleLensPanelOffsetYChanged(_ sender: NSTextField) {
+    @objc private func magnifierLensPanelOffsetYChanged(_ sender: NSTextField) {
         if let value = Double(sender.stringValue) {
-            Defaults.idleLensPanelOffsetY = value
+            Defaults.magnifierLensPanelOffsetY = value
         }
     }
 
-    @objc private func idleLensFollowSystemToggled(_ sender: NSSwitch) {
-        Defaults.idleLensFollowSystemAppearance = sender.state == .on
+    @objc private func magnifierLensPanelFollowSystemToggled(_ sender: NSSwitch) {
+        Defaults.magnifierLensPanelFollowSystemAppearance = sender.state == .on
     }
 
-    @objc private func idleLensDarkBackgroundWellChanged(_ sender: NSColorWell) {
+    @objc private func magnifierLensPanelDarkBackgroundWellChanged(_ sender: NSColorWell) {
         let color = sender.color.usingColorSpace(.sRGB) ?? sender.color
-        Defaults.idleLensDarkBackgroundRed = Double(color.redComponent)
-        Defaults.idleLensDarkBackgroundGreen = Double(color.greenComponent)
-        Defaults.idleLensDarkBackgroundBlue = Double(color.blueComponent)
-        Defaults.idleLensDarkBackgroundAlpha = Double(color.alphaComponent)
-        idleLensDarkAlphaSlider.doubleValue = color.alphaComponent
+        Defaults.magnifierLensPanelDarkBackgroundRed = Double(color.redComponent)
+        Defaults.magnifierLensPanelDarkBackgroundGreen = Double(color.greenComponent)
+        Defaults.magnifierLensPanelDarkBackgroundBlue = Double(color.blueComponent)
+        Defaults.magnifierLensPanelDarkBackgroundAlpha = Double(color.alphaComponent)
+        magnifierLensPanelDarkAlphaSlider.doubleValue = color.alphaComponent
     }
 
-    @objc private func idleLensLightBackgroundWellChanged(_ sender: NSColorWell) {
+    @objc private func magnifierLensPanelLightBackgroundWellChanged(_ sender: NSColorWell) {
         let color = sender.color.usingColorSpace(.sRGB) ?? sender.color
-        Defaults.idleLensLightBackgroundRed = Double(color.redComponent)
-        Defaults.idleLensLightBackgroundGreen = Double(color.greenComponent)
-        Defaults.idleLensLightBackgroundBlue = Double(color.blueComponent)
-        Defaults.idleLensLightBackgroundAlpha = Double(color.alphaComponent)
-        idleLensLightAlphaSlider.doubleValue = color.alphaComponent
+        Defaults.magnifierLensPanelLightBackgroundRed = Double(color.redComponent)
+        Defaults.magnifierLensPanelLightBackgroundGreen = Double(color.greenComponent)
+        Defaults.magnifierLensPanelLightBackgroundBlue = Double(color.blueComponent)
+        Defaults.magnifierLensPanelLightBackgroundAlpha = Double(color.alphaComponent)
+        magnifierLensPanelLightAlphaSlider.doubleValue = color.alphaComponent
     }
 
-    @objc private func idleLensDarkAlphaChanged(_ sender: NSSlider) {
-        Defaults.idleLensDarkBackgroundAlpha = sender.doubleValue
-        idleLensDarkBackgroundWell.color = currentLensBackgroundColor(isDark: true)
+    @objc private func magnifierLensPanelDarkAlphaChanged(_ sender: NSSlider) {
+        Defaults.magnifierLensPanelDarkBackgroundAlpha = sender.doubleValue
+        magnifierLensPanelDarkBackgroundWell.color = currentLensBackgroundColor(isDark: true)
     }
 
-    @objc private func idleLensLightAlphaChanged(_ sender: NSSlider) {
-        Defaults.idleLensLightBackgroundAlpha = sender.doubleValue
-        idleLensLightBackgroundWell.color = currentLensBackgroundColor(isDark: false)
+    @objc private func magnifierLensPanelLightAlphaChanged(_ sender: NSSlider) {
+        Defaults.magnifierLensPanelLightBackgroundAlpha = sender.doubleValue
+        magnifierLensPanelLightBackgroundWell.color = currentLensBackgroundColor(isDark: false)
     }
 
-    @objc private func idleLensCrosshairWellChanged(_ sender: NSColorWell) {
+    @objc private func magnifierLensPanelCrosshairWellChanged(_ sender: NSColorWell) {
         let color = sender.color.usingColorSpace(.sRGB) ?? sender.color
-        Defaults.idleLensCrosshairRed = Double(color.redComponent)
-        Defaults.idleLensCrosshairGreen = Double(color.greenComponent)
-        Defaults.idleLensCrosshairBlue = Double(color.blueComponent)
-        Defaults.idleLensCrosshairAlpha = Double(color.alphaComponent)
-        idleLensCrosshairAlphaSlider.doubleValue = color.alphaComponent
+        Defaults.magnifierLensPanelCrosshairRed = Double(color.redComponent)
+        Defaults.magnifierLensPanelCrosshairGreen = Double(color.greenComponent)
+        Defaults.magnifierLensPanelCrosshairBlue = Double(color.blueComponent)
+        Defaults.magnifierLensPanelCrosshairAlpha = Double(color.alphaComponent)
+        magnifierLensPanelCrosshairAlphaSlider.doubleValue = color.alphaComponent
     }
 
-    @objc private func idleLensCrosshairAlphaChanged(_ sender: NSSlider) {
-        Defaults.idleLensCrosshairAlpha = sender.doubleValue
-        idleLensCrosshairWell.color = currentLensCrosshairColor()
+    @objc private func magnifierLensPanelCrosshairAlphaChanged(_ sender: NSSlider) {
+        Defaults.magnifierLensPanelCrosshairAlpha = sender.doubleValue
+        magnifierLensPanelCrosshairWell.color = currentLensCrosshairColor()
     }
 
-    @objc private func idleLensCrosshairWidthChanged(_ sender: NSTextField) {
+    @objc private func magnifierLensPanelCrosshairWidthChanged(_ sender: NSTextField) {
         guard let value = Double(sender.stringValue), value >= 1, value <= 30 else {
-            sender.stringValue = "\(Int(Defaults.idleLensCrosshairWidth))"
+            sender.stringValue = "\(Int(Defaults.magnifierLensPanelCrosshairWidth))"
             return
         }
-        Defaults.idleLensCrosshairWidth = value
+        Defaults.magnifierLensPanelCrosshairWidth = value
     }
 
-    @objc private func idleLensShowCopyHintToggled(_ sender: NSSwitch) {
-        Defaults.idleLensShowCopyHint = sender.state == .on
+    @objc private func magnifierLensPanelShowCopyHintToggled(_ sender: NSSwitch) {
+        Defaults.magnifierLensPanelShowCopyHint = sender.state == .on
     }
 
-    @objc private func idleLensShowShiftHintToggled(_ sender: NSSwitch) {
-        Defaults.idleLensShowShiftHint = sender.state == .on
+    @objc private func magnifierLensPanelShowShiftHintToggled(_ sender: NSSwitch) {
+        Defaults.magnifierLensPanelShowShiftHint = sender.state == .on
     }
 
     @objc private func clipboardTextCacheToggled(_ sender: NSSwitch) {

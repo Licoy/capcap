@@ -1,7 +1,7 @@
 import AppKit
 
 /// AppKit preview of the magnifier panel used in Settings > General.
-/// The right side embeds the production `IdleColorLensView` so preview drawing
+/// The right side embeds the production `MagnifierLensPanelView` so preview drawing
 /// stays aligned with the live panel. Hovering the icon drives real pixel
 /// sampling from the bundled app icon.
 final class MagnifierPreviewView: NSView {
@@ -13,7 +13,7 @@ final class MagnifierPreviewView: NSView {
     private let iconImage: NSImage
     private let mockSnapshot: CGImage
     private let iconView: MagnifierPreviewSubjectView
-    private let lensView: IdleColorLensView
+    private let lensView: MagnifierLensPanelView
     private var defaultsObserver: NSObjectProtocol?
     private var hoverLocation: CGPoint?
     private var lensWidthConstraint: NSLayoutConstraint?
@@ -34,7 +34,7 @@ final class MagnifierPreviewView: NSView {
         self.iconImage = iconImage
         self.mockSnapshot = mockSnapshot
         self.iconView = MagnifierPreviewSubjectView(iconImage: iconImage)
-        self.lensView = IdleColorLensView(frame: .zero)
+        self.lensView = MagnifierLensPanelView(frame: .zero)
         super.init(frame: NSRect(origin: .zero, size: Self.requiredSize()))
 
         wantsLayer = true
@@ -72,7 +72,7 @@ final class MagnifierPreviewView: NSView {
     /// Total preview size. SettingsView uses this to size the embedded AppKit
     /// view in the card layout.
     static func requiredSize() -> NSSize {
-        let lens = IdleColorLensWindow.panelSizeForCurrentSettings()
+        let lens = MagnifierLensPanelWindow.panelSizeForCurrentSettings()
         return NSSize(
             width: contentPadding * 2 + iconSide + contentSpacing + lens.width,
             height: contentPadding * 2 + max(iconSide, lens.height)
@@ -96,7 +96,7 @@ final class MagnifierPreviewView: NSView {
 
         lensView.translatesAutoresizingMaskIntoConstraints = false
         row.addArrangedSubview(lensView)
-        let lensSize = IdleColorLensWindow.panelSizeForCurrentSettings()
+        let lensSize = MagnifierLensPanelWindow.panelSizeForCurrentSettings()
         lensWidthConstraint = lensView.widthAnchor.constraint(equalToConstant: lensSize.width)
         lensHeightConstraint = lensView.heightAnchor.constraint(equalToConstant: lensSize.height)
         lensWidthConstraint?.isActive = true
@@ -111,7 +111,7 @@ final class MagnifierPreviewView: NSView {
     }
 
     private func refreshForCurrentDefaults() {
-        let lensSize = IdleColorLensWindow.panelSizeForCurrentSettings()
+        let lensSize = MagnifierLensPanelWindow.panelSizeForCurrentSettings()
         lensWidthConstraint?.constant = lensSize.width
         lensHeightConstraint?.constant = lensSize.height
         setFrameSize(Self.requiredSize())
@@ -134,8 +134,8 @@ final class MagnifierPreviewView: NSView {
         let pixelPoint = hoverLocation ?? CGPoint(x: w / 2, y: h / 2)
         let mouseLocation = NSPoint(x: pixelPoint.x, y: h - pixelPoint.y)
         let screenFrame = NSRect(x: 0, y: 0, width: w, height: h)
-        let sample = IdleColorLensSampler.sample(image: mockSnapshot, at: pixelPoint)
-            ?? IdleColorLensWindow.Sample(r: 0, g: 0, b: 0)
+        let sample = MagnifierLensPanelSampler.sample(image: mockSnapshot, at: pixelPoint)
+            ?? MagnifierLensPanelWindow.Sample(r: 0, g: 0, b: 0)
 
         lensView.update(
             sample: sample,

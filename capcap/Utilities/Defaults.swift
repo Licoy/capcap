@@ -192,38 +192,38 @@ enum L10n {
     static var colorPickerShortcutHeader: String { s("colorPickerShortcutHeader") }
     static var colorPickerShortcutDefaultDisplay: String { s("colorPickerShortcutDefaultDisplay") }
 
-    // Idle color lens (overlay idle magnifier color picker)
-    static var idleLensCoordinates: String { s("idleLensCoordinates") }
-    static var idleLensHex: String { s("idleLensHex") }
-    static var idleLensRgb: String { s("idleLensRgb") }
-    static var idleLensCopyHint: String { s("idleLensCopyHint") }
-    static var idleLensShiftHint: String { s("idleLensShiftHint") }
-    static func idleLensRgbString(r: Int, g: Int, b: Int) -> String {
-        String(format: s("idleLensRgbString"), r, g, b)
+    // Magnifier lens panel (overlay magnifier lens panel)
+    static var magnifierLensPanelCoordinates: String { s("magnifierLensPanelCoordinates") }
+    static var magnifierLensPanelHex: String { s("magnifierLensPanelHex") }
+    static var magnifierLensPanelRgb: String { s("magnifierLensPanelRgb") }
+    static var magnifierLensPanelCopyHint: String { s("magnifierLensPanelCopyHint") }
+    static var magnifierLensPanelShiftHint: String { s("magnifierLensPanelShiftHint") }
+    static func magnifierLensPanelRgbString(r: Int, g: Int, b: Int) -> String {
+        String(format: s("magnifierLensPanelRgbString"), r, g, b)
     }
-    static var settingsIdleColorLensTitle: String { s("settingsIdleColorLensTitle") }
-    static var settingsIdleColorLensHint: String { s("settingsIdleColorLensHint") }
-    static var settingsIdleLensMagnifiedSizeLabel: String { s("settingsIdleLensMagnifiedSizeLabel") }
-    static var settingsIdleLensMagnificationLabel: String { s("settingsIdleLensMagnificationLabel") }
-    static var settingsIdleLensPanelOffsetLabel: String { s("settingsIdleLensPanelOffsetLabel") }
-    static var settingsIdleLensBackgroundLabel: String { s("settingsIdleLensBackgroundLabel") }
-    static var settingsIdleLensFollowSystemAppearanceTitle: String { s("settingsIdleLensFollowSystemAppearanceTitle") }
-    static var settingsIdleLensFollowSystemAppearanceHint: String { s("settingsIdleLensFollowSystemAppearanceHint") }
-    static var settingsIdleLensDarkBackgroundLabel: String { s("settingsIdleLensDarkBackgroundLabel") }
-    static var settingsIdleLensLightBackgroundLabel: String { s("settingsIdleLensLightBackgroundLabel") }
-    static var settingsIdleLensCoordinateModeLabel: String { s("settingsIdleLensCoordinateModeLabel") }
-    static var settingsIdleLensCoordinateModePoints: String { s("settingsIdleLensCoordinateModePoints") }
-    static var settingsIdleLensCoordinateModePixels: String { s("settingsIdleLensCoordinateModePixels") }
-    static var settingsIdleLensCoordinateModeHint: String { s("settingsIdleLensCoordinateModeHint") }
-    static var settingsIdleLensMagnifierLabel: String { s("settingsIdleLensMagnifierLabel") }
-    static var settingsIdleLensAppearanceLabel: String { s("settingsIdleLensAppearanceLabel") }
-    static var settingsIdleLensKeyboardActionLabel: String { s("settingsIdleLensKeyboardActionLabel") }
-    static var settingsIdleLensLivePreviewTitle: String { s("settingsIdleLensLivePreviewTitle") }
-    static var settingsIdleLensLivePreviewHint: String { s("settingsIdleLensLivePreviewHint") }
-    static var settingsIdleLensPreviewHint: String { s("settingsIdleLensPreviewHint") }
-    static var settingsIdleLensCrosshairLabel: String { s("settingsIdleLensCrosshairLabel") }
-    static var settingsIdleLensCrosshairHint: String { s("settingsIdleLensCrosshairHint") }
-    static var settingsIdleLensCrosshairWidthLabel: String { s("settingsIdleLensCrosshairWidthLabel") }
+    static var settingsMagnifierLensPanelTitle: String { s("settingsMagnifierLensPanelTitle") }
+    static var settingsMagnifierLensPanelHint: String { s("settingsMagnifierLensPanelHint") }
+    static var settingsMagnifierLensPanelMagnifiedSizeLabel: String { s("settingsMagnifierLensPanelMagnifiedSizeLabel") }
+    static var settingsMagnifierLensPanelMagnificationLabel: String { s("settingsMagnifierLensPanelMagnificationLabel") }
+    static var settingsMagnifierLensPanelOffsetLabel: String { s("settingsMagnifierLensPanelOffsetLabel") }
+    static var settingsMagnifierLensPanelBackgroundLabel: String { s("settingsMagnifierLensPanelBackgroundLabel") }
+    static var settingsMagnifierLensPanelFollowSystemAppearanceTitle: String { s("settingsMagnifierLensPanelFollowSystemAppearanceTitle") }
+    static var settingsMagnifierLensPanelFollowSystemAppearanceHint: String { s("settingsMagnifierLensPanelFollowSystemAppearanceHint") }
+    static var settingsMagnifierLensPanelDarkBackgroundLabel: String { s("settingsMagnifierLensPanelDarkBackgroundLabel") }
+    static var settingsMagnifierLensPanelLightBackgroundLabel: String { s("settingsMagnifierLensPanelLightBackgroundLabel") }
+    static var settingsMagnifierLensPanelCoordinateModeLabel: String { s("settingsMagnifierLensPanelCoordinateModeLabel") }
+    static var settingsMagnifierLensPanelCoordinateModePoints: String { s("settingsMagnifierLensPanelCoordinateModePoints") }
+    static var settingsMagnifierLensPanelCoordinateModePixels: String { s("settingsMagnifierLensPanelCoordinateModePixels") }
+    static var settingsMagnifierLensPanelCoordinateModeHint: String { s("settingsMagnifierLensPanelCoordinateModeHint") }
+    static var settingsMagnifierLensPanelMagnifierLabel: String { s("settingsMagnifierLensPanelMagnifierLabel") }
+    static var settingsMagnifierLensPanelAppearanceLabel: String { s("settingsMagnifierLensPanelAppearanceLabel") }
+    static var settingsMagnifierLensPanelKeyboardActionLabel: String { s("settingsMagnifierLensPanelKeyboardActionLabel") }
+    static var settingsMagnifierLensPanelLivePreviewTitle: String { s("settingsMagnifierLensPanelLivePreviewTitle") }
+    static var settingsMagnifierLensPanelLivePreviewHint: String { s("settingsMagnifierLensPanelLivePreviewHint") }
+    static var settingsMagnifierLensPanelPreviewHint: String { s("settingsMagnifierLensPanelPreviewHint") }
+    static var settingsMagnifierLensPanelCrosshairLabel: String { s("settingsMagnifierLensPanelCrosshairLabel") }
+    static var settingsMagnifierLensPanelCrosshairHint: String { s("settingsMagnifierLensPanelCrosshairHint") }
+    static var settingsMagnifierLensPanelCrosshairWidthLabel: String { s("settingsMagnifierLensPanelCrosshairWidthLabel") }
 
     // Copy-to-clipboard shortcut (editor confirm)
     static var clipboardShortcutHeader: String { s("clipboardShortcutHeader") }
@@ -1756,197 +1756,197 @@ struct Defaults {
     /// Whether to show the magnifier color picker on the overlay's idle state
     /// (replaces the legacy "drag to screenshot" cursor chip when enabled).
     /// Default is `true` so new users get the magnifier experience immediately.
-    static var idleColorLensEnabled: Bool {
+    static var magnifierLensPanelEnabled: Bool {
         get {
-            if defaults.object(forKey: "idleColorLensEnabled") == nil {
+            if defaults.object(forKey: "magnifierLensPanelEnabled") == nil {
                 return true
             }
-            return defaults.bool(forKey: "idleColorLensEnabled")
+            return defaults.bool(forKey: "magnifierLensPanelEnabled")
         }
         set {
-            defaults.set(newValue, forKey: "idleColorLensEnabled")
+            defaults.set(newValue, forKey: "magnifierLensPanelEnabled")
         }
     }
 
-    /// Background color used in dark mode (when `idleLensFollowSystemAppearance` is on).
+    /// Background color used in dark mode (when `magnifierLensPanelFollowSystemAppearance` is on).
     /// Stored as 0–1 RGBA components. Default: black with 70% alpha.
-    static var idleLensDarkBackgroundRed: Double {
-        get { defaults.object(forKey: "idleLensDarkBackgroundRed") == nil ? 0 : defaults.double(forKey: "idleLensDarkBackgroundRed") }
-        set { defaults.set(newValue, forKey: "idleLensDarkBackgroundRed") }
+    static var magnifierLensPanelDarkBackgroundRed: Double {
+        get { defaults.object(forKey: "magnifierLensPanelDarkBackgroundRed") == nil ? 0 : defaults.double(forKey: "magnifierLensPanelDarkBackgroundRed") }
+        set { defaults.set(newValue, forKey: "magnifierLensPanelDarkBackgroundRed") }
     }
-    static var idleLensDarkBackgroundGreen: Double {
-        get { defaults.object(forKey: "idleLensDarkBackgroundGreen") == nil ? 0 : defaults.double(forKey: "idleLensDarkBackgroundGreen") }
-        set { defaults.set(newValue, forKey: "idleLensDarkBackgroundGreen") }
+    static var magnifierLensPanelDarkBackgroundGreen: Double {
+        get { defaults.object(forKey: "magnifierLensPanelDarkBackgroundGreen") == nil ? 0 : defaults.double(forKey: "magnifierLensPanelDarkBackgroundGreen") }
+        set { defaults.set(newValue, forKey: "magnifierLensPanelDarkBackgroundGreen") }
     }
-    static var idleLensDarkBackgroundBlue: Double {
-        get { defaults.object(forKey: "idleLensDarkBackgroundBlue") == nil ? 0 : defaults.double(forKey: "idleLensDarkBackgroundBlue") }
-        set { defaults.set(newValue, forKey: "idleLensDarkBackgroundBlue") }
+    static var magnifierLensPanelDarkBackgroundBlue: Double {
+        get { defaults.object(forKey: "magnifierLensPanelDarkBackgroundBlue") == nil ? 0 : defaults.double(forKey: "magnifierLensPanelDarkBackgroundBlue") }
+        set { defaults.set(newValue, forKey: "magnifierLensPanelDarkBackgroundBlue") }
     }
-    static var idleLensDarkBackgroundAlpha: Double {
-        get { defaults.object(forKey: "idleLensDarkBackgroundAlpha") == nil ? 0.7 : defaults.double(forKey: "idleLensDarkBackgroundAlpha") }
-        set { defaults.set(min(1, max(0, newValue)), forKey: "idleLensDarkBackgroundAlpha") }
+    static var magnifierLensPanelDarkBackgroundAlpha: Double {
+        get { defaults.object(forKey: "magnifierLensPanelDarkBackgroundAlpha") == nil ? 0.7 : defaults.double(forKey: "magnifierLensPanelDarkBackgroundAlpha") }
+        set { defaults.set(min(1, max(0, newValue)), forKey: "magnifierLensPanelDarkBackgroundAlpha") }
     }
 
-    /// Background color used in light mode (when `idleLensFollowSystemAppearance` is on).
+    /// Background color used in light mode (when `magnifierLensPanelFollowSystemAppearance` is on).
     /// Stored as 0–1 RGBA components. Default: white with 80% alpha.
-    static var idleLensLightBackgroundRed: Double {
-        get { defaults.object(forKey: "idleLensLightBackgroundRed") == nil ? 1 : defaults.double(forKey: "idleLensLightBackgroundRed") }
-        set { defaults.set(newValue, forKey: "idleLensLightBackgroundRed") }
+    static var magnifierLensPanelLightBackgroundRed: Double {
+        get { defaults.object(forKey: "magnifierLensPanelLightBackgroundRed") == nil ? 1 : defaults.double(forKey: "magnifierLensPanelLightBackgroundRed") }
+        set { defaults.set(newValue, forKey: "magnifierLensPanelLightBackgroundRed") }
     }
-    static var idleLensLightBackgroundGreen: Double {
-        get { defaults.object(forKey: "idleLensLightBackgroundGreen") == nil ? 1 : defaults.double(forKey: "idleLensLightBackgroundGreen") }
-        set { defaults.set(newValue, forKey: "idleLensLightBackgroundGreen") }
+    static var magnifierLensPanelLightBackgroundGreen: Double {
+        get { defaults.object(forKey: "magnifierLensPanelLightBackgroundGreen") == nil ? 1 : defaults.double(forKey: "magnifierLensPanelLightBackgroundGreen") }
+        set { defaults.set(newValue, forKey: "magnifierLensPanelLightBackgroundGreen") }
     }
-    static var idleLensLightBackgroundBlue: Double {
-        get { defaults.object(forKey: "idleLensLightBackgroundBlue") == nil ? 1 : defaults.double(forKey: "idleLensLightBackgroundBlue") }
-        set { defaults.set(newValue, forKey: "idleLensLightBackgroundBlue") }
+    static var magnifierLensPanelLightBackgroundBlue: Double {
+        get { defaults.object(forKey: "magnifierLensPanelLightBackgroundBlue") == nil ? 1 : defaults.double(forKey: "magnifierLensPanelLightBackgroundBlue") }
+        set { defaults.set(newValue, forKey: "magnifierLensPanelLightBackgroundBlue") }
     }
-    static var idleLensLightBackgroundAlpha: Double {
-        get { defaults.object(forKey: "idleLensLightBackgroundAlpha") == nil ? 0.8 : defaults.double(forKey: "idleLensLightBackgroundAlpha") }
-        set { defaults.set(min(1, max(0, newValue)), forKey: "idleLensLightBackgroundAlpha") }
+    static var magnifierLensPanelLightBackgroundAlpha: Double {
+        get { defaults.object(forKey: "magnifierLensPanelLightBackgroundAlpha") == nil ? 0.8 : defaults.double(forKey: "magnifierLensPanelLightBackgroundAlpha") }
+        set { defaults.set(min(1, max(0, newValue)), forKey: "magnifierLensPanelLightBackgroundAlpha") }
     }
 
     /// When `true`, the lens picks the dark/light background color based on the
     /// current macOS appearance. When `false`, the dark color is always used.
-    static var idleLensFollowSystemAppearance: Bool {
+    static var magnifierLensPanelFollowSystemAppearance: Bool {
         get {
-            if defaults.object(forKey: "idleLensFollowSystemAppearance") == nil {
+            if defaults.object(forKey: "magnifierLensPanelFollowSystemAppearance") == nil {
                 return true
             }
-            return defaults.bool(forKey: "idleLensFollowSystemAppearance")
+            return defaults.bool(forKey: "magnifierLensPanelFollowSystemAppearance")
         }
         set {
-            defaults.set(newValue, forKey: "idleLensFollowSystemAppearance")
+            defaults.set(newValue, forKey: "magnifierLensPanelFollowSystemAppearance")
         }
     }
 
     /// Side length (in points) of the magnified area. One of 96, 144, 192.
-    static var idleLensMagnifiedSize: Int {
+    static var magnifierLensPanelMagnifiedSize: Int {
         get {
-            if defaults.object(forKey: "idleLensMagnifiedSize") == nil {
+            if defaults.object(forKey: "magnifierLensPanelMagnifiedSize") == nil {
                 return 144
             }
-            return defaults.integer(forKey: "idleLensMagnifiedSize")
+            return defaults.integer(forKey: "magnifierLensPanelMagnifiedSize")
         }
         set {
-            defaults.set(newValue, forKey: "idleLensMagnifiedSize")
+            defaults.set(newValue, forKey: "magnifierLensPanelMagnifiedSize")
         }
     }
 
     /// Magnification factor for the lens. Controls how many source pixels are
     /// sampled: source region = magnified display size / magnification.
     /// Higher values = tighter zoom (smaller source region). Default 12×.
-    static var idleLensMagnification: Double {
+    static var magnifierLensPanelMagnification: Double {
         get {
-            if defaults.object(forKey: "idleLensMagnification") == nil {
+            if defaults.object(forKey: "magnifierLensPanelMagnification") == nil {
                 return 12.0
             }
-            return defaults.double(forKey: "idleLensMagnification")
+            return defaults.double(forKey: "magnifierLensPanelMagnification")
         }
         set {
-            defaults.set(newValue, forKey: "idleLensMagnification")
+            defaults.set(newValue, forKey: "magnifierLensPanelMagnification")
         }
     }
 
     /// Horizontal offset (in points) between the cursor and the panel's left edge.
-    static var idleLensPanelOffsetX: Double {
+    static var magnifierLensPanelOffsetX: Double {
         get {
-            if defaults.object(forKey: "idleLensPanelOffsetX") == nil {
+            if defaults.object(forKey: "magnifierLensPanelOffsetX") == nil {
                 return 15
             }
-            return defaults.double(forKey: "idleLensPanelOffsetX")
+            return defaults.double(forKey: "magnifierLensPanelOffsetX")
         }
         set {
-            defaults.set(newValue, forKey: "idleLensPanelOffsetX")
+            defaults.set(newValue, forKey: "magnifierLensPanelOffsetX")
         }
     }
 
     /// Vertical offset (in points) between the cursor and the panel's top edge
     /// when the panel sits below the cursor.
-    static var idleLensPanelOffsetY: Double {
+    static var magnifierLensPanelOffsetY: Double {
         get {
-            if defaults.object(forKey: "idleLensPanelOffsetY") == nil {
+            if defaults.object(forKey: "magnifierLensPanelOffsetY") == nil {
                 return 14
             }
-            return defaults.double(forKey: "idleLensPanelOffsetY")
+            return defaults.double(forKey: "magnifierLensPanelOffsetY")
         }
         set {
-            defaults.set(newValue, forKey: "idleLensPanelOffsetY")
+            defaults.set(newValue, forKey: "magnifierLensPanelOffsetY")
         }
     }
 
     /// Whether to show the "Press ⌘+C to copy color" hint row in the lens.
-    static var idleLensShowCopyHint: Bool {
+    static var magnifierLensPanelShowCopyHint: Bool {
         get {
-            if defaults.object(forKey: "idleLensShowCopyHint") == nil {
+            if defaults.object(forKey: "magnifierLensPanelShowCopyHint") == nil {
                 return true
             }
-            return defaults.bool(forKey: "idleLensShowCopyHint")
+            return defaults.bool(forKey: "magnifierLensPanelShowCopyHint")
         }
         set {
-            defaults.set(newValue, forKey: "idleLensShowCopyHint")
+            defaults.set(newValue, forKey: "magnifierLensPanelShowCopyHint")
         }
     }
 
     /// Whether to show the "Press Shift to switch RGB" hint row in the lens.
-    static var idleLensShowShiftHint: Bool {
+    static var magnifierLensPanelShowShiftHint: Bool {
         get {
-            if defaults.object(forKey: "idleLensShowShiftHint") == nil {
+            if defaults.object(forKey: "magnifierLensPanelShowShiftHint") == nil {
                 return true
             }
-            return defaults.bool(forKey: "idleLensShowShiftHint")
+            return defaults.bool(forKey: "magnifierLensPanelShowShiftHint")
         }
         set {
-            defaults.set(newValue, forKey: "idleLensShowShiftHint")
+            defaults.set(newValue, forKey: "magnifierLensPanelShowShiftHint")
         }
     }
 
     /// Coordinate mode for the lens display: `.points` shows AppKit
     /// screen-point coordinates (default); `.pixels` shows physical
     /// CGImage pixel coordinates matching the snapshot resolution.
-    enum IdleLensCoordinateMode: String {
+    enum MagnifierLensPanelCoordinateMode: String {
         case points
         case pixels
     }
-    static var idleLensCoordinateMode: IdleLensCoordinateMode {
+    static var magnifierLensPanelCoordinateMode: MagnifierLensPanelCoordinateMode {
         get {
-            guard let raw = defaults.string(forKey: "idleLensCoordinateMode"),
-                  let mode = IdleLensCoordinateMode(rawValue: raw) else {
+            guard let raw = defaults.string(forKey: "magnifierLensPanelCoordinateMode"),
+                  let mode = MagnifierLensPanelCoordinateMode(rawValue: raw) else {
                 return .pixels
             }
             return mode
         }
         set {
-            defaults.set(newValue.rawValue, forKey: "idleLensCoordinateMode")
+            defaults.set(newValue.rawValue, forKey: "magnifierLensPanelCoordinateMode")
         }
     }
 
     /// Crosshair colour — RGBA components stored as 0–1 doubles.
     /// Default: #A8BDFC at 65% alpha.
-    static var idleLensCrosshairRed: Double {
-        get { defaults.object(forKey: "idleLensCrosshairRed") == nil ? 0xA8 / 255.0 : defaults.double(forKey: "idleLensCrosshairRed") }
-        set { defaults.set(newValue, forKey: "idleLensCrosshairRed") }
+    static var magnifierLensPanelCrosshairRed: Double {
+        get { defaults.object(forKey: "magnifierLensPanelCrosshairRed") == nil ? 0xA8 / 255.0 : defaults.double(forKey: "magnifierLensPanelCrosshairRed") }
+        set { defaults.set(newValue, forKey: "magnifierLensPanelCrosshairRed") }
     }
-    static var idleLensCrosshairGreen: Double {
-        get { defaults.object(forKey: "idleLensCrosshairGreen") == nil ? 0xBD / 255.0 : defaults.double(forKey: "idleLensCrosshairGreen") }
-        set { defaults.set(newValue, forKey: "idleLensCrosshairGreen") }
+    static var magnifierLensPanelCrosshairGreen: Double {
+        get { defaults.object(forKey: "magnifierLensPanelCrosshairGreen") == nil ? 0xBD / 255.0 : defaults.double(forKey: "magnifierLensPanelCrosshairGreen") }
+        set { defaults.set(newValue, forKey: "magnifierLensPanelCrosshairGreen") }
     }
-    static var idleLensCrosshairBlue: Double {
-        get { defaults.object(forKey: "idleLensCrosshairBlue") == nil ? 0xFC / 255.0 : defaults.double(forKey: "idleLensCrosshairBlue") }
-        set { defaults.set(newValue, forKey: "idleLensCrosshairBlue") }
+    static var magnifierLensPanelCrosshairBlue: Double {
+        get { defaults.object(forKey: "magnifierLensPanelCrosshairBlue") == nil ? 0xFC / 255.0 : defaults.double(forKey: "magnifierLensPanelCrosshairBlue") }
+        set { defaults.set(newValue, forKey: "magnifierLensPanelCrosshairBlue") }
     }
-    static var idleLensCrosshairAlpha: Double {
-        get { defaults.object(forKey: "idleLensCrosshairAlpha") == nil ? 0.65 : defaults.double(forKey: "idleLensCrosshairAlpha") }
-        set { defaults.set(min(1, max(0, newValue)), forKey: "idleLensCrosshairAlpha") }
+    static var magnifierLensPanelCrosshairAlpha: Double {
+        get { defaults.object(forKey: "magnifierLensPanelCrosshairAlpha") == nil ? 0.65 : defaults.double(forKey: "magnifierLensPanelCrosshairAlpha") }
+        set { defaults.set(min(1, max(0, newValue)), forKey: "magnifierLensPanelCrosshairAlpha") }
     }
 
     /// Crosshair line width in points. Default 6, clamped to 1–30.
-    static var idleLensCrosshairWidth: Double {
+    static var magnifierLensPanelCrosshairWidth: Double {
         get {
-            if defaults.object(forKey: "idleLensCrosshairWidth") == nil { return 6 }
-            return defaults.double(forKey: "idleLensCrosshairWidth")
+            if defaults.object(forKey: "magnifierLensPanelCrosshairWidth") == nil { return 6 }
+            return defaults.double(forKey: "magnifierLensPanelCrosshairWidth")
         }
-        set { defaults.set(min(30, max(1, newValue)), forKey: "idleLensCrosshairWidth") }
+        set { defaults.set(min(30, max(1, newValue)), forKey: "magnifierLensPanelCrosshairWidth") }
     }
 
     static var clipboardTextCacheEnabled: Bool {
