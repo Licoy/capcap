@@ -1225,11 +1225,14 @@ class OverlayWindowController {
         switch idleColorLensFormat {
         case .hex:
             value = hex
-            // Reuse the existing color-copy helper so history stays consistent.
             ClipboardManager.copyColorToClipboard(hex: hex)
         case .rgb:
             value = rgb
-            ClipboardManager.copyToClipboard(text: rgb)
+            ClipboardManager.copyToClipboard(text: rgb, skipHistory: true)
+        }
+        if Defaults.historyCacheEnabled {
+            HistoryManager.shared.addColor(hex: hex)
+            Defaults.lastPickedColorHex = hex
         }
         let toastScreen = NSScreen.screens.first(where: { $0.frame.contains(NSEvent.mouseLocation) }) ?? NSScreen.main
         ToastWindow.show(message: L10n.colorCopied(value), on: toastScreen)
