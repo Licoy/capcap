@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.19] - 2026-07-30
+
 ### Added
-- Add an expanded beautify gradient picker with recent-preset promotion
+- Add an expanded beautify gradient picker with recent-preset promotion (da90e46)
+
+### Fixed
+- Preserve double-click confirmation in the annotation editor (2940879)
 
 ## [1.6.18] - 2026-07-29
 
