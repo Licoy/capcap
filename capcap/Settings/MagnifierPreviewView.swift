@@ -19,6 +19,17 @@ final class MagnifierPreviewView: NSView {
     private var lensWidthConstraint: NSLayoutConstraint?
     private var lensHeightConstraint: NSLayoutConstraint?
 
+    var isPreviewInteractionEnabled: Bool = true {
+        didSet {
+            iconView.isInteractionEnabled = isPreviewInteractionEnabled
+            if !isPreviewInteractionEnabled {
+                hoverLocation = nil
+                iconView.showsFakeCursor = true
+                updateLens()
+            }
+        }
+    }
+
     init(iconImage: NSImage, mockSnapshot: CGImage) {
         self.iconImage = iconImage
         self.mockSnapshot = mockSnapshot
@@ -145,6 +156,13 @@ private final class MagnifierPreviewSubjectView: NSView {
     var showsFakeCursor: Bool = true {
         didSet { needsDisplay = true }
     }
+    var isInteractionEnabled: Bool = true {
+        didSet {
+            if !isInteractionEnabled {
+                onHoverChanged?(nil)
+            }
+        }
+    }
 
     private let iconImage: NSImage
     private var trackingAreaRef: NSTrackingArea?
@@ -177,14 +195,17 @@ private final class MagnifierPreviewSubjectView: NSView {
     }
 
     override func mouseEntered(with event: NSEvent) {
+        guard isInteractionEnabled else { return }
         publishHover(from: event)
     }
 
     override func mouseMoved(with event: NSEvent) {
+        guard isInteractionEnabled else { return }
         publishHover(from: event)
     }
 
     override func mouseExited(with event: NSEvent) {
+        guard isInteractionEnabled else { return }
         onHoverChanged?(nil)
     }
 

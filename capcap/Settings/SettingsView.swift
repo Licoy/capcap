@@ -71,7 +71,8 @@ class SettingsView: NSView {
     private var langPicker: NSPopUpButton!
     private var historyCacheSwitch: NSSwitch!
     private var clipboardTextCacheSwitch: NSSwitch!
-    private var idleColorLensSwitch: NSSwitch!
+    private var magnifierLensPanelEnabledSwitch: NSSwitch!
+    private var idleLensOptionsContainer: NSView?
     private var idleLensMagnifiedSizePopup: NSPopUpButton!
     private var idleLensPanelOffsetXField: NSTextField!
     private var idleLensPanelOffsetYField: NSTextField!
@@ -897,6 +898,24 @@ class SettingsView: NSView {
         windowShadowPreview?.isEffectEnabled = on
     }
 
+    private func updateIdleLensControlsEnabled() {
+        let enabled = (magnifierLensPanelEnabledSwitch?.state ?? (Defaults.idleColorLensEnabled ? .on : .off)) == .on
+        idleLensOptionsContainer?.alphaValue = enabled ? 1.0 : 0.45
+        if let container = idleLensOptionsContainer {
+            setControls(in: container, enabled: enabled)
+        }
+        idleLensPreview?.isPreviewInteractionEnabled = enabled
+    }
+
+    private func setControls(in view: NSView, enabled: Bool) {
+        if let control = view as? NSControl {
+            control.isEnabled = enabled
+        }
+        for subview in view.subviews {
+            setControls(in: subview, enabled: enabled)
+        }
+    }
+
     /// Idle magnifier color picker card: master toggle, magnified-area
     /// size picker, panel-offset (X/Y) text fields, dark/light background
     /// colour wells with alpha, follow-system-appearance toggle, hint
@@ -916,9 +935,9 @@ class SettingsView: NSView {
             title: L10n.settingsIdleColorLensTitle,
             subtitle: L10n.settingsIdleColorLensHint,
             isOn: Defaults.idleColorLensEnabled,
-            action: #selector(idleColorLensToggled(_:))
+            action: #selector(magnifierLensPanelEnabledToggled(_:))
         )
-        idleColorLensSwitch = toggle.toggle
+        magnifierLensPanelEnabledSwitch = toggle.toggle
         inner.addArrangedSubview(toggle.row)
         toggle.row.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
 
@@ -930,6 +949,7 @@ class SettingsView: NSView {
         splitRow.translatesAutoresizingMaskIntoConstraints = false
         inner.addArrangedSubview(splitRow)
         splitRow.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+        idleLensOptionsContainer = splitRow
 
         let optionsColumn = NSStackView()
         optionsColumn.orientation = .vertical
@@ -1219,6 +1239,7 @@ class SettingsView: NSView {
 
         stack.addArrangedSubview(card)
         card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        updateIdleLensControlsEnabled()
     }
 
     /// Builds a labelled row that pairs a color well with an alpha slider.
@@ -3560,8 +3581,9 @@ class SettingsView: NSView {
         updateHistoryPanelModeControlsEnabled()
     }
 
-    @objc private func idleColorLensToggled(_ sender: NSSwitch) {
+    @objc private func magnifierLensPanelEnabledToggled(_ sender: NSSwitch) {
         Defaults.idleColorLensEnabled = sender.state == .on
+        updateIdleLensControlsEnabled()
     }
 
     @objc private func idleLensMagnifiedSizeChanged(_ sender: NSPopUpButton) {
