@@ -158,7 +158,11 @@ final class MagnifierLensPanelWindow: NSPanel {
             x: loc.x + offsetX,
             y: loc.y - offsetY - panelSize.height
         )
-        if let screen = NSScreen.screens.first(where: { $0.frame.contains(loc) }) {
+        if let screen = NSScreen.screens.first(where: { screen in
+            let f = screen.frame
+            return loc.x >= f.minX && loc.x <= f.maxX
+                && loc.y >= f.minY && loc.y <= f.maxY
+        }) {
             let frame = screen.frame
             let panelRight = origin.x + panelSize.width
             if panelRight > frame.maxX - Self.edgeMargin {
@@ -224,14 +228,13 @@ enum MagnifierLensPanelSampler {
             return nil
         }
 
-        // Position the image so that `point` lands at (0.5, 0.5) of the 1×1
-        // context. CGContext.draw places the image's top edge at rect's top in
-        // the context's y-up coords, so the target pixel needs:
-        //   x: rect.x + px = 0.5  →  rect.x = 0.5 - px
-        //   y: rect.y + imageH - py = 0.5  →  rect.y = 0.5 + py - imageH
+        // Position the target pixel so it exactly covers the 1×1 output
+        // context. `interpolationQuality = .none` avoids edge rows blending
+        // with adjacent or transparent pixels.
+        context.interpolationQuality = .none
         let drawRect = CGRect(
-            x: 0.5 - point.x,
-            y: 0.5 + point.y - CGFloat(image.height),
+            x: -point.x,
+            y: 1 + point.y - CGFloat(image.height),
             width: CGFloat(image.width),
             height: CGFloat(image.height)
         )
