@@ -1320,7 +1320,7 @@ class SettingsView: NSView {
         row.addArrangedSubview(slider)
         slider.widthAnchor.constraint(equalToConstant: 80).isActive = true
 
-        let widthLabel = NSTextField(labelWithString: "Width:")
+        let widthLabel = NSTextField(labelWithString: L10n.settingsIdleLensCrosshairWidthLabel)
         widthLabel.font = .systemFont(ofSize: 11)
         row.addArrangedSubview(widthLabel)
 

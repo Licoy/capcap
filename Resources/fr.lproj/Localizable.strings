@@ -595,3 +595,4 @@
 "settingsIdleLensPreviewHint" = "L'aperçu se met à jour selon vos réglages. Les modifications s'appliquent instantanément pour affiner votre expérience";
 "settingsIdleLensCrosshairLabel" = "Réticule";
 "settingsIdleLensCrosshairHint" = "Indicateur central dans la zone agrandie";
+"settingsIdleLensCrosshairWidthLabel" = "Largeur";

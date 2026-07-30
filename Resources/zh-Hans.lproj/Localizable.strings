@@ -595,3 +595,4 @@
 "settingsIdleLensPreviewHint" = "预览会根据你的设置实时更新，修改即时生效，方便你精细调整体验";
 "settingsIdleLensCrosshairLabel" = "十字线";
 "settingsIdleLensCrosshairHint" = "放大区域中心的定位指示器";
+"settingsIdleLensCrosshairWidthLabel" = "宽度";

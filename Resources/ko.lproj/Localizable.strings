@@ -595,3 +595,4 @@
 "settingsIdleLensPreviewHint" = "설정에 따라 미리보기가 업데이트됩니다. 변경 사항이 즉시 적용되어 세밀하게 조정할 수 있습니다";
 "settingsIdleLensCrosshairLabel" = "십자선";
 "settingsIdleLensCrosshairHint" = "확대 영역 중앙의 위치 표시기";
+"settingsIdleLensCrosshairWidthLabel" = "너비";

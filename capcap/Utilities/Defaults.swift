@@ -223,6 +223,7 @@ enum L10n {
     static var settingsIdleLensPreviewHint: String { s("settingsIdleLensPreviewHint") }
     static var settingsIdleLensCrosshairLabel: String { s("settingsIdleLensCrosshairLabel") }
     static var settingsIdleLensCrosshairHint: String { s("settingsIdleLensCrosshairHint") }
+    static var settingsIdleLensCrosshairWidthLabel: String { s("settingsIdleLensCrosshairWidthLabel") }
 
     // Copy-to-clipboard shortcut (editor confirm)
     static var clipboardShortcutHeader: String { s("clipboardShortcutHeader") }

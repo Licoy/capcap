@@ -595,3 +595,4 @@
 "settingsIdleLensPreviewHint" = "Bản xem trước cập nhật theo cài đặt của bạn. Thay đổi áp dụng ngay lập tức để bạn tinh chỉnh trải nghiệm";
 "settingsIdleLensCrosshairLabel" = "Tâm ngắm";
 "settingsIdleLensCrosshairHint" = "Chỉ báo trung tâm trong vùng phóng đại";
+"settingsIdleLensCrosshairWidthLabel" = "Độ rộng";

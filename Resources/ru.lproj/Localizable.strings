@@ -595,3 +595,4 @@
 "settingsIdleLensPreviewHint" = "Предпросмотр обновляется в соответствии с настройками. Изменения применяются мгновенно для точной настройки";
 "settingsIdleLensCrosshairLabel" = "Перекрестие";
 "settingsIdleLensCrosshairHint" = "Центральный индикатор в увеличенной области";
+"settingsIdleLensCrosshairWidthLabel" = "Ширина";

@@ -595,3 +595,4 @@
 "settingsIdleLensPreviewHint" = "The preview updates based on your settings. Changes apply instantly so you can fine-tune your experience";
 "settingsIdleLensCrosshairLabel" = "Crosshair";
 "settingsIdleLensCrosshairHint" = "Center indicator inside the magnified area";
+"settingsIdleLensCrosshairWidthLabel" = "Width";
