@@ -1,4 +1,4 @@
-# Idle Magnifier Color Picker Design
+# Magnifier Lens Panel Design
 
 Date: 2026-07-25 (updated 2026-07-27)
 Status: Implemented and verified on branch `feat_idle-magnifier-color-picker`
@@ -104,7 +104,7 @@ Earlier iterations tried two approaches that did **not** work and have been remo
 The overlay panel is `.nonactivatingPanel`, so keyboard events routed to the foreground app never enter capcap's process. A pure local monitor would miss `⌘+C` and Shift entirely. The current implementation therefore installs both monitors:
 
 - `magnifierLensPanelFlagsChangedLocalMonitor` and `magnifierLensPanelFlagsChangedGlobalMonitor` — mirror each other for Shift detection.
-- `magnifierLensPanelKeyDownGlobalMonitor` — global `keyDown` monitor for `⌘+C`. The local `escLocalMonitor` also handles `⌘+C` but typically does not fire because the event is delivered to the foreground app.
+- `magnifierLensPanelKeyDownGlobalMonitor` — global `keyDown` monitor for `⌘+C`. The local `escLocalMonitor` also observes `⌘+C` when the event reaches capcap, but returns the event after copying so it does not consume the normal key path.
 
 Both handlers gate on `guard magnifierLensPanelActive else { return }`, so they never react when the lens is dismissed (e.g., once the user starts a selection or the overlay ends).
 
@@ -118,7 +118,8 @@ Global monitors only observe — they cannot prevent the foreground app from rec
 - The lens picks the screen containing `mouseLocation` by linear scan over `screenFramesByDisplayID`; uses the corresponding `CGImage` from `screenSnapshots`.
 - **Edge-boundary fix**: `CGRect.contains` uses a half-open `[min, max)` interval — a cursor at the absolute top edge (`y == frame.maxY`) is treated as outside. The screen-detection guard was replaced with an inclusive `min <= x <= max && min <= y <= max` check so the lens resolves a snapshot at all screen edges.
 - The `MagnifierLensPanelSampler.pixelCoordinate` helper applies the screen's point-to-pixel scale (handles Retina correctly) and clamps the result to the valid pixel range so cursor-on-edge still resolves to a sample instead of returning `nil`.
-- The single-pixel `MagnifierLensPanelSampler.sample` helper uses a 1×1 `CGContext` with explicit `drawRect` math (subtract image dimensions, then add 0.5 for half-pixel centering) so the target pixel lands on the context's pixel center and the Y axis is correct on the first try.
+- The single-pixel `MagnifierLensPanelSampler.sample` helper uses a 1×1 `CGContext` with nearest-neighbour interpolation disabled and integer-aligned `drawRect` math so the target pixel exactly covers the output pixel without blending with adjacent rows, columns, or transparent edges.
+- When `ScreenCaptureKit` delivers a display snapshot after the lens is already visible, `OverlayWindowController` refreshes the lens immediately so the initial panel does not stay blank until the next mouse event.
 
 ## Settings
 
@@ -146,7 +147,6 @@ New L10n keys (added to all 8 `.lproj/Localizable.strings`):
 | `settingsMagnifierLensPanelMagnifiedSizeLabel` | `Magnified area size` | `放大区域尺寸` |
 | `settingsMagnifierLensPanelMagnificationLabel` | `Magnification` | `放大倍率` |
 | `settingsMagnifierLensPanelOffsetLabel` | `Panel offset` | `面板偏移` |
-| `settingsMagnifierLensPanelBackgroundLabel` | `Background colour` | `背景颜色` |
 | `settingsMagnifierLensPanelFollowSystemAppearanceTitle` | `Follow system appearance` | `跟随系统外观` |
 | `settingsMagnifierLensPanelFollowSystemAppearanceHint` | `Match the lens background to the current light or dark mode` | `将放大镜背景与当前浅色或深色模式匹配` |
 | `settingsMagnifierLensPanelDarkBackgroundLabel` | `Dark mode` | `深色模式` |
@@ -167,7 +167,6 @@ All translations follow the project rule: **no trailing punctuation** on user-fa
 | Magnified area size: [144 × 144 v]           |
 | Coordinates mode: [Points v]                 |
 | Panel offset (X, Y): [15]  [14]             |
-| Background colour                            |
 |   [ON] Follow system appearance              |
 |   Dark mode  [■]  alpha: ━━━━━━━              |
 |   Light mode [□]  alpha: ━━━━━━━              |
@@ -189,14 +188,17 @@ All options live on `Defaults` and take effect the next time the lens is created
 | --- | --- | --- | --- |
 | `magnifierLensPanelEnabled` | `Bool` | `true` | Master toggle. When off, the legacy "drag to screenshot" cursor chip is shown. |
 | `magnifierLensPanelMagnifiedSize` | `Int` | `144` | Side length of the magnified square. Choices: 96, 144, 192. |
+| `magnifierLensPanelMagnification` | `Double` | `12.0` | Zoom factor for the magnified square. Settings choices: 4, 6, 8, 10, 12, 16, 20, 24. |
 | `magnifierLensPanelOffsetX` | `Double` | `15` | Horizontal offset (in points) between the cursor and the panel's left edge. |
 | `magnifierLensPanelOffsetY` | `Double` | `14` | Vertical offset (in points) between the cursor and the panel's top edge (when below the cursor). |
 | `magnifierLensPanelFollowSystemAppearance` | `Bool` | `true` | When on, the lens picks the dark/light background based on `effectiveAppearance`. When off, it always uses the dark colour. |
-| `magnifierLensPanelDarkBackground{R,G,B,Alpha}` | `Double` × 4 | `0, 0, 0, 0.7` | RGBA used in dark mode (or always when `followSystemAppearance` is off). Alpha is clamped to 0…1. |
-| `magnifierLensPanelLightBackground{R,G,B,Alpha}` | `Double` × 4 | `1, 1, 1, 0.8` | RGBA used in light mode (only honoured when `followSystemAppearance` is on). Alpha is clamped to 0…1. |
+| `magnifierLensPanelDarkBackground{R,G,B,Alpha}` | `Double` × 4 | `0, 0, 0, 0.7` | RGBA used in dark mode (or always when `followSystemAppearance` is off). Components are clamped to 0…1. |
+| `magnifierLensPanelLightBackground{R,G,B,Alpha}` | `Double` × 4 | `1, 1, 1, 0.8` | RGBA used in light mode (only honoured when `followSystemAppearance` is on). Components are clamped to 0…1. |
 | `magnifierLensPanelShowCopyHint` | `Bool` | `true` | Whether to render the "Press ⌘+C to copy color" row. |
 | `magnifierLensPanelShowShiftHint` | `Bool` | `true` | Whether to render the "Press Shift to switch RGB" row. |
 | `magnifierLensPanelCoordinateMode` | `String` (`.points` / `.pixels`) | `.points` | Whether coordinates are shown as AppKit logical points or CGImage physical pixels. |
+| `magnifierLensPanelCrosshair{R,G,B,Alpha}` | `Double` × 4 | `0.659, 0.741, 0.988, 0.65` | RGBA used for the wide crosshair. Components are clamped to 0…1. |
+| `magnifierLensPanelCrosshairWidth` | `Double` | `6` | Wide crosshair line width in points, clamped to 1…30. |
 
 The lens panel size is recomputed from these defaults every time the panel is created — pick a different `magnifierLensPanelMagnifiedSize` and the panel grows to fit.
 
@@ -216,7 +218,7 @@ The right side of the card hosts a `MagnifierPreviewView` (defined in `capcap/Se
 ### Modified
 
 - `capcap/Capture/OverlayWindowController.swift` — Owns the lens lifecycle, mouse-tracking (`.mouseMoved` + `.leftMouseDragged`), and `Shift` / `⌘+C` routing via local + global monitors. `refreshMagnifierLensPanelContent` uses inclusive edge-boundary screen detection. `setupMagnifierLensPanel` guards against duplicates. `selectionDidStart` recreates the lens if it was dismissed by a previous `selectionDidComplete` (for resize/move handle drags).
-- `capcap/Utilities/Defaults.swift` — Adds `magnifierLensPanelEnabled`, the configurable lens defaults, and the L10n accessors for the new keys.
+- `capcap/Utilities/Defaults.swift` — Adds `magnifierLensPanelEnabled`, normalized configurable lens defaults, and the L10n accessors for the new keys.
 - `capcap/Settings/SettingsView.swift` — Builds the dedicated magnifier lens panel card in `General` (master toggle + every option above + live preview). The previous single-line toggle inside the General `Toggles` card was removed.
 - `capcap/Capture/SelectionView.swift` — Calls `delegate?.selectionDidStart()` for `.resize` and `.move` drag-action paths so the lens stays visible while adjusting an existing selection.
 - `Resources/*.lproj/Localizable.strings` × 8 — Adds the lens-related keys (`magnifierLensPanel*`, `settingsMagnifierLensPanel*`).
@@ -238,7 +240,7 @@ The right side of the card hosts a `MagnifierPreviewView` (defined in `capcap/Se
   - **Top-edge pixel**: cursor at the absolute top of any screen (y == frame.maxY) correctly resolves a snapshot, magnifies, and samples the colour — no blank/missing pixel.
   - **Ghost lens**: first cmd+cmd activation shows exactly one lens (no shadow/frozen duplicate). Confirmed `sharingType = .none` prevents ScreenCaptureKit from capturing the lens in its own background snapshot.
   - **Points/Pixels mode**: Settings popup switches between logical points (e.g. `590, 445`) and physical pixels (e.g. `1180, 890` on a 2× Retina display).
-- The unit tests in `MagnifierLensPanelTests.swift` cover the pixel-coordinate math, the y-axis-correct sample path, every new `Defaults` key (magnified size, panel offsets, hint toggles, follow-system appearance, RGBA alpha clamping). Running them requires Xcode (the `XCTest` framework is not bundled with the available `xcode-select` command-line tools).
+- The unit tests in `MagnifierLensPanelTests.swift` cover the pixel-coordinate math, the x/y-axis-correct sample path, every new `Defaults` key (magnified size, panel offsets, hint toggles, follow-system appearance, and RGBA component clamping). Running them requires Xcode (the `XCTest` framework is not bundled with the available `xcode-select` command-line tools).
 - Manual runtime verification on `feat_idle-magnifier-color-picker` covers the dedicated Settings card: master toggle, magnified-area size picker (96 / 144 / 192), X / Y offset fields, dark + light NSColorWells with alpha sliders, follow-system-appearance toggle, and the two hint toggles all take effect; the `MagnifierPreviewView` on the right of the card mirrors every change in real time.
 
 ## Out of Scope
@@ -262,3 +264,5 @@ The right side of the card hosts a `MagnifierPreviewView` (defined in `capcap/Se
 - v10 — **lens during selection adjustment**: `SelectionView.mouseDown` calls `selectionDidStart()` for `.resize` and `.move` paths; `selectionDidStart` recreates the lens if it was dismissed by a previous `selectionDidComplete`. Lens now visible while dragging resize handles or moving an existing selection.
 - v11 — **Points/Pixels coordinate mode**: `Defaults.MagnifierLensPanelCoordinateMode` enum (`.points`/`.pixels`), Settings popup, L10n keys in 8 languages. `drawInfo` switches between `mouseLocation` (points) and `currentPixelPoint` (pixels) based on the setting.
 - v12 — **default flipped to enabled**: `Defaults.magnifierLensPanelEnabled` flipped from `false` to `true` so new users see the magnifier lens by default instead of the legacy "drag to screenshot" chip. Existing users who prefer the old behavior can disable the toggle in **Settings → General → Show magnifier while selecting**. Documentation updated to reflect the new default (Summary + Settings + Configurable Options table).
+- v13 — **MagnifierLensPanel rename**: Swift types, Defaults keys, L10n keys, tests, and docs were renamed from the earlier idle-color-lens terminology to the `MagnifierLensPanel` naming used by the Settings panel.
+- v14 — **review hardening**: single-pixel sampling now disables interpolation and uses integer alignment, panel screen lookup uses inclusive edge bounds, snapshot arrival refreshes an already visible panel, local `⌘+C` copy no longer consumes the event, color defaults clamp RGB/alpha components, magnified size normalizes to supported choices, unused Settings state/resources were removed, and docs were brought back in sync.
