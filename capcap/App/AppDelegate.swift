@@ -855,8 +855,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         hudPanel.onToggleMicrophone = { [weak self] enabled in
             self?.handleMicrophoneToggle(enabled: enabled)
         }
-        hudPanel.onSelectMicrophoneDevice = { uid in
+        hudPanel.onSelectMicrophoneDevice = { [weak self] uid in
             Defaults.recordingMicrophoneDeviceUID = uid
+            self?.recordingEngine?.setMicrophoneDeviceUID(uid)
         }
         hudPanel.orderFrontRegardless()
         recordingHUDPanel = hudPanel
@@ -870,6 +871,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         engine.onCompletion = { [weak self] url, error in
             self?.finishRecording(url: url, error: error)
+        }
+        engine.onSystemAudioConfigurationFailed = { [weak self] appliedEnabled in
+            Defaults.recordingSystemAudioEnabled = appliedEnabled
+            self?.recordingHUDPanel?.configureAudioButtons(
+                systemAudio: appliedEnabled,
+                microphone: Defaults.recordingMicrophoneEnabled && AppPermissions.microphoneGranted
+            )
+            ToastWindow.show(message: L10n.recordingSystemAudioChangeFailed)
+        }
+        engine.onMicrophoneCaptureFailed = { [weak self] in
+            Defaults.recordingMicrophoneEnabled = false
+            self?.recordingHUDPanel?.configureAudioButtons(
+                systemAudio: Defaults.recordingSystemAudioEnabled,
+                microphone: false
+            )
+            ToastWindow.show(message: L10n.recordingMicrophoneStartFailed)
         }
         recordingEngine = engine
         installRecordingCancelMonitors()
@@ -896,7 +913,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// recording live and persists the preference for the next one.
     private func handleSystemAudioToggle(enabled: Bool) {
         Defaults.recordingSystemAudioEnabled = enabled
-        recordingEngine?.setSystemAudioMuted(!enabled)
+        recordingEngine?.setSystemAudioEnabled(enabled)
     }
 
     /// Toggling the mic from the HUD applies to the current recording live:
@@ -905,17 +922,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func handleMicrophoneToggle(enabled: Bool) {
         guard enabled else {
             Defaults.recordingMicrophoneEnabled = false
-            recordingEngine?.setMicrophoneMuted(true)
+            recordingEngine?.setMicrophoneEnabled(false)
             return
         }
 
         if AppPermissions.microphoneGranted {
             Defaults.recordingMicrophoneEnabled = true
-            recordingEngine?.setMicrophoneMuted(false)
+            recordingEngine?.setMicrophoneEnabled(true)
             return
         }
 
         if AppPermissions.microphoneDenied {
+            Defaults.recordingMicrophoneEnabled = false
             // macOS won't re-show the prompt once denied — point to System
             // Settings and revert the HUD toggle to the still-denied state.
             presentMicrophoneDeniedAlert()
@@ -930,7 +948,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             guard let self else { return }
             if granted {
                 Defaults.recordingMicrophoneEnabled = true
-                self.recordingEngine?.setMicrophoneMuted(false)
+                self.recordingEngine?.setMicrophoneEnabled(true)
             } else {
                 Defaults.recordingMicrophoneEnabled = false
                 self.recordingHUDPanel?.configureAudioButtons(

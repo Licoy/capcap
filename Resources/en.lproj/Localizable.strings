@@ -620,6 +620,8 @@
 "recordingMicrophoneDeviceLabel" = "Microphone input device";
 "recordingMicrophoneDeviceDefault" = "System Default";
 "recordingMicrophoneDeviceMenuHint" = "Right-click to choose input device";
+"recordingSystemAudioChangeFailed" = "Could not change system audio capture";
+"recordingMicrophoneStartFailed" = "Could not start microphone capture";
 "screenshotSavePathLabel" = "Screenshot save path";
 "savePathChoose" = "Choose";
 "savePathReveal" = "Reveal";

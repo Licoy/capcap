@@ -620,6 +620,8 @@
 "recordingMicrophoneDeviceLabel" = "麥克風輸入裝置";
 "recordingMicrophoneDeviceDefault" = "系統預設";
 "recordingMicrophoneDeviceMenuHint" = "右鍵選擇輸入裝置";
+"recordingSystemAudioChangeFailed" = "無法切換系統音訊擷取";
+"recordingMicrophoneStartFailed" = "無法啟動麥克風擷取";
 "screenshotSavePathLabel" = "截圖儲存路徑";
 "savePathChoose" = "選擇";
 "savePathReveal" = "顯示";

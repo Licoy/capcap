@@ -365,6 +365,8 @@ enum L10n {
     static var recordingMicrophoneDeviceLabel: String { s("recordingMicrophoneDeviceLabel") }
     static var recordingMicrophoneDeviceDefault: String { s("recordingMicrophoneDeviceDefault") }
     static var recordingMicrophoneDeviceMenuHint: String { s("recordingMicrophoneDeviceMenuHint") }
+    static var recordingSystemAudioChangeFailed: String { s("recordingSystemAudioChangeFailed") }
+    static var recordingMicrophoneStartFailed: String { s("recordingMicrophoneStartFailed") }
 
     // Microphone permission row
     static var microphonePermission: String { s("microphonePermission") }

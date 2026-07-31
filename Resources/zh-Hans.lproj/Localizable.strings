@@ -620,6 +620,8 @@
 "recordingMicrophoneDeviceLabel" = "麦克风输入设备";
 "recordingMicrophoneDeviceDefault" = "系统默认";
 "recordingMicrophoneDeviceMenuHint" = "右键选择输入设备";
+"recordingSystemAudioChangeFailed" = "无法切换系统音频采集";
+"recordingMicrophoneStartFailed" = "无法启动麦克风采集";
 "screenshotSavePathLabel" = "截图保存路径";
 "savePathChoose" = "选择";
 "savePathReveal" = "显示";

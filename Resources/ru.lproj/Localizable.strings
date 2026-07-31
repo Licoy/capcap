@@ -620,6 +620,8 @@
 "recordingMicrophoneDeviceLabel" = "Устройство ввода микрофона";
 "recordingMicrophoneDeviceDefault" = "По умолчанию";
 "recordingMicrophoneDeviceMenuHint" = "Правый клик — выбор устройства ввода";
+"recordingSystemAudioChangeFailed" = "Не удалось изменить захват системного звука";
+"recordingMicrophoneStartFailed" = "Не удалось начать захват микрофона";
 "screenshotSavePathLabel" = "Путь для снимков";
 "savePathChoose" = "Выбрать";
 "savePathReveal" = "Показать";

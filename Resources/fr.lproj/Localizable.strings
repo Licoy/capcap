@@ -620,6 +620,8 @@
 "recordingMicrophoneDeviceLabel" = "Périphérique d'entrée micro";
 "recordingMicrophoneDeviceDefault" = "Périphérique par défaut";
 "recordingMicrophoneDeviceMenuHint" = "Clic droit pour choisir le périphérique d'entrée";
+"recordingSystemAudioChangeFailed" = "Impossible de modifier la capture audio système";
+"recordingMicrophoneStartFailed" = "Impossible de démarrer la capture du microphone";
 "screenshotSavePathLabel" = "Chemin des captures";
 "savePathChoose" = "Choisir";
 "savePathReveal" = "Afficher";

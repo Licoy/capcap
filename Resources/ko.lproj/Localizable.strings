@@ -620,6 +620,8 @@
 "recordingMicrophoneDeviceLabel" = "마이크 입력 장치";
 "recordingMicrophoneDeviceDefault" = "시스템 기본값";
 "recordingMicrophoneDeviceMenuHint" = "우클릭으로 입력 장치 선택";
+"recordingSystemAudioChangeFailed" = "시스템 오디오 캡처를 변경할 수 없습니다";
+"recordingMicrophoneStartFailed" = "마이크 캡처를 시작할 수 없습니다";
 "screenshotSavePathLabel" = "스크린샷 저장 경로";
 "savePathChoose" = "선택";
 "savePathReveal" = "보기";

@@ -620,6 +620,8 @@
 "recordingMicrophoneDeviceLabel" = "マイク入力デバイス";
 "recordingMicrophoneDeviceDefault" = "システムデフォルト";
 "recordingMicrophoneDeviceMenuHint" = "右クリックで入力デバイスを選択";
+"recordingSystemAudioChangeFailed" = "システム音声のキャプチャを変更できませんでした";
+"recordingMicrophoneStartFailed" = "マイクのキャプチャを開始できませんでした";
 "screenshotSavePathLabel" = "スクリーンショットの保存先";
 "savePathChoose" = "選択";
 "savePathReveal" = "表示";

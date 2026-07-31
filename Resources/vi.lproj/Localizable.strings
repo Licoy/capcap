@@ -620,6 +620,8 @@
 "recordingMicrophoneDeviceLabel" = "Thiết bị đầu vào mic";
 "recordingMicrophoneDeviceDefault" = "Mặc định hệ thống";
 "recordingMicrophoneDeviceMenuHint" = "Nhấp chuột phải để chọn thiết bị đầu vào";
+"recordingSystemAudioChangeFailed" = "Không thể thay đổi chế độ thu âm thanh hệ thống";
+"recordingMicrophoneStartFailed" = "Không thể bắt đầu thu âm từ mic";
 "screenshotSavePathLabel" = "Đường dẫn lưu ảnh chụp";
 "savePathChoose" = "Chọn";
 "savePathReveal" = "Hiện";
