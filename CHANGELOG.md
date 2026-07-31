@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.20] - 2026-07-31
+
+### Added
+- Add system audio and microphone capture to screen recordings (6d6f323)
+- Add video playback to history previews (54ecf83)
+- Add a second leader handle to text callouts (b84e073)
+
+### Fixed
+- Harden live recording audio handling (756bbd5)
+
+### Changed
+- Reposition the history tile badge to the image corner (edd425a)
+
 ## [1.6.19] - 2026-07-30
 
 ### Added
