@@ -35,15 +35,16 @@ The feature is controlled by a `Defaults.magnifierLensPanelEnabled` toggle (defa
 2. `OverlayWindowController` presents the overlay. If `presetImage == nil` and `Defaults.magnifierLensPanelEnabled` is true, a `MagnifierLensPanelWindow` is created and replaces the "drag to screenshot" cursor chip.
 3. Mouse moves: lens position follows the cursor; the magnified area, coordinates, and HEX/RGB value update live.
 4. `Shift` (single tap, no other modifiers): toggles between HEX and RGB display. The new state persists for the current session and resets to HEX on the next overlay activation.
-5. `⌘+C`: copies the currently displayed value (HEX → `#RRGGBB`, RGB → `rgb(r, g, b)`) to the clipboard, shows the existing `L10n.colorCopied` toast, and updates `HistoryManager` + `Defaults.lastPickedColorHex` if `Defaults.historyCacheEnabled` is true. The two tip rows (`Press ⌘+C…` and `Press Shift…`) remain visible for the entire overlay session — they do not fade out.
-6. Click without drag: still triggers window-selection capture (existing behavior). The lens does not consume the click.
-7. Mouse down + drag: lens stays visible while the user draws the selection rectangle, then dismisses when selection completes.
-8. `Esc`: cancels the overlay session; lens dismisses with the rest.
-9. Closing the overlay: lens is released via the standard `tearDown` path.
+5. `⌘+C`: copies the currently displayed value (HEX → `#RRGGBB`, RGB → `rgb(r, g, b)`) to the clipboard, shows the existing `L10n.colorCopied` toast, and updates `HistoryManager` + `Defaults.lastPickedColorHex` if `Defaults.historyCacheEnabled` is true. The ratio row and the optional tip rows (`Press ⌘+C…` and `Press Shift…`) remain visible for the entire overlay session — they do not fade out.
+6. `R`: cycles the fixed aspect-ratio mode through the same path as the legacy cursor chip. The lens ratio row updates immediately so replacing the chip does not hide ratio state.
+7. Click without drag: still triggers window-selection capture (existing behavior). The lens does not consume the click.
+8. Mouse down + drag: lens stays visible while the user draws the selection rectangle, then dismisses when selection completes.
+9. `Esc`: cancels the overlay session; lens dismisses with the rest.
+10. Closing the overlay: lens is released via the standard `tearDown` path.
 
 ## Lens UI
 
-Panel size: **dynamic** — computed from `Defaults.magnifierLensPanelMagnifiedSize` (default 144) plus info rows (2–4 depending on hint visibility). The default configuration produces a 256 × 240 point panel. The lens is a borderless `NSPanel` (similar to `CursorChipWindow`), drawn at `level = .screenSaver + 1`, ignoring mouse events, with `sharingType = .none` so ScreenCaptureKit excludes it from frozen-desktop snapshots.
+Panel size: **dynamic** — computed from `Defaults.magnifierLensPanelMagnifiedSize` (default 144) plus info rows (3–5 depending on optional hint visibility). The default configuration produces a 256 × 258 point panel. The lens is a borderless `NSPanel` (similar to `CursorChipWindow`), drawn at `level = .screenSaver + 1`, ignoring mouse events, with `sharingType = .none` so ScreenCaptureKit excludes it from frozen-desktop snapshots.
 
 ### Smart positioning
 
@@ -142,6 +143,8 @@ New L10n keys (added to all 8 `.lproj/Localizable.strings`):
 | `magnifierLensPanelRgbString` | `rgb(%d, %d, %d)` | `rgb(%d, %d, %d)` |
 | `magnifierLensPanelCopyHint` | `Press ⌘+C to copy color` | `按 ⌘+C 复制颜色` |
 | `magnifierLensPanelShiftHint` | `Press Shift to switch RGB` | `按 Shift 切换 RGB` |
+| `magnifierLensPanelAspectFree` | `Free` | `自由` |
+| `magnifierLensPanelAspectHint` | `Press R to switch ratio: %@` | `按 R 切换比例: %@` |
 | `settingsMagnifierLensPanelTitle` | `Show magnifier while selecting` | `空闲态显示放大镜取色` |
 | `settingsMagnifierLensPanelHint` | `Magnify the area around the cursor when picking screenshot points or adjusting the selection` | `绘制前在光标旁显示带 RGB/HEX 的放大镜` |
 | `settingsMagnifierLensPanelMagnifiedSizeLabel` | `Magnified area size` | `放大区域尺寸` |
@@ -175,6 +178,7 @@ All translations follow the project rule: **no trailing punctuation** on user-fa
 | | - magnifier     | | Show Shift hint [ON]  | |
 | | - coordinates   | +----------------------+ |
 | | - swatch + HEX  |                         | |
+| | - ratio row     |                         | |
 | | - hint rows     |                         | |
 | +------------------+                         | |
 +----------------------------------------------+
@@ -229,6 +233,7 @@ The right side of the card hosts a `MagnifierPreviewView` (defined in `capcap/Se
 - Manual runtime verification performed on `feat_idle-magnifier-color-picker`:
   - cmd+cmd activates the overlay; lens replaces the "drag to screenshot" chip.
   - Cursor moves update the magnified area, coordinates, and HEX value live.
+  - Ratio row stays visible and updates when R cycles free / fixed aspect modes.
   - Tip rows stay visible for the entire idle session (conditional on `magnifierLensPanelShowCopyHint` / `magnifierLensPanelShowShiftHint`).
   - ⌘+C copies the currently shown format; toast and clipboard confirm.
   - Single-tap Shift toggles HEX ↔ RGB; next cmd+cmd session resets to HEX.
@@ -247,7 +252,7 @@ The right side of the card hosts a `MagnifierPreviewView` (defined in `capcap/Se
 
 - A pinned-color or sampling-lock feature (Cmd+L analogue of macOS Digital Color Meter).
 - Re-skinning or replacing the existing `ColorPickerRunner` modal.
-- A new shortcut slot — only `Shift` and `⌘+C` are claimed inside the idle lens window.
+- A new shortcut slot — the lens only surfaces the existing `R` aspect-ratio shortcut and claims `Shift` / `⌘+C` for lens-specific actions.
 - Making the overlay panel a key window to fully intercept `⌘+C` from the foreground app. The current design uses global monitors (observe-only), accepting that the foreground app still receives `⌘+C` in parallel.
 
 ## Iteration Log
@@ -266,3 +271,4 @@ The right side of the card hosts a `MagnifierPreviewView` (defined in `capcap/Se
 - v12 — **default flipped to enabled**: `Defaults.magnifierLensPanelEnabled` flipped from `false` to `true` so new users see the magnifier lens by default instead of the legacy "drag to screenshot" chip. Existing users who prefer the old behavior can disable the toggle in **Settings → General → Show magnifier while selecting**. Documentation updated to reflect the new default (Summary + Settings + Configurable Options table).
 - v13 — **MagnifierLensPanel rename**: Swift types, Defaults keys, L10n keys, tests, and docs were renamed from the earlier idle-color-lens terminology to the `MagnifierLensPanel` naming used by the Settings panel.
 - v14 — **review hardening**: single-pixel sampling now disables interpolation and uses integer alignment, panel screen lookup uses inclusive edge bounds, snapshot arrival refreshes an already visible panel, local `⌘+C` copy no longer consumes the event, color defaults clamp RGB/alpha components, magnified size normalizes to supported choices, unused Settings state/resources were removed, and docs were brought back in sync.
+- v15 — **aspect-ratio prompt parity**: the lens now renders a `Press R to switch ratio: ...` row backed by the same persisted aspect-ratio state as the legacy cursor chip, and pressing `R` redraws the lens immediately so the fixed-ratio shortcut remains discoverable.

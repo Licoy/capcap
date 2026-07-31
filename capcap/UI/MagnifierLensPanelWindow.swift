@@ -27,12 +27,12 @@ final class MagnifierLensPanelWindow: NSPanel {
     private static let edgeMargin: CGFloat = 8
 
     /// Computes the panel size that fits the current Defaults (magnified
-    /// square + 4 info rows or 2 rows when hints are disabled). Public so
+    /// square + 5 info rows or 3 rows when optional hints are disabled). Public so
     /// the Settings preview can size its embedded lens view identically to
     /// the live panel.
     static func panelSizeForCurrentSettings() -> NSSize {
         let magnifiedSide = CGFloat(Defaults.magnifierLensPanelMagnifiedSize)
-        let infoRows = 2
+        let infoRows = 3
             + (Defaults.magnifierLensPanelShowCopyHint ? 1 : 0)
             + (Defaults.magnifierLensPanelShowShiftHint ? 1 : 0)
         let infoHeight = CGFloat(infoRows) * 18 + 8
@@ -116,6 +116,10 @@ final class MagnifierLensPanelWindow: NSPanel {
 
     func setFormat(_ format: Format) {
         lensView.format = format
+    }
+
+    func refreshDisplay() {
+        lensView.needsDisplay = true
     }
 
     /// Returns the current sample and pixel location the lens is displaying.
@@ -446,8 +450,8 @@ final class MagnifierLensPanelView: NSView {
         // Tip rows occupy 1 and 0 conditionally.
         var rowFromBottom = 0
         let infoAreaBottom = infoBottomInset
-        // totalRows in info area (coords + color + maybe copy + maybe shift)
-        let totalRows = 2
+        // totalRows in info area (coords + color + ratio + maybe copy + maybe shift)
+        let totalRows = 3
             + (Defaults.magnifierLensPanelShowCopyHint ? 1 : 0)
             + (Defaults.magnifierLensPanelShowShiftHint ? 1 : 0)
 
@@ -514,6 +518,13 @@ final class MagnifierLensPanelView: NSView {
             )
         }
 
+        drawText(
+            aspectHintText(),
+            attrs: tipAttrs,
+            at: rowY(forIndex: totalRows - 3),
+            availableWidth: bounds.width - infoLeftPadding - infoRightPadding
+        )
+
         // Tip rows (conditional)
         if Defaults.magnifierLensPanelShowCopyHint {
             drawText(
@@ -553,5 +564,31 @@ final class MagnifierLensPanelView: NSView {
 
     private func hexString(_ sample: MagnifierLensPanelWindow.Sample) -> String {
         String(format: "#%02X%02X%02X", sample.r, sample.g, sample.b)
+    }
+
+    private func aspectHintText() -> String {
+        let label: String
+        if Defaults.hasSelectionAspectRatio {
+            label = aspectRatioLabel(for: CGFloat(Defaults.selectionAspectRatio))
+        } else {
+            label = L10n.magnifierLensPanelAspectFree
+        }
+        return L10n.magnifierLensPanelAspectHint(label)
+    }
+
+    private func aspectRatioLabel(for aspectRatio: CGFloat) -> String {
+        let presets: [(CGFloat, String)] = [
+            (1.0, "1:1"),
+            (2.35, "2.35:1"),
+            (3.0, "3:1"),
+            (3.0 / 2.0, "3:2"),
+            (4.0 / 3.0, "4:3"),
+            (9.0 / 16.0, "9:16"),
+            (16.0 / 9.0, "16:9"),
+        ]
+        if let preset = presets.first(where: { abs($0.0 - aspectRatio) < 0.000_001 }) {
+            return preset.1
+        }
+        return String(format: "%.2f:1", Double(aspectRatio))
     }
 }

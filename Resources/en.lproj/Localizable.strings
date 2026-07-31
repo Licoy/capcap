@@ -617,6 +617,8 @@
 "magnifierLensPanelRgbString" = "rgb(%d, %d, %d)";
 "magnifierLensPanelCopyHint" = "Press ⌘+C to copy color";
 "magnifierLensPanelShiftHint" = "Press Shift to switch RGB";
+"magnifierLensPanelAspectFree" = "Free";
+"magnifierLensPanelAspectHint" = "Press R to switch ratio: %@";
 "settingsMagnifierLensPanelTitle" = "Show magnifier while selecting";
 "settingsMagnifierLensPanelHint" = "Magnify the area around the cursor when picking screenshot points or adjusting the selection";
 "settingsMagnifierLensPanelMagnifiedSizeLabel" = "Magnified area size";

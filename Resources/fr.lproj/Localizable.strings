@@ -617,6 +617,8 @@
 "magnifierLensPanelRgbString" = "rgb(%d, %d, %d)";
 "magnifierLensPanelCopyHint" = "Appuyez sur ⌘+C pour copier la couleur";
 "magnifierLensPanelShiftHint" = "Appuyez sur Shift pour basculer en RGB";
+"magnifierLensPanelAspectFree" = "Libre";
+"magnifierLensPanelAspectHint" = "Appuyez sur R pour changer le ratio : %@";
 "settingsMagnifierLensPanelTitle" = "Afficher la loupe pendant la sélection";
 "settingsMagnifierLensPanelHint" = "Agrandir la zone autour du curseur lors de la sélection ou de l'ajustement de la capture";
 "settingsMagnifierLensPanelMagnifiedSizeLabel" = "Taille de la zone agrandie";

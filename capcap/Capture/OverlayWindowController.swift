@@ -850,6 +850,7 @@ class OverlayWindowController {
         applySelectionAspectRatio(nextAspectRatio)
         if usesAspectRatioSelection {
             chipWindow?.updateText(Self.aspectRatioCursorChipText(for: postCaptureAction, aspectRatio: nextAspectRatio))
+            magnifierLensPanel?.refreshDisplay()
         }
         return true
     }

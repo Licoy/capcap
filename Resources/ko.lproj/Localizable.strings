@@ -617,6 +617,8 @@
 "magnifierLensPanelRgbString" = "rgb(%d, %d, %d)";
 "magnifierLensPanelCopyHint" = "⌘+C 로 색상 복사";
 "magnifierLensPanelShiftHint" = "Shift 로 RGB 전환";
+"magnifierLensPanelAspectFree" = "자유";
+"magnifierLensPanelAspectHint" = "R로 비율 전환: %@";
 "settingsMagnifierLensPanelTitle" = "선택 시 돋보기 표시";
 "settingsMagnifierLensPanelHint" = "스크린샷 지점 선택 또는 영역 조정 시 커서 주변 확대";
 "settingsMagnifierLensPanelMagnifiedSizeLabel" = "확대 영역 크기";

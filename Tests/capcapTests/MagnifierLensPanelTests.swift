@@ -227,6 +227,13 @@ final class MagnifierLensPanelTests: XCTestCase {
         XCTAssertTrue(rgb.contains("23"))
     }
 
+    func testAspectHintStringIncludesRatioShortcutAndLabel() {
+        let hint = L10n.magnifierLensPanelAspectHint("16:9")
+        XCTAssertTrue(hint.contains("R"))
+        XCTAssertTrue(hint.contains("16:9"))
+        XCTAssertFalse(L10n.magnifierLensPanelAspectFree.isEmpty)
+    }
+
     func testDefaultsMagnifierLensPanelEnabledIsOnByDefault() {
         // Wipe any persisted value and ensure the default is true so new users
         // get the magnifier experience immediately.

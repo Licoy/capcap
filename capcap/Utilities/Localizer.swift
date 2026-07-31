@@ -21,12 +21,21 @@ enum Localizer {
         if let path = Bundle.main.path(forResource: lang.lprojName, ofType: "lproj"),
            let lproj = Bundle(path: path) {
             resolved = lproj
+        } else if let sourceLproj = sourceTreeBundle(for: lang) {
+            resolved = sourceLproj
         } else {
             // Running unbundled (e.g. `swift run`) — no .lproj on disk.
             resolved = .main
         }
         cache = (lang, resolved)
         return resolved
+    }
+
+    private static func sourceTreeBundle(for lang: AppLanguage) -> Bundle? {
+        let url = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            .appendingPathComponent("Resources")
+            .appendingPathComponent("\(lang.lprojName).lproj")
+        return Bundle(url: url)
     }
 
     /// The localized string for `key` in the current language. Falls back to

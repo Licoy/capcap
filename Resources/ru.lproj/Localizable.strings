@@ -617,6 +617,8 @@
 "magnifierLensPanelRgbString" = "rgb(%d, %d, %d)";
 "magnifierLensPanelCopyHint" = "Нажмите ⌘+C, чтобы скопировать цвет";
 "magnifierLensPanelShiftHint" = "Нажмите Shift для переключения на RGB";
+"magnifierLensPanelAspectFree" = "Свободно";
+"magnifierLensPanelAspectHint" = "Нажмите R для смены пропорций: %@";
 "settingsMagnifierLensPanelTitle" = "Показать лупу при выборе";
 "settingsMagnifierLensPanelHint" = "Увеличить область вокруг курсора при выборе точек или настройке области";
 "settingsMagnifierLensPanelMagnifiedSizeLabel" = "Размер области увеличения";
