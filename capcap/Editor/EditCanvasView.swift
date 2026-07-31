@@ -1884,6 +1884,55 @@ class EditCanvasView: NSView {
         needsDisplay = true
     }
 
+    /// Keep annotations anchored to the same screen content when the capture
+    /// viewport moves or its minimum edges are resized. Annotation geometry is
+    /// stored in canvas-local coordinates, so a viewport-origin change needs
+    /// the inverse translation. Apply the same translation to history snapshots
+    /// so undo/redo cannot restore geometry from the previous viewport origin.
+    func preserveAnnotationScreenPositions(
+        from oldViewport: NSRect,
+        to newViewport: NSRect
+    ) {
+        let delta = NSPoint(
+            x: oldViewport.minX - newViewport.minX,
+            y: oldViewport.minY - newViewport.minY
+        )
+        guard delta != .zero else { return }
+
+        activeTextField?.commit()
+
+        func translatedAnnotations(_ source: [Annotation]) -> [Annotation] {
+            source.map { $0.translated(by: delta) }
+        }
+
+        func translatedSnapshot(_ snapshot: EditorSnapshot) -> EditorSnapshot {
+            EditorSnapshot(
+                annotations: translatedAnnotations(snapshot.annotations),
+                numberCounter: snapshot.numberCounter
+            )
+        }
+
+        func translatedState(_ state: RestorableState) -> RestorableState {
+            RestorableState(
+                annotations: translatedAnnotations(state.annotations),
+                numberCounter: state.numberCounter,
+                selectedIndexes: state.selectedIndexes,
+                primarySelectedIndex: state.primarySelectedIndex,
+                undoStack: state.undoStack.map(translatedSnapshot),
+                redoStack: state.redoStack.map(translatedSnapshot),
+                previewImage: state.previewImage
+            )
+        }
+
+        annotations = translatedAnnotations(annotations)
+        undoStack = undoStack.map(translatedSnapshot)
+        redoStack = redoStack.map(translatedSnapshot)
+        pendingSnapshot = pendingSnapshot.map(translatedSnapshot)
+        confirmDoubleClickBaseline = confirmDoubleClickBaseline.map(translatedState)
+        needsDisplay = true
+        refreshCursorAtCurrentLocation()
+    }
+
     // MARK: - Helpers
 
     func resolveBaseImageForEditing() -> NSImage? {
