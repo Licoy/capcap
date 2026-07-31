@@ -88,6 +88,8 @@
 	<string></string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>capcap needs microphone access to record audio with screen recordings</string>
 	<key>NSScreenCaptureUsageDescription</key>
 	<string>capcap needs screen recording access to capture screenshots and recordings.</string>
 </dict>
