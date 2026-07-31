@@ -10,6 +10,13 @@ struct DetectedWindow: Sendable {
     var usesCompositedScreenBackdrop: Bool {
         layer >= 20
     }
+
+    var isSelectableCaptureTarget: Bool {
+        // Core Graphics exposes cursor, insertion-point, menu, popup, and
+        // other transient surfaces as windows. The idle hover selection should
+        // only target normal app/desktop windows.
+        layer == 0
+    }
 }
 
 enum WindowDetectionError: LocalizedError, Sendable {
@@ -89,8 +96,10 @@ class WindowDetector {
 
             let name = info[kCGWindowOwnerName as String] as? String ?? ""
             let windowID = info[kCGWindowNumber as String] as? CGWindowID ?? 0
+            let detected = DetectedWindow(name: name, windowID: windowID, layer: layer, frame: rect)
 
-            return DetectedWindow(name: name, windowID: windowID, layer: layer, frame: rect)
+            guard detected.isSelectableCaptureTarget else { return nil }
+            return detected
         }
 
         return .success(detectedWindows)
@@ -113,6 +122,8 @@ class WindowDetector {
     func windowAt(cgPoint: CGPoint) -> DetectedWindow? {
         // CGWindowListCopyWindowInfo returns windows in front-to-back z-order,
         // so the first hit is the topmost window.
-        return windows.first { $0.frame.contains(cgPoint) }
+        return windows.first {
+            $0.isSelectableCaptureTarget && $0.frame.contains(cgPoint)
+        }
     }
 }
