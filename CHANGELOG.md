@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.21] - 2026-08-01
+
+### Added
+- Add a Finder selection upload shortcut and localization (bdc21a6)
+
+### Fixed
+- Preserve annotation positions when the canvas viewport moves (52e3408)
+
+### Changed
+- Improve translation direction handling and streaming performance (58440fe)
+
 ## [1.6.20] - 2026-07-31
 
 ### Added
