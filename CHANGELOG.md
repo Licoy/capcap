@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.22] - 2026-08-01
+
+### Added
+- Support uploading files without a Finder selection (7b5eeec)
+
 ## [1.6.21] - 2026-08-01
 
 ### Added
