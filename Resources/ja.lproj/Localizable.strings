@@ -627,3 +627,23 @@
 "savePathReveal" = "表示";
 "chooseRecordingSavePathTitle" = "録画の保存先を選択";
 "chooseScreenshotSavePathTitle" = "スクリーンショットの保存先を選択";
+
+/* Finder ファイルのアップロード */
+"finderUploadShortcutHeader" = "Finder の選択項目をアップロード";
+"finderUploadShortcutDefaultDisplay" = "未設定";
+"shortcutConflictFinderUpload" = "このキーの組み合わせは Finder の選択項目をアップロードするショートカットで使用されています。別の組み合わせを選んでください";
+"uploadSelectedFilesMenu" = "Finder の選択項目をアップロード";
+"finderUploadDialogTitle" = "画像ホストへアップロード";
+"finderUploadDialogHeading" = "アップロードするファイル";
+"finderUploadSummary" = "%d 個のファイルを選択 · %@";
+"finderUploadSelectAll" = "すべて選択";
+"finderUploadAction" = "%d 個のファイルをアップロード";
+"finderUploadRetryAction" = "%d 個のファイルを再試行";
+"finderUploadingProgress" = "アップロード中 %d/%d";
+"finderUploadSucceeded" = "アップロード済み";
+"finderUploadFailed" = "失敗";
+"finderUploadErrorLogTitle" = "エラーログ";
+"finderUploadUnknownSize" = "サイズ不明";
+"finderUploadReadFailed" = "ファイルを読み込めません %@";
+"finderUploadCompleted" = "%d 個のファイルをアップロードしてリンクをコピーしました";
+"finderUploadNoFiles" = "先に Finder でアップロードするファイルを選択してください";

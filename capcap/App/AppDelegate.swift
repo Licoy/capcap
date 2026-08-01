@@ -16,6 +16,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var recordingCancelGlobalMonitor: Any?
     private var recordingCancelRequested = false
     private var historyPanelController: HistoryPanelController?
+    private var finderUploadWindowController: FinderUploadWindowController?
     private var countdownActive = false
     private var appInitialized = false
     private var suspendedEditDraft: OverlayWindowController.SuspendedEditDraft?
@@ -136,6 +137,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             onTakeFullScreenScreenshot: { [weak self] in self?.handleFullScreenScreenshotTrigger() },
             onRecord: { [weak self] in self?.handleRecordingTrigger() },
             onMergeImages: { [weak self] in self?.handleImageMergeMenuTrigger() },
+            onUploadSelectedFiles: { [weak self] in self?.handleFinderUploadTrigger() },
             onColorPicker: { [weak self] in self?.handleColorPickerTrigger() },
             onOpenHistoryPanel: { [weak self] in self?.handleHistoryPanelTrigger(holdOpenUntilMouseEnters: true) },
             onOpenSettings: { [weak self] in self?.openSettings() }
@@ -298,6 +300,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             HotkeyManager.shared.unregisterImageMerge()
         }
 
+        if Defaults.hasCustomFinderUploadHotkey {
+            HotkeyManager.shared.registerFinderUpload { [weak self] in
+                self?.handleFinderUploadTrigger()
+            }
+        } else {
+            HotkeyManager.shared.unregisterFinderUpload()
+        }
+
         if Defaults.hasCustomFullScreenScreenshotHotkey {
             HotkeyManager.shared.registerFullScreenScreenshot { [weak self] in
                 self?.handleFullScreenScreenshotTrigger(fromShortcut: true)
@@ -334,6 +344,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         HotkeyManager.shared.unregisterScreenshotTranslation()
         HotkeyManager.shared.unregisterRecord()
         HotkeyManager.shared.unregisterImageMerge()
+        HotkeyManager.shared.unregisterFinderUpload()
         HotkeyManager.shared.unregisterFullScreenScreenshot()
         HotkeyManager.shared.unregisterColorPicker()
         HotkeyManager.shared.unregisterHistoryPanel()
@@ -644,6 +655,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
               !ImageMergeLauncher.shared.isWorkbenchActive
         else { return }
         ImageMergeLauncher.shared.openFromShortcutSources()
+    }
+
+    func handleFinderUploadTrigger() {
+        guard overlayController == nil, recordingEngine == nil, !countdownActive else { return }
+
+        if let controller = finderUploadWindowController {
+            controller.show()
+            return
+        }
+
+        let urls = FinderSelection.currentFileURLs()
+        guard !urls.isEmpty else {
+            ToastWindow.show(message: L10n.finderUploadNoFiles)
+            return
+        }
+
+        let controller = FinderUploadWindowController(fileURLs: urls) { [weak self] in
+            self?.finderUploadWindowController = nil
+        }
+        finderUploadWindowController = controller
+        controller.show()
     }
 
     func handleColorPickerTrigger() {

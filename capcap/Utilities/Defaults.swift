@@ -187,6 +187,8 @@ enum L10n {
     static var recordShortcutDefaultDisplay: String { s("recordShortcutDefaultDisplay") }
     static var imageMergeShortcutHeader: String { s("imageMergeShortcutHeader") }
     static var imageMergeShortcutDefaultDisplay: String { s("imageMergeShortcutDefaultDisplay") }
+    static var finderUploadShortcutHeader: String { s("finderUploadShortcutHeader") }
+    static var finderUploadShortcutDefaultDisplay: String { s("finderUploadShortcutDefaultDisplay") }
     static var fullScreenScreenshotShortcutHeader: String { s("fullScreenScreenshotShortcutHeader") }
     static var fullScreenScreenshotShortcutDefaultDisplay: String { s("fullScreenScreenshotShortcutDefaultDisplay") }
     static var colorPickerShortcutHeader: String { s("colorPickerShortcutHeader") }
@@ -226,6 +228,7 @@ enum L10n {
     static var shortcutConflictScreenshotTranslation: String { s("shortcutConflictScreenshotTranslation") }
     static var shortcutConflictRecord: String { s("shortcutConflictRecord") }
     static var shortcutConflictImageMerge: String { s("shortcutConflictImageMerge") }
+    static var shortcutConflictFinderUpload: String { s("shortcutConflictFinderUpload") }
     static var shortcutConflictFullScreenScreenshot: String { s("shortcutConflictFullScreenScreenshot") }
     static var shortcutConflictColorPicker: String { s("shortcutConflictColorPicker") }
 
@@ -234,6 +237,7 @@ enum L10n {
     static var takeFullScreenScreenshot: String { s("takeFullScreenScreenshot") }
     static var record: String { s("record") }
     static var mergeImages: String { s("mergeImages") }
+    static var uploadSelectedFilesMenu: String { s("uploadSelectedFilesMenu") }
     static var colorPicker: String { s("colorPicker") }
     static var settings: String { s("settings") }
     static var quitApp: String { s("quitApp") }
@@ -639,6 +643,34 @@ enum L10n {
     static var uploadFieldAccountId: String { s("uploadFieldAccountId") }
     static var uploadTestImageFailed: String { s("uploadTestImageFailed") }
 
+    // Upload — Finder selection dialog
+    static var finderUploadDialogTitle: String { s("finderUploadDialogTitle") }
+    static var finderUploadDialogHeading: String { s("finderUploadDialogHeading") }
+    static func finderUploadSummary(_ count: Int, _ provider: String) -> String {
+        String(format: s("finderUploadSummary"), count, provider)
+    }
+    static var finderUploadSelectAll: String { s("finderUploadSelectAll") }
+    static func finderUploadAction(_ count: Int) -> String {
+        String(format: s("finderUploadAction"), count)
+    }
+    static func finderUploadRetryAction(_ count: Int) -> String {
+        String(format: s("finderUploadRetryAction"), count)
+    }
+    static func finderUploadingProgress(_ current: Int, _ total: Int) -> String {
+        String(format: s("finderUploadingProgress"), current, total)
+    }
+    static var finderUploadSucceeded: String { s("finderUploadSucceeded") }
+    static var finderUploadFailed: String { s("finderUploadFailed") }
+    static var finderUploadErrorLogTitle: String { s("finderUploadErrorLogTitle") }
+    static var finderUploadUnknownSize: String { s("finderUploadUnknownSize") }
+    static func finderUploadReadFailed(_ message: String) -> String {
+        String(format: s("finderUploadReadFailed"), message)
+    }
+    static func finderUploadCompleted(_ count: Int) -> String {
+        String(format: s("finderUploadCompleted"), count)
+    }
+    static var finderUploadNoFiles: String { s("finderUploadNoFiles") }
+
     // Upload — provider names
     static var providerTencentCOS: String { s("providerTencentCOS") }
     static var providerQiniuKodo: String { s("providerQiniuKodo") }
@@ -922,6 +954,7 @@ struct Defaults {
         clearScreenshotTranslationHotkey()
         clearRecordHotkey()
         clearImageMergeHotkey()
+        clearFinderUploadHotkey()
         clearFullScreenScreenshotHotkey()
         clearColorPickerHotkey()
         clearClipboardHotkey()
@@ -1071,6 +1104,27 @@ struct Defaults {
     static func clearImageMergeHotkey() {
         defaults.removeObject(forKey: "imageMergeHotkeyKeyCode")
         defaults.removeObject(forKey: "imageMergeHotkeyModifiers")
+    }
+
+    // Custom Finder-file upload shortcut. This is a global Carbon hotkey with
+    // no default so users can choose a combination that fits their workflow.
+    static var finderUploadHotkeyKeyCode: Int {
+        get { defaults.integer(forKey: "finderUploadHotkeyKeyCode") }
+        set { defaults.set(newValue, forKey: "finderUploadHotkeyKeyCode") }
+    }
+
+    static var finderUploadHotkeyModifiers: Int {
+        get { defaults.integer(forKey: "finderUploadHotkeyModifiers") }
+        set { defaults.set(newValue, forKey: "finderUploadHotkeyModifiers") }
+    }
+
+    static var hasCustomFinderUploadHotkey: Bool {
+        defaults.object(forKey: "finderUploadHotkeyKeyCode") != nil
+    }
+
+    static func clearFinderUploadHotkey() {
+        defaults.removeObject(forKey: "finderUploadHotkeyKeyCode")
+        defaults.removeObject(forKey: "finderUploadHotkeyModifiers")
     }
 
     static var fullScreenScreenshotHotkeyKeyCode: Int {

@@ -83,7 +83,7 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>capcap reads the current Finder selection when you use image edit or pin shortcuts.</string>
+	<string>capcap reads the current Finder selection when you use edit, pin, or upload shortcuts</string>
 	<key>NSMainNibFile</key>
 	<string></string>
 	<key>NSPrincipalClass</key>

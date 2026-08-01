@@ -19,6 +19,7 @@ final class HotkeyManager {
     private var screenshotTranslationHotKeyRef: EventHotKeyRef?
     private var recordHotKeyRef: EventHotKeyRef?
     private var imageMergeHotKeyRef: EventHotKeyRef?
+    private var finderUploadHotKeyRef: EventHotKeyRef?
     private var fullScreenScreenshotHotKeyRef: EventHotKeyRef?
     private var colorPickerHotKeyRef: EventHotKeyRef?
     private var historyPanelHotKeyRef: EventHotKeyRef?
@@ -35,6 +36,7 @@ final class HotkeyManager {
     private var screenshotTranslationCallback: (() -> Void)?
     private var recordCallback: (() -> Void)?
     private var imageMergeCallback: (() -> Void)?
+    private var finderUploadCallback: (() -> Void)?
     private var fullScreenScreenshotCallback: (() -> Void)?
     private var colorPickerCallback: (() -> Void)?
     private var historyPanelCallback: (() -> Void)?
@@ -58,6 +60,7 @@ final class HotkeyManager {
     private static let clipboardTextPinHotKeyID: UInt32 = 14
     private static let historyPanelHotKeyID: UInt32 = 15
     private static let historyPreviewHotKeyID: UInt32 = 16
+    private static let finderUploadHotKeyID: UInt32 = 17
 
     private init() {}
 
@@ -74,6 +77,7 @@ final class HotkeyManager {
         unregisterScreenshotTranslation()
         unregisterRecord()
         unregisterImageMerge()
+        unregisterFinderUpload()
         unregisterFullScreenScreenshot()
         unregisterColorPicker()
         unregisterHistoryPanel()
@@ -406,6 +410,32 @@ final class HotkeyManager {
         }
     }
 
+    /// Register the saved Finder-file upload hotkey, if any.
+    func registerFinderUpload(callback: @escaping () -> Void) {
+        self.finderUploadCallback = callback
+        unregisterFinderUpload()
+
+        guard let (keyCode, modifiers) = currentFinderUploadHotkey() else { return }
+
+        installEventHandlerIfNeeded()
+        var ref: EventHotKeyRef?
+        let id = EventHotKeyID(signature: Self.regularHotKeySignature, id: Self.finderUploadHotKeyID)
+        let status = RegisterEventHotKey(
+            keyCode, modifiers, id,
+            GetApplicationEventTarget(), 0, &ref
+        )
+        if status == noErr, let ref {
+            finderUploadHotKeyRef = ref
+        }
+    }
+
+    func unregisterFinderUpload() {
+        if let ref = finderUploadHotKeyRef {
+            UnregisterEventHotKey(ref)
+            finderUploadHotKeyRef = nil
+        }
+    }
+
     /// Register the saved full-screen screenshot hotkey, if any.
     func registerFullScreenScreenshot(callback: @escaping () -> Void) {
         self.fullScreenScreenshotCallback = callback
@@ -540,6 +570,7 @@ final class HotkeyManager {
         unregisterScreenshotTranslation()
         unregisterRecord()
         unregisterImageMerge()
+        unregisterFinderUpload()
         unregisterFullScreenScreenshot()
         unregisterColorPicker()
         unregisterHistoryPanel()
@@ -734,6 +765,20 @@ final class HotkeyManager {
         return modifierString(mods) + keyString(kc)
     }
 
+    /// Returns (keyCode, carbonModifiers) for the Finder-file upload hotkey.
+    func currentFinderUploadHotkey() -> (keyCode: UInt32, modifiers: UInt32)? {
+        guard Defaults.hasCustomFinderUploadHotkey else { return nil }
+        let kc = UInt32(Defaults.finderUploadHotkeyKeyCode)
+        let mods = UInt32(Defaults.finderUploadHotkeyModifiers)
+        guard mods != 0 || Self.isFunctionKey(kc) else { return nil }
+        return (kc, mods)
+    }
+
+    static func currentFinderUploadDisplayString() -> String? {
+        guard let (kc, mods) = HotkeyManager.shared.currentFinderUploadHotkey() else { return nil }
+        return modifierString(mods) + keyString(kc)
+    }
+
     /// Returns (keyCode, carbonModifiers) for the saved full-screen screenshot
     /// hotkey.
     func currentFullScreenScreenshotHotkey() -> (keyCode: UInt32, modifiers: UInt32)? {
@@ -892,6 +937,7 @@ final class HotkeyManager {
         case screenshotTranslation
         case record
         case imageMerge
+        case finderUpload
         case fullScreenScreenshot
         case colorPicker
         case clipboard
@@ -1026,6 +1072,17 @@ final class HotkeyManager {
             if slot == .screenshot, modifiers & UInt32(optionKey) == 0,
                m == modifiers | UInt32(optionKey) {
                 return L10n.shortcutConflictImageMerge
+            }
+        }
+        if slot != .finderUpload,
+           let (kc, m) = currentFinderUploadHotkey(),
+           kc == keyCode {
+            if m == modifiers {
+                return L10n.shortcutConflictFinderUpload
+            }
+            if slot == .screenshot, modifiers & UInt32(optionKey) == 0,
+               m == modifiers | UInt32(optionKey) {
+                return L10n.shortcutConflictFinderUpload
             }
         }
         if slot != .fullScreenScreenshot,
@@ -1163,6 +1220,8 @@ final class HotkeyManager {
                     callback = mgr.recordCallback
                 case HotkeyManager.imageMergeHotKeyID:
                     callback = mgr.imageMergeCallback
+                case HotkeyManager.finderUploadHotKeyID:
+                    callback = mgr.finderUploadCallback
                 case HotkeyManager.fullScreenScreenshotHotKeyID:
                     callback = mgr.fullScreenScreenshotCallback
                 case HotkeyManager.colorPickerHotKeyID:
@@ -1233,6 +1292,16 @@ final class HotkeyManager {
     static func applyImageMergeToMenuItem(_ item: NSMenuItem) {
         item.attributedTitle = nil
         guard let (kc, mods) = HotkeyManager.shared.currentImageMergeHotkey() else {
+            item.keyEquivalent = ""
+            item.keyEquivalentModifierMask = []
+            return
+        }
+        apply(keyCode: kc, modifiers: mods, to: item)
+    }
+
+    static func applyFinderUploadToMenuItem(_ item: NSMenuItem) {
+        item.attributedTitle = nil
+        guard let (kc, mods) = HotkeyManager.shared.currentFinderUploadHotkey() else {
             item.keyEquivalent = ""
             item.keyEquivalentModifierMask = []
             return

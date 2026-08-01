@@ -627,3 +627,23 @@
 "savePathReveal" = "Hiện";
 "chooseRecordingSavePathTitle" = "Chọn đường dẫn lưu bản ghi";
 "chooseScreenshotSavePathTitle" = "Chọn đường dẫn lưu ảnh chụp";
+
+/* Tải tệp đã chọn trong Finder */
+"finderUploadShortcutHeader" = "Tải mục đã chọn trong Finder";
+"finderUploadShortcutDefaultDisplay" = "Chưa đặt";
+"shortcutConflictFinderUpload" = "Tổ hợp phím này đã được dùng cho phím tắt tải mục đã chọn trong Finder. Vui lòng chọn tổ hợp khác";
+"uploadSelectedFilesMenu" = "Tải mục đã chọn trong Finder";
+"finderUploadDialogTitle" = "Tải lên dịch vụ lưu ảnh";
+"finderUploadDialogHeading" = "Tệp sẽ tải lên";
+"finderUploadSummary" = "Đã chọn %d tệp · %@";
+"finderUploadSelectAll" = "Chọn tất cả";
+"finderUploadAction" = "Tải lên %d tệp";
+"finderUploadRetryAction" = "Thử lại %d tệp";
+"finderUploadingProgress" = "Đang tải %d/%d";
+"finderUploadSucceeded" = "Đã tải lên";
+"finderUploadFailed" = "Thất bại";
+"finderUploadErrorLogTitle" = "Nhật ký lỗi";
+"finderUploadUnknownSize" = "Không rõ kích thước";
+"finderUploadReadFailed" = "Không thể đọc tệp %@";
+"finderUploadCompleted" = "Đã tải %d tệp và sao chép liên kết";
+"finderUploadNoFiles" = "Hãy chọn tệp cần tải lên trong Finder trước";

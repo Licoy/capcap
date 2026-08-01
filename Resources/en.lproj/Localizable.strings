@@ -627,3 +627,23 @@
 "savePathReveal" = "Reveal";
 "chooseRecordingSavePathTitle" = "Choose Recording Save Path";
 "chooseScreenshotSavePathTitle" = "Choose Screenshot Save Path";
+
+/* Finder file upload */
+"finderUploadShortcutHeader" = "Upload Finder Selection";
+"finderUploadShortcutDefaultDisplay" = "Not set";
+"shortcutConflictFinderUpload" = "This key combination is already used by the Upload Finder Selection shortcut. Please choose a different one";
+"uploadSelectedFilesMenu" = "Upload Finder Selection";
+"finderUploadDialogTitle" = "Upload to Image Host";
+"finderUploadDialogHeading" = "Files to Upload";
+"finderUploadSummary" = "%d files selected · %@";
+"finderUploadSelectAll" = "Select All";
+"finderUploadAction" = "Upload %d Files";
+"finderUploadRetryAction" = "Retry %d Files";
+"finderUploadingProgress" = "Uploading %d/%d";
+"finderUploadSucceeded" = "Uploaded";
+"finderUploadFailed" = "Failed";
+"finderUploadErrorLogTitle" = "Error Log";
+"finderUploadUnknownSize" = "Unknown size";
+"finderUploadReadFailed" = "Cannot read file %@";
+"finderUploadCompleted" = "Uploaded %d files and copied links";
+"finderUploadNoFiles" = "Select files in Finder first";

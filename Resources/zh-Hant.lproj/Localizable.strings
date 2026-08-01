@@ -627,3 +627,23 @@
 "savePathReveal" = "顯示";
 "chooseRecordingSavePathTitle" = "選擇錄製儲存路徑";
 "chooseScreenshotSavePathTitle" = "選擇截圖儲存路徑";
+
+/* Finder 檔案上傳 */
+"finderUploadShortcutHeader" = "上傳 Finder 所選檔案";
+"finderUploadShortcutDefaultDisplay" = "未設定";
+"shortcutConflictFinderUpload" = "此按鍵組合已被上傳 Finder 所選檔案快速鍵使用，請換一個";
+"uploadSelectedFilesMenu" = "上傳 Finder 所選檔案";
+"finderUploadDialogTitle" = "上傳至圖床";
+"finderUploadDialogHeading" = "即將上傳的檔案";
+"finderUploadSummary" = "已選擇 %d 個檔案 · %@";
+"finderUploadSelectAll" = "全選";
+"finderUploadAction" = "上傳 %d 個檔案";
+"finderUploadRetryAction" = "重試 %d 個檔案";
+"finderUploadingProgress" = "上傳中 %d/%d";
+"finderUploadSucceeded" = "上傳成功";
+"finderUploadFailed" = "上傳失敗";
+"finderUploadErrorLogTitle" = "錯誤記錄";
+"finderUploadUnknownSize" = "未知大小";
+"finderUploadReadFailed" = "無法讀取檔案 %@";
+"finderUploadCompleted" = "已上傳 %d 個檔案並複製連結";
+"finderUploadNoFiles" = "請先在 Finder 中選擇要上傳的檔案";

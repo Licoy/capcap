@@ -196,6 +196,13 @@ class SettingsView: NSView {
     private var imageMergeShortcutRestoreButton: NSButton!
     private var imageMergeShortcutRecordingMonitor: Any?
 
+    // Upload Finder selection shortcut card
+    private var finderUploadShortcutTitleLabel: NSTextField!
+    private var finderUploadShortcutField: NSTextField!
+    private var finderUploadShortcutSetButton: NSButton!
+    private var finderUploadShortcutRestoreButton: NSButton!
+    private var finderUploadShortcutRecordingMonitor: Any?
+
     // Copy-to-clipboard (editor confirm) shortcut card
     private var clipboardShortcutTitleLabel: NSTextField!
     private var clipboardShortcutField: NSTextField!
@@ -394,6 +401,7 @@ class SettingsView: NSView {
         cancelScreenshotTranslationShortcutRecording()
         cancelRecordShortcutRecording()
         cancelImageMergeShortcutRecording()
+        cancelFinderUploadShortcutRecording()
         cancelClipboardShortcutRecording()
         cancelFileSaveShortcutRecording()
         cancelPreviousHistoryImageShortcutRecording()
@@ -473,6 +481,7 @@ class SettingsView: NSView {
         refreshScreenshotTranslationShortcutDisplay()
         refreshRecordShortcutDisplay()
         refreshImageMergeShortcutDisplay()
+        refreshFinderUploadShortcutDisplay()
         refreshClipboardShortcutDisplay()
         refreshFileSaveShortcutDisplay()
         refreshPreviousHistoryImageShortcutDisplay()
@@ -1189,6 +1198,19 @@ class SettingsView: NSView {
         selectedImageEditShortcutRestoreButton = selectedImageEditShortcut.restoreButton
         stack.addArrangedSubview(selectedImageEditShortcut.card)
         selectedImageEditShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
+        // Upload Finder selection shortcut card
+        let finderUploadShortcut = buildShortcutCard(
+            title: L10n.finderUploadShortcutHeader,
+            setAction: #selector(finderUploadShortcutSetClicked),
+            restoreAction: #selector(finderUploadShortcutRestoreClicked)
+        )
+        finderUploadShortcutTitleLabel = finderUploadShortcut.title
+        finderUploadShortcutField = finderUploadShortcut.field
+        finderUploadShortcutSetButton = finderUploadShortcut.setButton
+        finderUploadShortcutRestoreButton = finderUploadShortcut.restoreButton
+        stack.addArrangedSubview(finderUploadShortcut.card)
+        finderUploadShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
         // Edit clipboard image shortcut card
         let clipboardImageEditShortcut = buildShortcutCard(
@@ -3452,6 +3474,9 @@ class SettingsView: NSView {
         if slot != .imageMerge, imageMergeShortcutRecordingMonitor != nil {
             cancelImageMergeShortcutRecording()
         }
+        if slot != .finderUpload, finderUploadShortcutRecordingMonitor != nil {
+            cancelFinderUploadShortcutRecording()
+        }
         if slot != .clipboard, clipboardShortcutRecordingMonitor != nil {
             cancelClipboardShortcutRecording()
         }
@@ -4632,6 +4657,98 @@ class SettingsView: NSView {
         }
     }
 
+    @objc private func finderUploadShortcutSetClicked() {
+        if finderUploadShortcutRecordingMonitor != nil {
+            cancelFinderUploadShortcutRecording()
+            return
+        }
+        cancelShortcutRecordings(except: .finderUpload)
+        HotkeyManager.shared.beginRecording()
+        finderUploadShortcutSetButton.title = L10n.shortcutCancel
+        finderUploadShortcutField.stringValue = L10n.shortcutWaiting
+        finderUploadShortcutRestoreButton.isHidden = true
+
+        finderUploadShortcutRecordingMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self else { return event }
+            let modifiers = event.modifierFlags
+            let isEscape = event.keyCode == UInt16(kVK_Escape)
+            let activeModifierMask: NSEvent.ModifierFlags = [.command, .shift, .option, .control]
+            let pressedModifiers = modifiers.intersection(activeModifierMask)
+
+            if isEscape && pressedModifiers.isEmpty {
+                self.cancelFinderUploadShortcutRecording()
+                return nil
+            }
+
+            var carbonMods: UInt32 = 0
+            if modifiers.contains(.command) { carbonMods |= UInt32(cmdKey) }
+            if modifiers.contains(.shift)   { carbonMods |= UInt32(shiftKey) }
+            if modifiers.contains(.option)  { carbonMods |= UInt32(optionKey) }
+            if modifiers.contains(.control) { carbonMods |= UInt32(controlKey) }
+            let keyCode = UInt32(event.keyCode)
+
+            if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) {
+                self.cancelFinderUploadShortcutRecording()
+                self.presentShortcutNeedsModifierAlert()
+                return nil
+            }
+
+            if let conflict = HotkeyManager.shared.hotkeyConflictMessage(
+                forKeyCode: keyCode,
+                modifiers: carbonMods,
+                assigningTo: .finderUpload
+            ) {
+                self.cancelFinderUploadShortcutRecording()
+                self.presentHotkeyConflictAlert(conflict)
+                return nil
+            }
+
+            Defaults.finderUploadHotkeyKeyCode = Int(keyCode)
+            Defaults.finderUploadHotkeyModifiers = Int(carbonMods)
+            self.finishFinderUploadShortcutRecording()
+            return nil
+        }
+    }
+
+    @objc private func finderUploadShortcutRestoreClicked() {
+        if finderUploadShortcutRecordingMonitor != nil {
+            cancelFinderUploadShortcutRecording()
+        }
+        Defaults.clearFinderUploadHotkey()
+        NotificationCenter.default.post(name: .hotkeyDidChange, object: nil)
+        refreshFinderUploadShortcutDisplay()
+    }
+
+    private func finishFinderUploadShortcutRecording() {
+        if let monitor = finderUploadShortcutRecordingMonitor {
+            NSEvent.removeMonitor(monitor)
+            finderUploadShortcutRecordingMonitor = nil
+        }
+        HotkeyManager.shared.endRecording()
+        refreshFinderUploadShortcutDisplay()
+    }
+
+    func cancelFinderUploadShortcutRecording() {
+        guard finderUploadShortcutRecordingMonitor != nil else { return }
+        if let monitor = finderUploadShortcutRecordingMonitor {
+            NSEvent.removeMonitor(monitor)
+            finderUploadShortcutRecordingMonitor = nil
+        }
+        HotkeyManager.shared.endRecording()
+        refreshFinderUploadShortcutDisplay()
+    }
+
+    private func refreshFinderUploadShortcutDisplay() {
+        finderUploadShortcutSetButton?.title = L10n.shortcutSet
+        if let display = HotkeyManager.currentFinderUploadDisplayString() {
+            finderUploadShortcutField?.stringValue = display
+            finderUploadShortcutRestoreButton?.isHidden = false
+        } else {
+            finderUploadShortcutField?.stringValue = L10n.finderUploadShortcutDefaultDisplay
+            finderUploadShortcutRestoreButton?.isHidden = true
+        }
+    }
+
     @objc private func clipboardShortcutSetClicked() {
         if clipboardShortcutRecordingMonitor != nil {
             cancelClipboardShortcutRecording()
@@ -5055,6 +5172,7 @@ class SettingsView: NSView {
         cancelScreenshotTranslationShortcutRecording()
         cancelRecordShortcutRecording()
         cancelImageMergeShortcutRecording()
+        cancelFinderUploadShortcutRecording()
         cancelClipboardShortcutRecording()
         cancelFileSaveShortcutRecording()
         cancelPreviousHistoryImageShortcutRecording()
@@ -5076,6 +5194,7 @@ class SettingsView: NSView {
         refreshScreenshotTranslationShortcutDisplay()
         refreshRecordShortcutDisplay()
         refreshImageMergeShortcutDisplay()
+        refreshFinderUploadShortcutDisplay()
         refreshClipboardShortcutDisplay()
         refreshFileSaveShortcutDisplay()
         refreshPreviousHistoryImageShortcutDisplay()
@@ -5190,6 +5309,8 @@ class SettingsView: NSView {
         recordShortcutRestoreButton?.toolTip = L10n.shortcutRestore
         imageMergeShortcutTitleLabel?.stringValue = L10n.imageMergeShortcutHeader
         imageMergeShortcutRestoreButton?.toolTip = L10n.shortcutRestore
+        finderUploadShortcutTitleLabel?.stringValue = L10n.finderUploadShortcutHeader
+        finderUploadShortcutRestoreButton?.toolTip = L10n.shortcutRestore
         clipboardShortcutTitleLabel?.stringValue = L10n.clipboardShortcutHeader
         clipboardShortcutRestoreButton?.toolTip = L10n.shortcutRestore
         fileSaveShortcutTitleLabel?.stringValue = L10n.fileSaveShortcutHeader
@@ -5231,6 +5352,7 @@ class SettingsView: NSView {
         refreshScreenshotTranslationShortcutDisplay()
         refreshRecordShortcutDisplay()
         refreshImageMergeShortcutDisplay()
+        refreshFinderUploadShortcutDisplay()
         refreshClipboardShortcutDisplay()
         refreshFileSaveShortcutDisplay()
         refreshPreviousHistoryImageShortcutDisplay()

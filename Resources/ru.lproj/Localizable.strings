@@ -627,3 +627,23 @@
 "savePathReveal" = "Показать";
 "chooseRecordingSavePathTitle" = "Выберите путь для записей";
 "chooseScreenshotSavePathTitle" = "Выберите путь для снимков";
+
+/* Загрузка файлов из Finder */
+"finderUploadShortcutHeader" = "Загрузить выбранное в Finder";
+"finderUploadShortcutDefaultDisplay" = "Не задано";
+"shortcutConflictFinderUpload" = "Это сочетание уже используется для загрузки выбранных в Finder файлов. Выберите другое";
+"uploadSelectedFilesMenu" = "Загрузить выбранное в Finder";
+"finderUploadDialogTitle" = "Загрузка на фотохостинг";
+"finderUploadDialogHeading" = "Файлы для загрузки";
+"finderUploadSummary" = "Выбрано файлов: %d · %@";
+"finderUploadSelectAll" = "Выбрать все";
+"finderUploadAction" = "Загрузить файлов: %d";
+"finderUploadRetryAction" = "Повторить для файлов: %d";
+"finderUploadingProgress" = "Загрузка %d/%d";
+"finderUploadSucceeded" = "Загружено";
+"finderUploadFailed" = "Ошибка";
+"finderUploadErrorLogTitle" = "Журнал ошибок";
+"finderUploadUnknownSize" = "Размер неизвестен";
+"finderUploadReadFailed" = "Не удалось прочитать файл %@";
+"finderUploadCompleted" = "Загружено файлов: %d, ссылки скопированы";
+"finderUploadNoFiles" = "Сначала выберите файлы для загрузки в Finder";

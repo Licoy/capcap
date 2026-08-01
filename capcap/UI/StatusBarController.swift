@@ -6,6 +6,7 @@ class StatusBarController: NSObject {
     private let onTakeFullScreenScreenshot: () -> Void
     private let onRecord: () -> Void
     private let onMergeImages: () -> Void
+    private let onUploadSelectedFiles: () -> Void
     private let onColorPicker: () -> Void
     private let onOpenHistoryPanel: () -> Void
     private let onOpenSettings: () -> Void
@@ -17,6 +18,7 @@ class StatusBarController: NSObject {
         onTakeFullScreenScreenshot: @escaping () -> Void,
         onRecord: @escaping () -> Void,
         onMergeImages: @escaping () -> Void,
+        onUploadSelectedFiles: @escaping () -> Void,
         onColorPicker: @escaping () -> Void,
         onOpenHistoryPanel: @escaping () -> Void,
         onOpenSettings: @escaping () -> Void
@@ -25,6 +27,7 @@ class StatusBarController: NSObject {
         self.onTakeFullScreenScreenshot = onTakeFullScreenScreenshot
         self.onRecord = onRecord
         self.onMergeImages = onMergeImages
+        self.onUploadSelectedFiles = onUploadSelectedFiles
         self.onColorPicker = onColorPicker
         self.onOpenHistoryPanel = onOpenHistoryPanel
         self.onOpenSettings = onOpenSettings
@@ -89,6 +92,16 @@ class StatusBarController: NSObject {
         mergeItem.image = Self.menuIcon(systemName: "square.grid.2x2")
         HotkeyManager.applyImageMergeToMenuItem(mergeItem)
         menu.addItem(mergeItem)
+
+        let uploadItem = NSMenuItem(
+            title: L10n.uploadSelectedFilesMenu,
+            action: #selector(uploadSelectedFiles),
+            keyEquivalent: ""
+        )
+        uploadItem.target = self
+        uploadItem.image = Self.menuIcon(systemName: "icloud.and.arrow.up")
+        HotkeyManager.applyFinderUploadToMenuItem(uploadItem)
+        menu.addItem(uploadItem)
 
         let colorPickerItem = NSMenuItem(title: L10n.colorPicker, action: #selector(colorPicker), keyEquivalent: "")
         colorPickerItem.target = self
@@ -180,6 +193,10 @@ class StatusBarController: NSObject {
 
     @objc private func mergeImages() {
         onMergeImages()
+    }
+
+    @objc private func uploadSelectedFiles() {
+        onUploadSelectedFiles()
     }
 
     @objc private func colorPicker() {
