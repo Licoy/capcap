@@ -195,8 +195,8 @@ private extension FinderUploadItem {
     }
 }
 
-/// Confirmation and progress dialog for uploading regular files selected in Finder.
-/// Files are uploaded sequentially so a large Finder selection does not create a
+/// Confirmation and progress dialog for uploading regular files.
+/// Files are uploaded sequentially so a large selection does not create a
 /// burst of in-memory request bodies.
 final class FinderUploadWindowController: NSWindowController,
     NSWindowDelegate,

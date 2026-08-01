@@ -196,7 +196,7 @@ class SettingsView: NSView {
     private var imageMergeShortcutRestoreButton: NSButton!
     private var imageMergeShortcutRecordingMonitor: Any?
 
-    // Upload Finder selection shortcut card
+    // File upload shortcut card
     private var finderUploadShortcutTitleLabel: NSTextField!
     private var finderUploadShortcutField: NSTextField!
     private var finderUploadShortcutSetButton: NSButton!
@@ -1199,9 +1199,9 @@ class SettingsView: NSView {
         stack.addArrangedSubview(selectedImageEditShortcut.card)
         selectedImageEditShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
-        // Upload Finder selection shortcut card
+        // File upload shortcut card
         let finderUploadShortcut = buildShortcutCard(
-            title: L10n.finderUploadShortcutHeader,
+            title: L10n.fileUploadShortcutHeader,
             setAction: #selector(finderUploadShortcutSetClicked),
             restoreAction: #selector(finderUploadShortcutRestoreClicked)
         )
@@ -5309,7 +5309,7 @@ class SettingsView: NSView {
         recordShortcutRestoreButton?.toolTip = L10n.shortcutRestore
         imageMergeShortcutTitleLabel?.stringValue = L10n.imageMergeShortcutHeader
         imageMergeShortcutRestoreButton?.toolTip = L10n.shortcutRestore
-        finderUploadShortcutTitleLabel?.stringValue = L10n.finderUploadShortcutHeader
+        finderUploadShortcutTitleLabel?.stringValue = L10n.fileUploadShortcutHeader
         finderUploadShortcutRestoreButton?.toolTip = L10n.shortcutRestore
         clipboardShortcutTitleLabel?.stringValue = L10n.clipboardShortcutHeader
         clipboardShortcutRestoreButton?.toolTip = L10n.shortcutRestore

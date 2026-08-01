@@ -6,7 +6,7 @@ class StatusBarController: NSObject {
     private let onTakeFullScreenScreenshot: () -> Void
     private let onRecord: () -> Void
     private let onMergeImages: () -> Void
-    private let onUploadSelectedFiles: () -> Void
+    private let onUploadFiles: () -> Void
     private let onColorPicker: () -> Void
     private let onOpenHistoryPanel: () -> Void
     private let onOpenSettings: () -> Void
@@ -18,7 +18,7 @@ class StatusBarController: NSObject {
         onTakeFullScreenScreenshot: @escaping () -> Void,
         onRecord: @escaping () -> Void,
         onMergeImages: @escaping () -> Void,
-        onUploadSelectedFiles: @escaping () -> Void,
+        onUploadFiles: @escaping () -> Void,
         onColorPicker: @escaping () -> Void,
         onOpenHistoryPanel: @escaping () -> Void,
         onOpenSettings: @escaping () -> Void
@@ -27,7 +27,7 @@ class StatusBarController: NSObject {
         self.onTakeFullScreenScreenshot = onTakeFullScreenScreenshot
         self.onRecord = onRecord
         self.onMergeImages = onMergeImages
-        self.onUploadSelectedFiles = onUploadSelectedFiles
+        self.onUploadFiles = onUploadFiles
         self.onColorPicker = onColorPicker
         self.onOpenHistoryPanel = onOpenHistoryPanel
         self.onOpenSettings = onOpenSettings
@@ -94,8 +94,8 @@ class StatusBarController: NSObject {
         menu.addItem(mergeItem)
 
         let uploadItem = NSMenuItem(
-            title: L10n.uploadSelectedFilesMenu,
-            action: #selector(uploadSelectedFiles),
+            title: L10n.uploadFilesMenu,
+            action: #selector(uploadFiles),
             keyEquivalent: ""
         )
         uploadItem.target = self
@@ -195,8 +195,8 @@ class StatusBarController: NSObject {
         onMergeImages()
     }
 
-    @objc private func uploadSelectedFiles() {
-        onUploadSelectedFiles()
+    @objc private func uploadFiles() {
+        onUploadFiles()
     }
 
     @objc private func colorPicker() {

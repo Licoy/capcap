@@ -628,11 +628,11 @@
 "chooseRecordingSavePathTitle" = "Choisir le chemin d'enregistrement";
 "chooseScreenshotSavePathTitle" = "Choisir le chemin des captures";
 
-/* Téléversement de fichiers Finder */
-"finderUploadShortcutHeader" = "Téléverser la sélection Finder";
+/* Téléversement de fichiers */
+"fileUploadShortcutHeader" = "Téléverser des fichiers";
 "finderUploadShortcutDefaultDisplay" = "Non défini";
-"shortcutConflictFinderUpload" = "Cette combinaison est déjà utilisée par le raccourci de téléversement de la sélection Finder. Choisissez-en une autre";
-"uploadSelectedFilesMenu" = "Téléverser la sélection Finder";
+"shortcutConflictFileUpload" = "Cette combinaison est déjà utilisée par le raccourci de téléversement de fichiers. Choisissez-en une autre";
+"uploadFilesMenu" = "Téléverser des fichiers";
 "finderUploadDialogTitle" = "Téléverser vers l’hébergeur";
 "finderUploadDialogHeading" = "Fichiers à téléverser";
 "finderUploadSummary" = "%d fichiers sélectionnés · %@";
@@ -646,4 +646,3 @@
 "finderUploadUnknownSize" = "Taille inconnue";
 "finderUploadReadFailed" = "Impossible de lire le fichier %@";
 "finderUploadCompleted" = "%d fichiers téléversés et liens copiés";
-"finderUploadNoFiles" = "Sélectionnez d’abord les fichiers à téléverser dans Finder";

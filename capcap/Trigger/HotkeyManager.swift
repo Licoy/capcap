@@ -410,7 +410,7 @@ final class HotkeyManager {
         }
     }
 
-    /// Register the saved Finder-file upload hotkey, if any.
+    /// Register the saved file upload hotkey, if any.
     func registerFinderUpload(callback: @escaping () -> Void) {
         self.finderUploadCallback = callback
         unregisterFinderUpload()
@@ -765,7 +765,7 @@ final class HotkeyManager {
         return modifierString(mods) + keyString(kc)
     }
 
-    /// Returns (keyCode, carbonModifiers) for the Finder-file upload hotkey.
+    /// Returns (keyCode, carbonModifiers) for the file upload hotkey.
     func currentFinderUploadHotkey() -> (keyCode: UInt32, modifiers: UInt32)? {
         guard Defaults.hasCustomFinderUploadHotkey else { return nil }
         let kc = UInt32(Defaults.finderUploadHotkeyKeyCode)
@@ -1078,11 +1078,11 @@ final class HotkeyManager {
            let (kc, m) = currentFinderUploadHotkey(),
            kc == keyCode {
             if m == modifiers {
-                return L10n.shortcutConflictFinderUpload
+                return L10n.shortcutConflictFileUpload
             }
             if slot == .screenshot, modifiers & UInt32(optionKey) == 0,
                m == modifiers | UInt32(optionKey) {
-                return L10n.shortcutConflictFinderUpload
+                return L10n.shortcutConflictFileUpload
             }
         }
         if slot != .fullScreenScreenshot,

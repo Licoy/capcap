@@ -16,7 +16,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var recordingCancelGlobalMonitor: Any?
     private var recordingCancelRequested = false
     private var historyPanelController: HistoryPanelController?
-    private var finderUploadWindowController: FinderUploadWindowController?
+    private var fileUploadWindowController: FinderUploadWindowController?
+    private var fileUploadOpenPanel: NSOpenPanel?
     private var countdownActive = false
     private var appInitialized = false
     private var suspendedEditDraft: OverlayWindowController.SuspendedEditDraft?
@@ -137,7 +138,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             onTakeFullScreenScreenshot: { [weak self] in self?.handleFullScreenScreenshotTrigger() },
             onRecord: { [weak self] in self?.handleRecordingTrigger() },
             onMergeImages: { [weak self] in self?.handleImageMergeMenuTrigger() },
-            onUploadSelectedFiles: { [weak self] in self?.handleFinderUploadTrigger() },
+            onUploadFiles: { [weak self] in self?.handleFileUploadTrigger() },
             onColorPicker: { [weak self] in self?.handleColorPickerTrigger() },
             onOpenHistoryPanel: { [weak self] in self?.handleHistoryPanelTrigger(holdOpenUntilMouseEnters: true) },
             onOpenSettings: { [weak self] in self?.openSettings() }
@@ -302,7 +303,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         if Defaults.hasCustomFinderUploadHotkey {
             HotkeyManager.shared.registerFinderUpload { [weak self] in
-                self?.handleFinderUploadTrigger()
+                self?.handleFileUploadTrigger()
             }
         } else {
             HotkeyManager.shared.unregisterFinderUpload()
@@ -657,24 +658,64 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         ImageMergeLauncher.shared.openFromShortcutSources()
     }
 
-    func handleFinderUploadTrigger() {
+    func handleFileUploadTrigger() {
         guard overlayController == nil, recordingEngine == nil, !countdownActive else { return }
 
-        if let controller = finderUploadWindowController {
+        if let controller = fileUploadWindowController {
             controller.show()
             return
         }
 
         let urls = FinderSelection.currentFileURLs()
         guard !urls.isEmpty else {
-            ToastWindow.show(message: L10n.finderUploadNoFiles)
+            showFileUploadOpenPanel()
             return
         }
 
-        let controller = FinderUploadWindowController(fileURLs: urls) { [weak self] in
-            self?.finderUploadWindowController = nil
+        showFileUploadDialog(fileURLs: urls)
+    }
+
+    private func showFileUploadOpenPanel() {
+        if let panel = fileUploadOpenPanel {
+            NSApp.activate(ignoringOtherApps: true)
+            panel.makeKeyAndOrderFront(nil)
+            return
         }
-        finderUploadWindowController = controller
+
+        let focusRestorer = SourceAppFocusRestorer.captureFrontmostApplication()
+        let panel = NSOpenPanel()
+        panel.title = L10n.uploadFilesMenu
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = true
+        panel.resolvesAliases = true
+        fileUploadOpenPanel = panel
+
+        NSApp.activate(ignoringOtherApps: true)
+        panel.begin { [weak self, weak panel] response in
+            guard let self, let panel else { return }
+            if self.fileUploadOpenPanel === panel {
+                self.fileUploadOpenPanel = nil
+            }
+            guard response == .OK else {
+                focusRestorer.restore()
+                return
+            }
+            self.showFileUploadDialog(fileURLs: panel.urls)
+        }
+    }
+
+    private func showFileUploadDialog(fileURLs: [URL]) {
+        let urls = fileURLs.filter { url in
+            let values = try? url.resourceValues(forKeys: [.isRegularFileKey])
+            return values?.isRegularFile == true
+        }
+        guard !urls.isEmpty else { return }
+
+        let controller = FinderUploadWindowController(fileURLs: urls) { [weak self] in
+            self?.fileUploadWindowController = nil
+        }
+        fileUploadWindowController = controller
         controller.show()
     }
 

@@ -628,11 +628,11 @@
 "chooseRecordingSavePathTitle" = "녹화 저장 경로 선택";
 "chooseScreenshotSavePathTitle" = "스크린샷 저장 경로 선택";
 
-/* Finder 파일 업로드 */
-"finderUploadShortcutHeader" = "Finder 선택 항목 업로드";
+/* 파일 업로드 */
+"fileUploadShortcutHeader" = "파일 업로드";
 "finderUploadShortcutDefaultDisplay" = "설정 안 함";
-"shortcutConflictFinderUpload" = "이 키 조합은 Finder 선택 항목 업로드 단축키에서 이미 사용 중입니다. 다른 조합을 선택하세요";
-"uploadSelectedFilesMenu" = "Finder 선택 항목 업로드";
+"shortcutConflictFileUpload" = "이 키 조합은 파일 업로드 단축키에서 이미 사용 중입니다. 다른 조합을 선택하세요";
+"uploadFilesMenu" = "파일 업로드";
 "finderUploadDialogTitle" = "이미지 호스트에 업로드";
 "finderUploadDialogHeading" = "업로드할 파일";
 "finderUploadSummary" = "%d개 파일 선택 · %@";
@@ -646,4 +646,3 @@
 "finderUploadUnknownSize" = "크기 알 수 없음";
 "finderUploadReadFailed" = "파일을 읽을 수 없음 %@";
 "finderUploadCompleted" = "%d개 파일을 업로드하고 링크를 복사함";
-"finderUploadNoFiles" = "먼저 Finder에서 업로드할 파일을 선택하세요";
