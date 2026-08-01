@@ -187,6 +187,8 @@ enum L10n {
     static var recordShortcutDefaultDisplay: String { s("recordShortcutDefaultDisplay") }
     static var imageMergeShortcutHeader: String { s("imageMergeShortcutHeader") }
     static var imageMergeShortcutDefaultDisplay: String { s("imageMergeShortcutDefaultDisplay") }
+    static var fileUploadShortcutHeader: String { s("fileUploadShortcutHeader") }
+    static var finderUploadShortcutDefaultDisplay: String { s("finderUploadShortcutDefaultDisplay") }
     static var fullScreenScreenshotShortcutHeader: String { s("fullScreenScreenshotShortcutHeader") }
     static var fullScreenScreenshotShortcutDefaultDisplay: String { s("fullScreenScreenshotShortcutDefaultDisplay") }
     static var colorPickerShortcutHeader: String { s("colorPickerShortcutHeader") }
@@ -262,6 +264,7 @@ enum L10n {
     static var shortcutConflictScreenshotTranslation: String { s("shortcutConflictScreenshotTranslation") }
     static var shortcutConflictRecord: String { s("shortcutConflictRecord") }
     static var shortcutConflictImageMerge: String { s("shortcutConflictImageMerge") }
+    static var shortcutConflictFileUpload: String { s("shortcutConflictFileUpload") }
     static var shortcutConflictFullScreenScreenshot: String { s("shortcutConflictFullScreenScreenshot") }
     static var shortcutConflictColorPicker: String { s("shortcutConflictColorPicker") }
 
@@ -270,6 +273,7 @@ enum L10n {
     static var takeFullScreenScreenshot: String { s("takeFullScreenScreenshot") }
     static var record: String { s("record") }
     static var mergeImages: String { s("mergeImages") }
+    static var uploadFilesMenu: String { s("uploadFilesMenu") }
     static var colorPicker: String { s("colorPicker") }
     static var settings: String { s("settings") }
     static var quitApp: String { s("quitApp") }
@@ -385,6 +389,28 @@ enum L10n {
     static var recordingFormatGIF: String { s("recordingFormatGIF") }
     static var recordingFormatChoiceTitle: String { s("recordingFormatChoiceTitle") }
     static var recordingFormatChoiceMessage: String { s("recordingFormatChoiceMessage") }
+
+    // Recording audio
+    static var recordingSystemAudioLabel: String { s("recordingSystemAudioLabel") }
+    static var recordingSystemAudioHint: String { s("recordingSystemAudioHint") }
+    static var recordingMicrophoneLabel: String { s("recordingMicrophoneLabel") }
+    static var recordingMicrophoneHint: String { s("recordingMicrophoneHint") }
+    static var recordingMicrophoneDeniedTitle: String { s("recordingMicrophoneDeniedTitle") }
+    static var recordingMicrophoneDeniedMessage: String { s("recordingMicrophoneDeniedMessage") }
+    static var recordingMicrophoneOpenSettings: String { s("recordingMicrophoneOpenSettings") }
+    static var recordingMicrophoneTooltipOn: String { s("recordingMicrophoneTooltipOn") }
+    static var recordingMicrophoneTooltipOff: String { s("recordingMicrophoneTooltipOff") }
+    static var recordingSystemAudioTooltipOn: String { s("recordingSystemAudioTooltipOn") }
+    static var recordingSystemAudioTooltipOff: String { s("recordingSystemAudioTooltipOff") }
+    static var recordingMicrophoneDeviceLabel: String { s("recordingMicrophoneDeviceLabel") }
+    static var recordingMicrophoneDeviceDefault: String { s("recordingMicrophoneDeviceDefault") }
+    static var recordingMicrophoneDeviceMenuHint: String { s("recordingMicrophoneDeviceMenuHint") }
+    static var recordingSystemAudioChangeFailed: String { s("recordingSystemAudioChangeFailed") }
+    static var recordingMicrophoneStartFailed: String { s("recordingMicrophoneStartFailed") }
+
+    // Microphone permission row
+    static var microphonePermission: String { s("microphonePermission") }
+    static var microphoneDescription: String { s("microphoneDescription") }
     static func screenshotSaved(to path: String) -> String {
         String(format: s("screenshotSaved"), path)
     }
@@ -653,6 +679,32 @@ enum L10n {
     static var uploadFieldAccountId: String { s("uploadFieldAccountId") }
     static var uploadTestImageFailed: String { s("uploadTestImageFailed") }
 
+    // Upload — file dialog
+    static var finderUploadDialogTitle: String { s("finderUploadDialogTitle") }
+    static var finderUploadDialogHeading: String { s("finderUploadDialogHeading") }
+    static func finderUploadSummary(_ count: Int, _ provider: String) -> String {
+        String(format: s("finderUploadSummary"), count, provider)
+    }
+    static var finderUploadSelectAll: String { s("finderUploadSelectAll") }
+    static func finderUploadAction(_ count: Int) -> String {
+        String(format: s("finderUploadAction"), count)
+    }
+    static func finderUploadRetryAction(_ count: Int) -> String {
+        String(format: s("finderUploadRetryAction"), count)
+    }
+    static func finderUploadingProgress(_ current: Int, _ total: Int) -> String {
+        String(format: s("finderUploadingProgress"), current, total)
+    }
+    static var finderUploadSucceeded: String { s("finderUploadSucceeded") }
+    static var finderUploadFailed: String { s("finderUploadFailed") }
+    static var finderUploadErrorLogTitle: String { s("finderUploadErrorLogTitle") }
+    static var finderUploadUnknownSize: String { s("finderUploadUnknownSize") }
+    static func finderUploadReadFailed(_ message: String) -> String {
+        String(format: s("finderUploadReadFailed"), message)
+    }
+    static func finderUploadCompleted(_ count: Int) -> String {
+        String(format: s("finderUploadCompleted"), count)
+    }
     // Upload — provider names
     static var providerTencentCOS: String { s("providerTencentCOS") }
     static var providerQiniuKodo: String { s("providerQiniuKodo") }
@@ -936,6 +988,7 @@ struct Defaults {
         clearScreenshotTranslationHotkey()
         clearRecordHotkey()
         clearImageMergeHotkey()
+        clearFinderUploadHotkey()
         clearFullScreenScreenshotHotkey()
         clearColorPickerHotkey()
         clearClipboardHotkey()
@@ -1087,6 +1140,27 @@ struct Defaults {
         defaults.removeObject(forKey: "imageMergeHotkeyModifiers")
     }
 
+    // Custom file upload shortcut. This is a global Carbon hotkey with
+    // no default so users can choose a combination that fits their workflow.
+    static var finderUploadHotkeyKeyCode: Int {
+        get { defaults.integer(forKey: "finderUploadHotkeyKeyCode") }
+        set { defaults.set(newValue, forKey: "finderUploadHotkeyKeyCode") }
+    }
+
+    static var finderUploadHotkeyModifiers: Int {
+        get { defaults.integer(forKey: "finderUploadHotkeyModifiers") }
+        set { defaults.set(newValue, forKey: "finderUploadHotkeyModifiers") }
+    }
+
+    static var hasCustomFinderUploadHotkey: Bool {
+        defaults.object(forKey: "finderUploadHotkeyKeyCode") != nil
+    }
+
+    static func clearFinderUploadHotkey() {
+        defaults.removeObject(forKey: "finderUploadHotkeyKeyCode")
+        defaults.removeObject(forKey: "finderUploadHotkeyModifiers")
+    }
+
     static var fullScreenScreenshotHotkeyKeyCode: Int {
         get { defaults.integer(forKey: "fullScreenScreenshotHotkeyKeyCode") }
         set { defaults.set(newValue, forKey: "fullScreenScreenshotHotkeyKeyCode") }
@@ -1210,6 +1284,48 @@ struct Defaults {
         }
         set {
             defaults.set(newValue.rawValue, forKey: "recordingSavePreference")
+        }
+    }
+
+    /// Whether the next recording should capture system audio (what the Mac is
+    /// playing). Requires screen-recording permission (already needed for video)
+    /// — no separate permission prompt for the user.
+    static var recordingSystemAudioEnabled: Bool {
+        get {
+            if defaults.object(forKey: "recordingSystemAudioEnabled") == nil {
+                return false
+            }
+            return defaults.bool(forKey: "recordingSystemAudioEnabled")
+        }
+        set {
+            defaults.set(newValue, forKey: "recordingSystemAudioEnabled")
+        }
+    }
+
+    /// Whether the next recording should capture microphone audio. Requires
+    /// microphone permission; permission is requested lazily when the user
+    /// first enables this toggle.
+    static var recordingMicrophoneEnabled: Bool {
+        get {
+            if defaults.object(forKey: "recordingMicrophoneEnabled") == nil {
+                return false
+            }
+            return defaults.bool(forKey: "recordingMicrophoneEnabled")
+        }
+        set {
+            defaults.set(newValue, forKey: "recordingMicrophoneEnabled")
+        }
+    }
+
+    /// UID of the CoreAudio input device used for microphone recording.
+    /// nil means the system default input device. If the persisted device is
+    /// unplugged at recording time, the system default is used instead.
+    static var recordingMicrophoneDeviceUID: String? {
+        get {
+            defaults.string(forKey: "recordingMicrophoneDeviceUID")
+        }
+        set {
+            defaults.set(newValue, forKey: "recordingMicrophoneDeviceUID")
         }
     }
 

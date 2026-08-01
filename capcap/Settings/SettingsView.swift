@@ -213,6 +213,13 @@ class SettingsView: NSView {
     private var imageMergeShortcutRestoreButton: NSButton!
     private var imageMergeShortcutRecordingMonitor: Any?
 
+    // File upload shortcut card
+    private var finderUploadShortcutTitleLabel: NSTextField!
+    private var finderUploadShortcutField: NSTextField!
+    private var finderUploadShortcutSetButton: NSButton!
+    private var finderUploadShortcutRestoreButton: NSButton!
+    private var finderUploadShortcutRecordingMonitor: Any?
+
     // Copy-to-clipboard (editor confirm) shortcut card
     private var clipboardShortcutTitleLabel: NSTextField!
     private var clipboardShortcutField: NSTextField!
@@ -251,6 +258,7 @@ class SettingsView: NSView {
     // Permission badges
     private var accessibilityBadge: StatusBadge!
     private var screenRecordingBadge: StatusBadge!
+    private var microphoneBadge: StatusBadge?
 
     // Sidebar bottom action — Launch App in startup mode, Quit App otherwise.
     private var launchButton: ActionButton?
@@ -280,6 +288,8 @@ class SettingsView: NSView {
     private var accessibilityDescLabel: NSTextField!
     private var screenRecordingNameLabel: NSTextField!
     private var screenRecordingDescLabel: NSTextField!
+    private var microphoneNameLabel: NSTextField?
+    private var microphoneDescLabel: NSTextField?
     private var aboutTaglineLabel: NSTextField?
     private var aboutLicenseTitleLabel: NSTextField?
     private var aboutSourceTitleLabel: NSTextField?
@@ -339,6 +349,14 @@ class SettingsView: NSView {
     private var recordingSavePathRevealButton: NSButton!
     private var recordingSaveFormatTitleLabel: NSTextField!
     private var recordingSaveFormatPopup: NSPopUpButton!
+    private var recordingSystemAudioTitleLabel: NSTextField?
+    private var recordingSystemAudioHintLabel: NSTextField?
+    private var recordingSystemAudioSwitch: NSSwitch?
+    private var recordingMicrophoneTitleLabel: NSTextField?
+    private var recordingMicrophoneHintLabel: NSTextField?
+    private var recordingMicrophoneSwitch: NSSwitch?
+    private var recordingMicrophoneDeviceTitleLabel: NSTextField?
+    private var recordingMicrophoneDevicePopup: NSPopUpButton?
     private var screenshotSavePathTitleLabel: NSTextField!
     private var screenshotSavePathValueLabel: NSTextField!
     private var screenshotSavePathChooseButton: NSButton!
@@ -400,6 +418,7 @@ class SettingsView: NSView {
         cancelScreenshotTranslationShortcutRecording()
         cancelRecordShortcutRecording()
         cancelImageMergeShortcutRecording()
+        cancelFinderUploadShortcutRecording()
         cancelClipboardShortcutRecording()
         cancelFileSaveShortcutRecording()
         cancelPreviousHistoryImageShortcutRecording()
@@ -479,6 +498,7 @@ class SettingsView: NSView {
         refreshScreenshotTranslationShortcutDisplay()
         refreshRecordShortcutDisplay()
         refreshImageMergeShortcutDisplay()
+        refreshFinderUploadShortcutDisplay()
         refreshClipboardShortcutDisplay()
         refreshFileSaveShortcutDisplay()
         refreshPreviousHistoryImageShortcutDisplay()
@@ -597,6 +617,11 @@ class SettingsView: NSView {
             btn.isSelected = (btn.tab == tab)
         }
         detailTitleLabel?.stringValue = tab.title
+
+        // Rebuild the mic device list on every visit so hot-plugs appear.
+        if tab == .general {
+            refreshMicrophoneDevicePopup()
+        }
 
         // Swap pane content
         guard let pane = paneViews[tab] else { return }
@@ -1549,6 +1574,32 @@ class SettingsView: NSView {
         }
     }
 
+    /// Rebuild the mic device popup from the live CoreAudio list; falls back
+    /// to "System Default" when the persisted UID is unplugged.
+    private func refreshMicrophoneDevicePopup() {
+        guard let popup = recordingMicrophoneDevicePopup else { return }
+        let selectedUID = Defaults.recordingMicrophoneDeviceUID
+        popup.removeAllItems()
+        popup.addItem(withTitle: L10n.recordingMicrophoneDeviceDefault)
+        popup.lastItem?.representedObject = nil
+        for device in AudioInputDevices.available() {
+            popup.addItem(withTitle: device.name)
+            popup.lastItem?.representedObject = device.uid
+        }
+        if let selectedUID,
+           let index = (0..<popup.numberOfItems).first(where: {
+               popup.item(at: $0)?.representedObject as? String == selectedUID
+           }) {
+            popup.selectItem(at: index)
+        } else {
+            popup.selectItem(at: 0)
+        }
+    }
+
+    @objc private func recordingMicrophoneDeviceChanged(_ sender: NSPopUpButton) {
+        Defaults.recordingMicrophoneDeviceUID = sender.selectedItem?.representedObject as? String
+    }
+
     private func buildShortcutsPane() -> NSView {
         let stack = paneStack()
 
@@ -1665,6 +1716,19 @@ class SettingsView: NSView {
         selectedImageEditShortcutRestoreButton = selectedImageEditShortcut.restoreButton
         stack.addArrangedSubview(selectedImageEditShortcut.card)
         selectedImageEditShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
+        // File upload shortcut card
+        let finderUploadShortcut = buildShortcutCard(
+            title: L10n.fileUploadShortcutHeader,
+            setAction: #selector(finderUploadShortcutSetClicked),
+            restoreAction: #selector(finderUploadShortcutRestoreClicked)
+        )
+        finderUploadShortcutTitleLabel = finderUploadShortcut.title
+        finderUploadShortcutField = finderUploadShortcut.field
+        finderUploadShortcutSetButton = finderUploadShortcut.setButton
+        finderUploadShortcutRestoreButton = finderUploadShortcut.restoreButton
+        stack.addArrangedSubview(finderUploadShortcut.card)
+        finderUploadShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
         // Edit clipboard image shortcut card
         let clipboardImageEditShortcut = buildShortcutCard(
@@ -2247,6 +2311,64 @@ class SettingsView: NSView {
         inner.addArrangedSubview(formatRow)
         formatRow.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
 
+        let audioDivider = rowDivider()
+        inner.addArrangedSubview(audioDivider)
+        audioDivider.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let systemAudioToggle = makeToggleRow(
+            title: L10n.recordingSystemAudioLabel,
+            subtitle: L10n.recordingSystemAudioHint,
+            isOn: Defaults.recordingSystemAudioEnabled,
+            action: #selector(recordingSystemAudioToggled(_:))
+        )
+        recordingSystemAudioTitleLabel = systemAudioToggle.title
+        recordingSystemAudioHintLabel = systemAudioToggle.subtitle
+        recordingSystemAudioSwitch = systemAudioToggle.toggle
+        inner.addArrangedSubview(systemAudioToggle.row)
+        systemAudioToggle.row.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let micDivider = rowDivider()
+        inner.addArrangedSubview(micDivider)
+        micDivider.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let micToggle = makeToggleRow(
+            title: L10n.recordingMicrophoneLabel,
+            subtitle: L10n.recordingMicrophoneHint,
+            isOn: Defaults.recordingMicrophoneEnabled,
+            action: #selector(recordingMicrophoneToggled(_:))
+        )
+        recordingMicrophoneTitleLabel = micToggle.title
+        recordingMicrophoneHintLabel = micToggle.subtitle
+        recordingMicrophoneSwitch = micToggle.toggle
+        inner.addArrangedSubview(micToggle.row)
+        micToggle.row.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let micDeviceDivider = rowDivider()
+        inner.addArrangedSubview(micDeviceDivider)
+        micDeviceDivider.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let micDeviceRow = NSStackView()
+        micDeviceRow.orientation = .horizontal
+        micDeviceRow.alignment = .centerY
+        micDeviceRow.spacing = 10
+        micDeviceRow.translatesAutoresizingMaskIntoConstraints = false
+
+        recordingMicrophoneDeviceTitleLabel = primaryLabel(L10n.recordingMicrophoneDeviceLabel)
+        micDeviceRow.addArrangedSubview(recordingMicrophoneDeviceTitleLabel!)
+        micDeviceRow.addArrangedSubview(flexSpacer())
+
+        recordingMicrophoneDevicePopup = NSPopUpButton(frame: .zero, pullsDown: false)
+        recordingMicrophoneDevicePopup?.controlSize = .small
+        recordingMicrophoneDevicePopup?.font = NSFont.systemFont(ofSize: 12)
+        recordingMicrophoneDevicePopup?.target = self
+        recordingMicrophoneDevicePopup?.action = #selector(recordingMicrophoneDeviceChanged(_:))
+        recordingMicrophoneDevicePopup?.translatesAutoresizingMaskIntoConstraints = false
+        recordingMicrophoneDevicePopup?.widthAnchor.constraint(greaterThanOrEqualToConstant: 150).isActive = true
+        micDeviceRow.addArrangedSubview(recordingMicrophoneDevicePopup!)
+        inner.addArrangedSubview(micDeviceRow)
+        micDeviceRow.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+        refreshMicrophoneDevicePopup()
+
         let bottomDivider = rowDivider()
         inner.addArrangedSubview(bottomDivider)
         bottomDivider.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
@@ -2387,6 +2509,23 @@ class SettingsView: NSView {
         screenRecordingBadge = sc.badge
         permInner.addArrangedSubview(sc.row)
         sc.row.widthAnchor.constraint(equalTo: permInner.widthAnchor).isActive = true
+
+        let micDivider = rowDivider()
+        permInner.addArrangedSubview(micDivider)
+        micDivider.widthAnchor.constraint(equalTo: permInner.widthAnchor).isActive = true
+
+        // Microphone is optional: the Launch button is not gated on it, but
+        // the row lets users grant it from Settings directly.
+        let mic = makePermissionRow(
+            name: L10n.microphonePermission,
+            description: L10n.microphoneDescription,
+            action: #selector(openMicrophoneSettings(_:))
+        )
+        microphoneNameLabel = mic.name
+        microphoneDescLabel = mic.desc
+        microphoneBadge = mic.badge
+        permInner.addArrangedSubview(mic.row)
+        mic.row.widthAnchor.constraint(equalTo: permInner.widthAnchor).isActive = true
 
         stack.addArrangedSubview(permCard)
         permCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
@@ -3427,6 +3566,7 @@ class SettingsView: NSView {
 
         accessibilityBadge?.configure(granted: accessibilityGranted)
         screenRecordingBadge?.configure(granted: screenRecordingGranted)
+        microphoneBadge?.configure(granted: AppPermissions.microphoneGranted)
 
         // Only the startup-mode Launch button is gated on permissions; the
         // regular-mode Quit button stays enabled.
@@ -3714,6 +3854,54 @@ class SettingsView: NSView {
         updateWindowShadowControlsEnabled()
     }
 
+    @objc private func recordingSystemAudioToggled(_ sender: NSSwitch) {
+        Defaults.recordingSystemAudioEnabled = sender.state == .on
+    }
+
+    @objc private func recordingMicrophoneToggled(_ sender: NSSwitch) {
+        let enabled = sender.state == .on
+        Defaults.recordingMicrophoneEnabled = enabled
+        guard enabled else { return }
+
+        // Once denied, macOS won't re-prompt — bounce to System Settings and
+        // revert the toggle so the UI stays truthful.
+        if AppPermissions.microphoneGranted {
+            return
+        }
+        if AppPermissions.microphoneDenied {
+            sender.state = .off
+            Defaults.recordingMicrophoneEnabled = false
+            presentMicrophoneDeniedAlert()
+            return
+        }
+        AppPermissions.requestMicrophonePermission { [weak self] granted in
+            guard let self else { return }
+            if granted {
+                self.refreshPermissionStatus()
+                return
+            }
+            // User declined the prompt or an error occurred. Revert.
+            self.recordingMicrophoneSwitch?.state = .off
+            Defaults.recordingMicrophoneEnabled = false
+            self.refreshPermissionStatus()
+        }
+    }
+
+    private func presentMicrophoneDeniedAlert() {
+        guard let win = self.window else { return }
+        let alert = NSAlert()
+        alert.messageText = L10n.recordingMicrophoneDeniedTitle
+        alert.informativeText = L10n.recordingMicrophoneDeniedMessage
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: L10n.recordingMicrophoneOpenSettings)
+        alert.addButton(withTitle: L10n.shortcutCancel)
+        alert.beginSheetModal(for: win) { response in
+            if response == .alertFirstButtonReturn {
+                self.openMicrophoneSystemSettings()
+            }
+        }
+    }
+
     @objc private func windowShadowSizeChanged(_ sender: NSSlider) {
         Defaults.windowShadowSize = sender.doubleValue
         windowShadowSizeValueLabel?.stringValue = "\(Int(Defaults.windowShadowSize.rounded()))"
@@ -3773,6 +3961,33 @@ class SettingsView: NSView {
             CGRequestScreenCaptureAccess()
         }
         startPermissionFlow(.screenRecording, from: sender)
+    }
+
+    @objc private func openMicrophoneSettings(_ sender: NSButton) {
+        // Microphone is optional and macOS will not re-prompt once a decision
+        // has been made. If a decision is still pending, request inline; if it
+        // was already denied, jump straight to System Settings.
+        if AppPermissions.microphoneGranted {
+            return
+        }
+        if AppPermissions.microphoneDenied {
+            openMicrophoneSystemSettings()
+            return
+        }
+        AppPermissions.requestMicrophonePermission { [weak self] granted in
+            guard let self else { return }
+            self.refreshPermissionStatus()
+            if !granted {
+                self.openMicrophoneSystemSettings()
+            }
+        }
+    }
+
+    private func openMicrophoneSystemSettings() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_Microphone") else {
+            return
+        }
+        NSWorkspace.shared.open(url)
     }
 
     private func startPermissionFlow(_ pane: PermissionFlowPane, from sourceView: NSView) {
@@ -3904,6 +4119,9 @@ class SettingsView: NSView {
         }
         if slot != .imageMerge, imageMergeShortcutRecordingMonitor != nil {
             cancelImageMergeShortcutRecording()
+        }
+        if slot != .finderUpload, finderUploadShortcutRecordingMonitor != nil {
+            cancelFinderUploadShortcutRecording()
         }
         if slot != .clipboard, clipboardShortcutRecordingMonitor != nil {
             cancelClipboardShortcutRecording()
@@ -5085,6 +5303,98 @@ class SettingsView: NSView {
         }
     }
 
+    @objc private func finderUploadShortcutSetClicked() {
+        if finderUploadShortcutRecordingMonitor != nil {
+            cancelFinderUploadShortcutRecording()
+            return
+        }
+        cancelShortcutRecordings(except: .finderUpload)
+        HotkeyManager.shared.beginRecording()
+        finderUploadShortcutSetButton.title = L10n.shortcutCancel
+        finderUploadShortcutField.stringValue = L10n.shortcutWaiting
+        finderUploadShortcutRestoreButton.isHidden = true
+
+        finderUploadShortcutRecordingMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self else { return event }
+            let modifiers = event.modifierFlags
+            let isEscape = event.keyCode == UInt16(kVK_Escape)
+            let activeModifierMask: NSEvent.ModifierFlags = [.command, .shift, .option, .control]
+            let pressedModifiers = modifiers.intersection(activeModifierMask)
+
+            if isEscape && pressedModifiers.isEmpty {
+                self.cancelFinderUploadShortcutRecording()
+                return nil
+            }
+
+            var carbonMods: UInt32 = 0
+            if modifiers.contains(.command) { carbonMods |= UInt32(cmdKey) }
+            if modifiers.contains(.shift)   { carbonMods |= UInt32(shiftKey) }
+            if modifiers.contains(.option)  { carbonMods |= UInt32(optionKey) }
+            if modifiers.contains(.control) { carbonMods |= UInt32(controlKey) }
+            let keyCode = UInt32(event.keyCode)
+
+            if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) {
+                self.cancelFinderUploadShortcutRecording()
+                self.presentShortcutNeedsModifierAlert()
+                return nil
+            }
+
+            if let conflict = HotkeyManager.shared.hotkeyConflictMessage(
+                forKeyCode: keyCode,
+                modifiers: carbonMods,
+                assigningTo: .finderUpload
+            ) {
+                self.cancelFinderUploadShortcutRecording()
+                self.presentHotkeyConflictAlert(conflict)
+                return nil
+            }
+
+            Defaults.finderUploadHotkeyKeyCode = Int(keyCode)
+            Defaults.finderUploadHotkeyModifiers = Int(carbonMods)
+            self.finishFinderUploadShortcutRecording()
+            return nil
+        }
+    }
+
+    @objc private func finderUploadShortcutRestoreClicked() {
+        if finderUploadShortcutRecordingMonitor != nil {
+            cancelFinderUploadShortcutRecording()
+        }
+        Defaults.clearFinderUploadHotkey()
+        NotificationCenter.default.post(name: .hotkeyDidChange, object: nil)
+        refreshFinderUploadShortcutDisplay()
+    }
+
+    private func finishFinderUploadShortcutRecording() {
+        if let monitor = finderUploadShortcutRecordingMonitor {
+            NSEvent.removeMonitor(monitor)
+            finderUploadShortcutRecordingMonitor = nil
+        }
+        HotkeyManager.shared.endRecording()
+        refreshFinderUploadShortcutDisplay()
+    }
+
+    func cancelFinderUploadShortcutRecording() {
+        guard finderUploadShortcutRecordingMonitor != nil else { return }
+        if let monitor = finderUploadShortcutRecordingMonitor {
+            NSEvent.removeMonitor(monitor)
+            finderUploadShortcutRecordingMonitor = nil
+        }
+        HotkeyManager.shared.endRecording()
+        refreshFinderUploadShortcutDisplay()
+    }
+
+    private func refreshFinderUploadShortcutDisplay() {
+        finderUploadShortcutSetButton?.title = L10n.shortcutSet
+        if let display = HotkeyManager.currentFinderUploadDisplayString() {
+            finderUploadShortcutField?.stringValue = display
+            finderUploadShortcutRestoreButton?.isHidden = false
+        } else {
+            finderUploadShortcutField?.stringValue = L10n.finderUploadShortcutDefaultDisplay
+            finderUploadShortcutRestoreButton?.isHidden = true
+        }
+    }
+
     @objc private func clipboardShortcutSetClicked() {
         if clipboardShortcutRecordingMonitor != nil {
             cancelClipboardShortcutRecording()
@@ -5508,6 +5818,7 @@ class SettingsView: NSView {
         cancelScreenshotTranslationShortcutRecording()
         cancelRecordShortcutRecording()
         cancelImageMergeShortcutRecording()
+        cancelFinderUploadShortcutRecording()
         cancelClipboardShortcutRecording()
         cancelFileSaveShortcutRecording()
         cancelPreviousHistoryImageShortcutRecording()
@@ -5529,6 +5840,7 @@ class SettingsView: NSView {
         refreshScreenshotTranslationShortcutDisplay()
         refreshRecordShortcutDisplay()
         refreshImageMergeShortcutDisplay()
+        refreshFinderUploadShortcutDisplay()
         refreshClipboardShortcutDisplay()
         refreshFileSaveShortcutDisplay()
         refreshPreviousHistoryImageShortcutDisplay()
@@ -5563,6 +5875,14 @@ class SettingsView: NSView {
         autoRevealSavedFilesSwitch?.state = Defaults.autoRevealSavedFiles ? .on : .off
         recordingSavePathTitleLabel?.stringValue = L10n.recordingSavePathLabel
         recordingSaveFormatTitleLabel?.stringValue = L10n.recordingSaveFormatSettingLabel
+        recordingSystemAudioTitleLabel?.stringValue = L10n.recordingSystemAudioLabel
+        recordingSystemAudioHintLabel?.stringValue = L10n.recordingSystemAudioHint
+        recordingMicrophoneTitleLabel?.stringValue = L10n.recordingMicrophoneLabel
+        recordingMicrophoneHintLabel?.stringValue = L10n.recordingMicrophoneHint
+        recordingSystemAudioSwitch?.state = Defaults.recordingSystemAudioEnabled ? .on : .off
+        recordingMicrophoneSwitch?.state = Defaults.recordingMicrophoneEnabled ? .on : .off
+        recordingMicrophoneDeviceTitleLabel?.stringValue = L10n.recordingMicrophoneDeviceLabel
+        refreshMicrophoneDevicePopup()
         screenshotSavePathTitleLabel?.stringValue = L10n.screenshotSavePathLabel
         recordingSavePathChooseButton?.title = L10n.savePathChoose
         recordingSavePathRevealButton?.title = L10n.savePathReveal
@@ -5573,6 +5893,8 @@ class SettingsView: NSView {
         accessibilityDescLabel?.stringValue = L10n.accessibilityDescription
         screenRecordingNameLabel?.stringValue = L10n.screenRecordingPermission
         screenRecordingDescLabel?.stringValue = L10n.screenRecordingDescription
+        microphoneNameLabel?.stringValue = L10n.microphonePermission
+        microphoneDescLabel?.stringValue = L10n.microphoneDescription
         historyCacheToggleTitleLabel?.stringValue = L10n.historyCacheToggleLabel
         historyCacheToggleHintLabel?.stringValue = L10n.historyCacheToggleHint
         clipboardTextCacheToggleTitleLabel?.stringValue = L10n.clipboardTextCacheToggleLabel
@@ -5633,6 +5955,8 @@ class SettingsView: NSView {
         recordShortcutRestoreButton?.toolTip = L10n.shortcutRestore
         imageMergeShortcutTitleLabel?.stringValue = L10n.imageMergeShortcutHeader
         imageMergeShortcutRestoreButton?.toolTip = L10n.shortcutRestore
+        finderUploadShortcutTitleLabel?.stringValue = L10n.fileUploadShortcutHeader
+        finderUploadShortcutRestoreButton?.toolTip = L10n.shortcutRestore
         clipboardShortcutTitleLabel?.stringValue = L10n.clipboardShortcutHeader
         clipboardShortcutRestoreButton?.toolTip = L10n.shortcutRestore
         fileSaveShortcutTitleLabel?.stringValue = L10n.fileSaveShortcutHeader
@@ -5674,6 +5998,7 @@ class SettingsView: NSView {
         refreshScreenshotTranslationShortcutDisplay()
         refreshRecordShortcutDisplay()
         refreshImageMergeShortcutDisplay()
+        refreshFinderUploadShortcutDisplay()
         refreshClipboardShortcutDisplay()
         refreshFileSaveShortcutDisplay()
         refreshPreviousHistoryImageShortcutDisplay()
@@ -5682,6 +6007,7 @@ class SettingsView: NSView {
         refreshBottomAction()
         accessibilityBadge?.refreshTitle()
         screenRecordingBadge?.refreshTitle()
+        microphoneBadge?.refreshTitle()
         for btn in tabButtons { btn.refreshTitle() }
         detailTitleLabel?.stringValue = selectedTab.title
         window?.title = L10n.settingsTitle

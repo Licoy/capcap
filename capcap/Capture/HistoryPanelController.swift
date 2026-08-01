@@ -1,4 +1,6 @@
 import AppKit
+import AVFoundation
+import AVKit
 import Carbon
 import ImageIO
 
@@ -2077,14 +2079,16 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
 
     private enum PreviewKind {
         case image
+        case video
         case text
     }
 
     private func previewKind(for entry: HistoryEntry) -> PreviewKind? {
         switch entry.kind {
         case .image: return .image
+        case .video: return .video
         case .text: return .text
-        case .video, .color: return nil
+        case .color: return nil
         }
     }
 
@@ -3761,16 +3765,6 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
                 height: actionSize.height
             )
         }
-        if !badgeView.isHidden {
-            let badgeSize = badgeView.intrinsicContentSize
-            let selectionOffset: CGFloat = selectionBadgeView.isHidden ? 0 : 20
-            badgeView.frame = NSRect(
-                x: imageView.frame.maxX - badgeSize.width - 7,
-                y: imageView.frame.minY + 7 + selectionOffset,
-                width: badgeSize.width,
-                height: badgeSize.height
-            )
-        }
         let selectionSize = selectionBadgeView.intrinsicContentSize
         selectionBadgeView.frame = NSRect(
             x: imageView.frame.maxX - selectionSize.width + 5,
@@ -3778,6 +3772,15 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
             width: selectionSize.width,
             height: selectionSize.height
         )
+        if !badgeView.isHidden {
+            let badgeSize = badgeView.intrinsicContentSize
+            badgeView.frame = NSRect(
+                x: imageView.frame.minX + 7,
+                y: imageView.frame.maxY - badgeSize.height - 7,
+                width: badgeSize.width,
+                height: badgeSize.height
+            )
+        }
         metaLabel.frame = NSRect(
             x: padding,
             y: imageView.frame.maxY + 9,
@@ -4308,6 +4311,17 @@ private final class HistoryPreviewPanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        let commandModifiers: NSEvent.ModifierFlags = [.command, .shift, .option, .control]
+        let modifiers = event.modifierFlags.intersection(commandModifiers)
+        if modifiers == .command,
+           event.charactersIgnoringModifiers?.lowercased() == "w" {
+            performClose(nil)
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+
     override func sendEvent(_ event: NSEvent) {
         if event.type == .keyDown, onKeyDown?(event) == true {
             return
@@ -4454,6 +4468,7 @@ private final class HistoryPreviewTooltipController {
 private final class HistoryPreviewWindowController: NSWindowController, NSWindowDelegate {
     private enum ContentKind {
         case image
+        case video
         case text
     }
 
@@ -4461,6 +4476,7 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
     private let onEdit: (HistoryEntry) -> Void
     private let contentKind: ContentKind
     private let imageView = NSImageView()
+    private let videoView = AVPlayerView()
     private let textScrollView = NSScrollView()
     private let textView = NSTextView()
     private let titlebarFilenameContainer = NSView()
@@ -4474,6 +4490,7 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
     private var actionButtons: [HistoryPreviewActionButton] = []
     private var actionHoverTimer: Timer?
     private var previewKeyMonitor: Any?
+    private var videoPlayer: AVPlayer?
     private var currentIndex: Int
     private var loadGeneration = 0
     private var placementScreen: NSScreen?
@@ -4482,9 +4499,12 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
     init(entries: [HistoryEntry], initialEntry: HistoryEntry, onEdit: @escaping (HistoryEntry) -> Void) {
         self.entries = entries
         self.onEdit = onEdit
-        if case .text = initialEntry.kind {
+        switch initialEntry.kind {
+        case .video:
+            contentKind = .video
+        case .text:
             contentKind = .text
-        } else {
+        case .image, .color:
             contentKind = .image
         }
         currentIndex = entries.firstIndex(where: {
@@ -4523,13 +4543,21 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         updateWindowFrame(for: currentEntry, on: placementScreen, animated: false)
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
-        window.makeFirstResponder(contentKind == .text ? textView : imageView)
+        switch contentKind {
+        case .image:
+            window.makeFirstResponder(imageView)
+        case .video:
+            window.makeFirstResponder(videoView)
+        case .text:
+            window.makeFirstResponder(textView)
+        }
         startPreviewKeyMonitoring()
         startActionHoverTracking()
         loadCurrentContent()
     }
 
     override func close() {
+        stopVideoPlayback()
         stopPreviewKeyMonitoring()
         stopActionHoverTracking()
         tooltipController.close()
@@ -4538,6 +4566,7 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
     }
 
     func windowWillClose(_ notification: Notification) {
+        stopVideoPlayback()
         stopPreviewKeyMonitoring()
         stopActionHoverTracking()
         tooltipController.close()
@@ -4556,6 +4585,13 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         imageView.frame = content.bounds
         imageView.autoresizingMask = [.width, .height]
         content.addSubview(imageView)
+
+        videoView.controlsStyle = .floating
+        videoView.videoGravity = .resizeAspect
+        videoView.frame = content.bounds
+        videoView.autoresizingMask = [.width, .height]
+        videoView.isHidden = true
+        content.addSubview(videoView)
 
         textScrollView.drawsBackground = false
         textScrollView.hasVerticalScroller = true
@@ -4624,6 +4660,10 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
                 ("doc.on.doc", L10n.tipConfirm, "C", #selector(copyCurrent)),
                 ("pin", L10n.tipPin, "P", #selector(pinCurrent)),
                 ("icloud.and.arrow.up", L10n.tipUpload, "U", #selector(uploadCurrent)),
+            ]
+        case .video:
+            actions = [
+                ("doc.on.doc", L10n.tipConfirm, "C", #selector(copyCurrent)),
             ]
         case .text:
             actions = [
@@ -4711,12 +4751,14 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         switch currentEntry.kind {
         case .image:
             loadCurrentImage(generation: generation)
+        case .video:
+            loadCurrentVideo()
         case .text(let text):
             text.load { [weak self] value in
                 guard let self, self.loadGeneration == generation else { return }
                 self.loadCurrentText(value)
             }
-        case .video, .color:
+        case .color:
             return
         }
         updateTitlebarActionStackSize()
@@ -4725,6 +4767,8 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
 
     private func loadCurrentImage(generation: Int) {
         let url = currentEntry.fileURL
+        stopVideoPlayback()
+        videoView.isHidden = true
         textScrollView.isHidden = true
         imageView.isHidden = false
         imageView.image = nil
@@ -4742,7 +4786,32 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         }
     }
 
+    private func loadCurrentVideo() {
+        let url = currentEntry.fileURL
+        stopVideoPlayback()
+        imageView.image = nil
+        imageView.isHidden = true
+        textScrollView.isHidden = true
+        videoView.isHidden = false
+        window?.title = url.lastPathComponent
+        titlebarFilenameLabel.stringValue = url.lastPathComponent
+        titlebarFilenameLabel.toolTip = url.lastPathComponent
+
+        let player = AVPlayer(url: url)
+        videoPlayer = player
+        videoView.player = player
+        player.play()
+    }
+
+    private func stopVideoPlayback() {
+        videoPlayer?.pause()
+        videoView.player = nil
+        videoPlayer = nil
+    }
+
     private func loadCurrentText(_ text: String) {
+        stopVideoPlayback()
+        videoView.isHidden = true
         imageView.image = nil
         imageView.isHidden = true
         textScrollView.isHidden = false
@@ -4784,7 +4853,7 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
             window.setFrame(NSRect(origin: origin, size: frameSize), display: true, animate: animated)
             return
         }
-        let pixelSize = Self.pixelSize(for: entry.fileURL)
+        let pixelSize = Self.pixelSize(for: entry)
         guard pixelSize.width > 0, pixelSize.height > 0 else { return }
 
         let titlebarHeight = max(0, window.frameRect(forContentRect: NSRect(x: 0, y: 0, width: 100, height: 100)).height - 100)
@@ -4818,7 +4887,15 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         window.setFrame(NSRect(origin: origin, size: frameSize), display: true, animate: animated)
     }
 
-    private static func pixelSize(for url: URL) -> NSSize {
+    private static func pixelSize(for entry: HistoryEntry) -> NSSize {
+        if case .video = entry.kind {
+            let asset = AVURLAsset(url: entry.fileURL)
+            guard let track = asset.tracks(withMediaType: .video).first else { return .zero }
+            let transformedSize = track.naturalSize.applying(track.preferredTransform)
+            return NSSize(width: abs(transformedSize.width), height: abs(transformedSize.height))
+        }
+
+        let url = entry.fileURL
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
               let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
               let width = properties[kCGImagePropertyPixelWidth] as? NSNumber,

@@ -344,6 +344,7 @@ class EditWindowController {
 
     func updateLayout(selectionRect: NSRect, selectionViewRect: NSRect, captureRect: CGRect) {
         dismissQRCodeOverlay()
+        let previousSelectionViewRect = self.selectionViewRect
         self.selectionRect = selectionRect
         self.selectionViewRect = selectionViewRect
         self.captureRect = captureRect
@@ -353,6 +354,10 @@ class EditWindowController {
         }
 
         let canvasSize = canvasContentSize(for: selectionViewRect.size)
+        canvasView?.preserveAnnotationScreenPositions(
+            from: previousSelectionViewRect,
+            to: selectionViewRect
+        )
         canvasView?.updateViewportSize(canvasSize)
         beautifyContainerView?.canvasSizeDidChange()
         canvasView?.captureRect = captureRect

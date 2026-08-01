@@ -18,6 +18,15 @@ enum FinderSelection {
         currentSelectionURLs().filter(isImage)
     }
 
+    /// Returns every regular file currently selected in Finder, preserving
+    /// Finder's selection order and excluding folders or other containers.
+    static func currentFileURLs() -> [URL] {
+        currentSelectionURLs().filter { url in
+            let values = try? url.resourceValues(forKeys: [.isRegularFileKey])
+            return values?.isRegularFile == true
+        }
+    }
+
     /// Clears Finder's current selection. Used by pin mode so the same source
     /// is not re-pinned. Silently no-ops on any failure.
     static func clearSelection() {
