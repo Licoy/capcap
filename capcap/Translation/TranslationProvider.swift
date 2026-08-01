@@ -2,8 +2,8 @@ import Foundation
 
 // MARK: - Target language
 
-/// Languages the OCR text can be translated into. The model auto-detects the
-/// source language, so only the target is configurable.
+/// Languages the OCR text can be translated into. The source language is
+/// detected locally before the provider request, so only the target is configurable.
 enum TranslationLanguage: String, CaseIterable {
     case chinese = "zh"
     case english = "en"
