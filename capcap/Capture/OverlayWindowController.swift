@@ -549,6 +549,7 @@ class OverlayWindowController {
                 selectionView.setBackgroundSnapshot(cgImage: snapshot, pointSize: screen.frame.size)
             }
             window.contentView = selectionView
+            window.initialFirstResponder = selectionView
 
             if let displayID = screen.deviceDescription[
                 NSDeviceDescriptionKey("NSScreenNumber")
@@ -647,8 +648,9 @@ class OverlayWindowController {
         }
 
         if presetImage == nil, suspendedDraft == nil {
-            NSCursor.crosshair.push()
+            NSCursor.arrow.push()
             cursorWasPushed = true
+            claimSelectionKeyboardFocus()
         } else {
             // Skip cursor push so tearDown's pop doesn't strip an unrelated cursor.
             cursorPopped = true
@@ -661,6 +663,19 @@ class OverlayWindowController {
                 enterPresetSelection()
             }
         }
+    }
+
+    /// Leave the source app's activation state untouched so its visual state
+    /// remains capturable, but make the nonactivating selection panel own key
+    /// events. This prevents a previously focused text field from receiving
+    /// capture shortcuts such as R.
+    private func claimSelectionKeyboardFocus() {
+        let targetView = firstFrameTargetDisplayID
+            .flatMap { selectionViewsByDisplayID[$0] }
+            ?? activeSelectionViews.first
+        guard let targetView, let targetWindow = targetView.window else { return }
+        targetWindow.makeKeyAndOrderFront(nil)
+        targetWindow.makeFirstResponder(targetView)
     }
 
     private func recordFirstDraw(generation: Int) {

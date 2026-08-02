@@ -305,8 +305,8 @@ private final class OverlayWarmupView: NSView {
     }
 }
 
-/// The selection shell stays nonactivating; editor code may explicitly make
-/// it key only after the frozen screenshot is ready.
+/// The selection shell stays nonactivating so it does not change the source
+/// app's visual state, while capture code may still make it key to own shortcuts.
 final class OverlayPanel: NSPanel, NSWindowDelegate {
     private struct SurfaceSignature: Equatable {
         let frame: NSRect
