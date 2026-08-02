@@ -6,10 +6,8 @@ import AppKit
 /// yet started dragging a selection rectangle. Displays absolute desktop
 /// coordinates, a magnification of the pixel neighborhood around the cursor,
 /// and the current pixel value in either HEX or RGB. Listens for mouse-move
-/// events to follow the cursor but never blocks input. All visual settings
-/// (panel size, magnified area, offsets, background color, hint visibility)
-/// are read from `Defaults` so changes in Settings take effect the next time
-/// the lens is shown.
+/// events to follow the cursor but never blocks input. Visual values are read
+/// from `Defaults`, whose fallback values define the built-in lens style.
 final class MagnifierLensPanelWindow: NSPanel {
 
     enum Format {
@@ -27,10 +25,8 @@ final class MagnifierLensPanelWindow: NSPanel {
     private static let edgeMargin: CGFloat = 8
 
     /// Computes the panel size that fits the current Defaults (magnified
-    /// square + 5 info rows or 3 rows when optional hints are disabled). Public so
-    /// the Settings preview can size its embedded lens view identically to
-    /// the live panel.
-    static func panelSizeForCurrentSettings() -> NSSize {
+    /// square + 5 info rows or 3 rows when optional hints are disabled).
+    private static func computePanelSize() -> NSSize {
         let magnifiedSide = CGFloat(Defaults.magnifierLensPanelMagnifiedSize)
         let infoRows = 3
             + (Defaults.magnifierLensPanelShowCopyHint ? 1 : 0)
@@ -41,10 +37,6 @@ final class MagnifierLensPanelWindow: NSPanel {
         let width: CGFloat = max(220, magnifiedSide + 24)
         let height = magnifiedSide + gap + infoHeight + topInset
         return NSSize(width: ceil(width), height: ceil(height))
-    }
-
-    private static func computePanelSize() -> NSSize {
-        panelSizeForCurrentSettings()
     }
 
     private let lensView: MagnifierLensPanelView
@@ -126,13 +118,6 @@ final class MagnifierLensPanelWindow: NSPanel {
     /// Used by the overlay controller to perform the actual copy on ⌘+C.
     var currentSample: Sample? { lensView.currentSample }
     var currentPixelPoint: CGPoint { lensView.currentPixelPoint }
-
-    /// Public layout values for the Settings preview to mirror.
-    var layoutMagnifiedSide: CGFloat { CGFloat(Defaults.magnifierLensPanelMagnifiedSize) }
-    var layoutPanelSize: NSSize { panelSize }
-    var layoutCursorOffset: NSPoint {
-        NSPoint(x: Defaults.magnifierLensPanelOffsetX, y: Defaults.magnifierLensPanelOffsetY)
-    }
 
     // MARK: - Position tracking
 
@@ -404,10 +389,9 @@ final class MagnifierLensPanelView: NSView {
         borderPath.lineWidth = 0.5
         borderPath.stroke()
 
-        // Enhanced crosshair spanning the full magnified area. Colour and
-        // line width are read from Defaults so users can tune them in Settings.
-        // Sits behind the fine white cross so the centre remains visible even
-        // on pure-white backgrounds.
+        // Enhanced crosshair spanning the full magnified area. Sits behind the
+        // fine white cross so the centre remains visible even on pure-white
+        // backgrounds.
         let centerX = rect.midX
         let centerY = rect.midY
         let cr = CGFloat(Defaults.magnifierLensPanelCrosshairRed)

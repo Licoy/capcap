@@ -207,28 +207,6 @@ enum L10n {
     static func magnifierLensPanelRgbString(r: Int, g: Int, b: Int) -> String {
         String(format: s("magnifierLensPanelRgbString"), r, g, b)
     }
-    static var settingsMagnifierLensPanelTitle: String { s("settingsMagnifierLensPanelTitle") }
-    static var settingsMagnifierLensPanelHint: String { s("settingsMagnifierLensPanelHint") }
-    static var settingsMagnifierLensPanelMagnifiedSizeLabel: String { s("settingsMagnifierLensPanelMagnifiedSizeLabel") }
-    static var settingsMagnifierLensPanelMagnificationLabel: String { s("settingsMagnifierLensPanelMagnificationLabel") }
-    static var settingsMagnifierLensPanelOffsetLabel: String { s("settingsMagnifierLensPanelOffsetLabel") }
-    static var settingsMagnifierLensPanelFollowSystemAppearanceTitle: String { s("settingsMagnifierLensPanelFollowSystemAppearanceTitle") }
-    static var settingsMagnifierLensPanelFollowSystemAppearanceHint: String { s("settingsMagnifierLensPanelFollowSystemAppearanceHint") }
-    static var settingsMagnifierLensPanelDarkBackgroundLabel: String { s("settingsMagnifierLensPanelDarkBackgroundLabel") }
-    static var settingsMagnifierLensPanelLightBackgroundLabel: String { s("settingsMagnifierLensPanelLightBackgroundLabel") }
-    static var settingsMagnifierLensPanelCoordinateModeLabel: String { s("settingsMagnifierLensPanelCoordinateModeLabel") }
-    static var settingsMagnifierLensPanelCoordinateModePoints: String { s("settingsMagnifierLensPanelCoordinateModePoints") }
-    static var settingsMagnifierLensPanelCoordinateModePixels: String { s("settingsMagnifierLensPanelCoordinateModePixels") }
-    static var settingsMagnifierLensPanelCoordinateModeHint: String { s("settingsMagnifierLensPanelCoordinateModeHint") }
-    static var settingsMagnifierLensPanelMagnifierLabel: String { s("settingsMagnifierLensPanelMagnifierLabel") }
-    static var settingsMagnifierLensPanelAppearanceLabel: String { s("settingsMagnifierLensPanelAppearanceLabel") }
-    static var settingsMagnifierLensPanelKeyboardActionLabel: String { s("settingsMagnifierLensPanelKeyboardActionLabel") }
-    static var settingsMagnifierLensPanelLivePreviewTitle: String { s("settingsMagnifierLensPanelLivePreviewTitle") }
-    static var settingsMagnifierLensPanelLivePreviewHint: String { s("settingsMagnifierLensPanelLivePreviewHint") }
-    static var settingsMagnifierLensPanelPreviewHint: String { s("settingsMagnifierLensPanelPreviewHint") }
-    static var settingsMagnifierLensPanelCrosshairLabel: String { s("settingsMagnifierLensPanelCrosshairLabel") }
-    static var settingsMagnifierLensPanelCrosshairHint: String { s("settingsMagnifierLensPanelCrosshairHint") }
-    static var settingsMagnifierLensPanelCrosshairWidthLabel: String { s("settingsMagnifierLensPanelCrosshairWidthLabel") }
 
     // Copy-to-clipboard shortcut (editor confirm)
     static var clipboardShortcutHeader: String { s("clipboardShortcutHeader") }
@@ -1987,12 +1965,12 @@ struct Defaults {
         set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelDarkBackgroundBlue") }
     }
     static var magnifierLensPanelDarkBackgroundAlpha: Double {
-        get { defaults.object(forKey: "magnifierLensPanelDarkBackgroundAlpha") == nil ? 0.7 : defaults.double(forKey: "magnifierLensPanelDarkBackgroundAlpha") }
+        get { defaults.object(forKey: "magnifierLensPanelDarkBackgroundAlpha") == nil ? 0.80 : defaults.double(forKey: "magnifierLensPanelDarkBackgroundAlpha") }
         set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelDarkBackgroundAlpha") }
     }
 
     /// Background color used in light mode (when `magnifierLensPanelFollowSystemAppearance` is on).
-    /// Stored as 0–1 RGBA components. Default: white with 80% alpha.
+    /// Stored as 0–1 RGBA components. Default: white with about 70% alpha.
     static var magnifierLensPanelLightBackgroundRed: Double {
         get { defaults.object(forKey: "magnifierLensPanelLightBackgroundRed") == nil ? 1 : defaults.double(forKey: "magnifierLensPanelLightBackgroundRed") }
         set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelLightBackgroundRed") }
@@ -2006,7 +1984,7 @@ struct Defaults {
         set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelLightBackgroundBlue") }
     }
     static var magnifierLensPanelLightBackgroundAlpha: Double {
-        get { defaults.object(forKey: "magnifierLensPanelLightBackgroundAlpha") == nil ? 0.8 : defaults.double(forKey: "magnifierLensPanelLightBackgroundAlpha") }
+        get { defaults.object(forKey: "magnifierLensPanelLightBackgroundAlpha") == nil ? 0.80 : defaults.double(forKey: "magnifierLensPanelLightBackgroundAlpha") }
         set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelLightBackgroundAlpha") }
     }
 
@@ -2039,11 +2017,11 @@ struct Defaults {
 
     /// Magnification factor for the lens. Controls how many source pixels are
     /// sampled: source region = magnified display size / magnification.
-    /// Higher values = tighter zoom (smaller source region). Default 12×.
+    /// Higher values = tighter zoom (smaller source region). Default 4×.
     static var magnifierLensPanelMagnification: Double {
         get {
             if defaults.object(forKey: "magnifierLensPanelMagnification") == nil {
-                return 12.0
+                return 4.0
             }
             return defaults.double(forKey: "magnifierLensPanelMagnification")
         }
@@ -2070,7 +2048,7 @@ struct Defaults {
     static var magnifierLensPanelOffsetY: Double {
         get {
             if defaults.object(forKey: "magnifierLensPanelOffsetY") == nil {
-                return 14
+                return 15
             }
             return defaults.double(forKey: "magnifierLensPanelOffsetY")
         }
