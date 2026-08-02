@@ -471,7 +471,8 @@ class SelectionView: NSView {
                 hoverWindowID = detected.windowID
                 needsDisplay = true
             }
-            NSCursor.pointingHand.set()
+            // Keep the capture cursor consistent while window snapping is active.
+            NSCursor.crosshair.set()
         } else {
             clearHover()
             NSCursor.crosshair.set()
