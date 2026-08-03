@@ -629,14 +629,16 @@
 "chooseScreenshotSavePathTitle" = "スクリーンショットの保存先を選択";
 
 /* Magnifier lens panel */
+"magnifierLensPanelCoordinatesLabel" = "座標";
+"magnifierLensPanelColorValueLabel" = "色";
 "magnifierLensPanelCoordinates" = "座標: %@, %@";
 "magnifierLensPanelHex" = "HEX: %@";
 "magnifierLensPanelRgb" = "RGB: %@";
 "magnifierLensPanelRgbString" = "rgb(%d, %d, %d)";
-"magnifierLensPanelCopyHint" = "⌘+C で色をコピー";
-"magnifierLensPanelShiftHint" = "Shift で RGB に切替";
+"magnifierLensPanelCopyHint" = "色をコピー(C)";
+"magnifierLensPanelShiftHint" = "カラー形式(Shift)";
 "magnifierLensPanelAspectFree" = "自由";
-"magnifierLensPanelAspectHint" = "R で比率を切替: %@";
+"magnifierLensPanelAspectHint" = "撮影比率(R)";
 /* ファイルのアップロード */
 "fileUploadShortcutHeader" = "ファイルをアップロード";
 "finderUploadShortcutDefaultDisplay" = "未設定";

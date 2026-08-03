@@ -629,14 +629,16 @@
 "chooseScreenshotSavePathTitle" = "選擇截圖儲存路徑";
 
 /* Magnifier lens panel */
+"magnifierLensPanelCoordinatesLabel" = "座標";
+"magnifierLensPanelColorValueLabel" = "色值";
 "magnifierLensPanelCoordinates" = "座標: %@, %@";
 "magnifierLensPanelHex" = "HEX: %@";
 "magnifierLensPanelRgb" = "RGB: %@";
 "magnifierLensPanelRgbString" = "rgb(%d, %d, %d)";
-"magnifierLensPanelCopyHint" = "按 ⌘+C 複製色彩";
-"magnifierLensPanelShiftHint" = "按 Shift 切換 RGB";
+"magnifierLensPanelCopyHint" = "複製色彩(C)";
+"magnifierLensPanelShiftHint" = "色值格式(Shift)";
 "magnifierLensPanelAspectFree" = "自由";
-"magnifierLensPanelAspectHint" = "按 R 切換比例: %@";
+"magnifierLensPanelAspectHint" = "截圖比例(R)";
 /* 檔案上傳 */
 "fileUploadShortcutHeader" = "上傳檔案";
 "finderUploadShortcutDefaultDisplay" = "未設定";

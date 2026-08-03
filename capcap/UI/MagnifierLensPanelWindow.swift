@@ -1,4 +1,13 @@
 import AppKit
+import CoreText
+
+private enum MagnifierLensPanelLayout {
+    static let panelWidth: CGFloat = 148
+    static let infoRowHeight: CGFloat = 18
+    static let infoGroupSpacing: CGFloat = 4
+    static let infoVerticalInset: CGFloat = 8
+    static let cornerRadius: CGFloat = 8
+}
 
 /// Cursor-adjacent magnifier color picker shown on the overlay's idle state.
 ///
@@ -24,18 +33,17 @@ final class MagnifierLensPanelWindow: NSPanel {
 
     private static let edgeMargin: CGFloat = 8
 
-    /// Computes the panel size that fits the current Defaults (magnified
-    /// square + 5 info rows or 3 rows when optional hints are disabled).
+    /// Computes the panel size that fits the full-width square magnifier plus
+    /// 5 info rows, or 3 rows when optional hints are disabled.
     private static func computePanelSize() -> NSSize {
-        let magnifiedSide = CGFloat(Defaults.magnifierLensPanelMagnifiedSize)
         let infoRows = 3
             + (Defaults.magnifierLensPanelShowCopyHint ? 1 : 0)
             + (Defaults.magnifierLensPanelShowShiftHint ? 1 : 0)
-        let infoHeight = CGFloat(infoRows) * 18 + 8
-        let gap: CGFloat = 8
-        let topInset: CGFloat = 8
-        let width: CGFloat = max(220, magnifiedSide + 24)
-        let height = magnifiedSide + gap + infoHeight + topInset
+        let infoHeight = CGFloat(infoRows) * MagnifierLensPanelLayout.infoRowHeight
+            + MagnifierLensPanelLayout.infoGroupSpacing
+            + MagnifierLensPanelLayout.infoVerticalInset * 2
+        let width = MagnifierLensPanelLayout.panelWidth
+        let height = width + infoHeight
         return NSSize(width: ceil(width), height: ceil(height))
     }
 
@@ -278,18 +286,25 @@ final class MagnifierLensPanelView: NSView {
     private var snapshot: CGImage?
     private var screenFrame: NSRect = .zero
 
-    // Layout — derived from Defaults on every draw so changes show up
-    // immediately the next time the lens appears.
-    private let infoLeftPadding: CGFloat = 12
-    private let infoRightPadding: CGFloat = 12
-    private let infoRowHeight: CGFloat = 18
-    private let infoBottomInset: CGFloat = 8
-    private let swatchSize: CGFloat = 16
-    private let gapBetweenMagnifiedAndInfo: CGFloat = 8
-    private let topInset: CGFloat = 8
+    // Layout
+    private let infoLeftPadding: CGFloat = 10
+    private let infoRightPadding: CGFloat = 10
+    private let infoColumnGap: CGFloat = 6
+    private let colorSwatchGap: CGFloat = 6
 
-    private static let font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
-    private static let tipFont = NSFont.systemFont(ofSize: 11, weight: .regular)
+    private static let labelFont = NSFont.systemFont(ofSize: 12, weight: .medium)
+    private static let valueFont = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .regular)
+    private static let tipFont = NSFont.systemFont(ofSize: 10.5, weight: .regular)
+    /// Fixed slot sized from the widest valid `#RRGGBB` candidate so the HEX
+    /// value stays aligned while sampled characters change.
+    private static let hexValueSlotWidth: CGFloat = {
+        let attrs: [NSAttributedString.Key: Any] = [.font: valueFont]
+        return "0123456789ABCDEF".reduce(CGFloat.zero) { widest, character in
+            let candidate = "#" + String(repeating: String(character), count: 6)
+            let width = (candidate as NSString).size(withAttributes: attrs).width
+            return max(widest, width)
+        }.rounded(.up)
+    }()
 
     func clear() {
         currentSample = nil
@@ -315,27 +330,30 @@ final class MagnifierLensPanelView: NSView {
     }
 
     override func draw(_ dirtyRect: NSRect) {
-        let magnifiedSide = CGFloat(Defaults.magnifierLensPanelMagnifiedSize)
         let panelWidth = bounds.width
         let panelHeight = bounds.height
         let magnifiedRect = NSRect(
-            x: (panelWidth - magnifiedSide) / 2,
-            y: panelHeight - topInset - magnifiedSide,
-            width: magnifiedSide,
-            height: magnifiedSide
+            x: 0,
+            y: panelHeight - panelWidth,
+            width: panelWidth,
+            height: panelWidth
         )
 
         // Panel background — pick dark or light based on appearance + setting.
-        let bgPath = NSBezierPath(roundedRect: bounds.insetBy(dx: 1, dy: 1), xRadius: 8, yRadius: 8)
+        let bgPath = NSBezierPath(
+            roundedRect: bounds,
+            xRadius: MagnifierLensPanelLayout.cornerRadius,
+            yRadius: MagnifierLensPanelLayout.cornerRadius
+        )
         let panelBackground = MagnifierLensPanelSampler.backgroundColor(forAppearance: effectiveAppearance)
         panelBackground.setFill()
         bgPath.fill()
-        AdaptiveChrome.border.setStroke()
-        bgPath.lineWidth = 0.5
-        bgPath.stroke()
 
+        NSGraphicsContext.current?.saveGraphicsState()
+        bgPath.addClip()
         drawMagnifiedArea(in: magnifiedRect)
-        drawInfo(panelHeight: panelHeight, magnifiedBottom: magnifiedRect.minY)
+        drawInfo()
+        NSGraphicsContext.current?.restoreGraphicsState()
     }
 
     private func drawMagnifiedArea(in rect: NSRect) {
@@ -383,46 +401,35 @@ final class MagnifierLensPanelView: NSView {
         context.draw(cropped, in: drawRect)
         context.restoreGState()
 
-        // Border
-        NSColor.labelColor.withAlphaComponent(0.4).setStroke()
-        let borderPath = NSBezierPath(rect: rect.insetBy(dx: 0.5, dy: 0.5))
-        borderPath.lineWidth = 0.5
-        borderPath.stroke()
-
-        // Enhanced crosshair spanning the full magnified area. Sits behind the
-        // fine white cross so the centre remains visible even on pure-white
-        // backgrounds.
+        // Thin app-accent crosshair spanning the full magnified area.
         let centerX = rect.midX
         let centerY = rect.midY
-        let cr = CGFloat(Defaults.magnifierLensPanelCrosshairRed)
-        let cg = CGFloat(Defaults.magnifierLensPanelCrosshairGreen)
-        let cb = CGFloat(Defaults.magnifierLensPanelCrosshairBlue)
-        let ca = CGFloat(Defaults.magnifierLensPanelCrosshairAlpha)
-        let cw = CGFloat(Defaults.magnifierLensPanelCrosshairWidth)
-        NSColor(srgbRed: cr, green: cg, blue: cb, alpha: ca).setStroke()
+        accentGreen.setStroke()
         let bigCross = NSBezierPath()
-        bigCross.lineWidth = cw
+        bigCross.lineWidth = 2
         bigCross.move(to: NSPoint(x: rect.minX, y: centerY))
         bigCross.line(to: NSPoint(x: rect.maxX, y: centerY))
         bigCross.move(to: NSPoint(x: centerX, y: rect.minY))
         bigCross.line(to: NSPoint(x: centerX, y: rect.maxY))
         bigCross.stroke()
-
-        // Fine white crosshair — aligns with the sampled pixel.
-        NSColor.white.setStroke()
-        let cross = NSBezierPath()
-        cross.lineWidth = 1.0
-        cross.move(to: NSPoint(x: centerX - 4, y: centerY))
-        cross.line(to: NSPoint(x: centerX + 4, y: centerY))
-        cross.move(to: NSPoint(x: centerX, y: centerY - 4))
-        cross.line(to: NSPoint(x: centerX, y: centerY + 4))
-        cross.stroke()
     }
 
-    private func drawInfo(panelHeight: CGFloat, magnifiedBottom: CGFloat) {
-        let infoAttrs: [NSAttributedString.Key: Any] = [
-            .font: Self.font,
-            .foregroundColor: NSColor.labelColor
+    private func drawInfo() {
+        let labelParagraphStyle = NSMutableParagraphStyle()
+        labelParagraphStyle.lineBreakMode = .byTruncatingTail
+        let valueParagraphStyle = NSMutableParagraphStyle()
+        valueParagraphStyle.alignment = .right
+        valueParagraphStyle.lineBreakMode = .byTruncatingHead
+
+        let labelAttrs: [NSAttributedString.Key: Any] = [
+            .font: Self.labelFont,
+            .foregroundColor: NSColor.labelColor,
+            .paragraphStyle: labelParagraphStyle,
+        ]
+        let valueAttrs: [NSAttributedString.Key: Any] = [
+            .font: Self.valueFont,
+            .foregroundColor: NSColor.labelColor,
+            .paragraphStyle: valueParagraphStyle,
         ]
         let tipAttrs: [NSAttributedString.Key: Any] = [
             .font: Self.tipFont,
@@ -433,7 +440,6 @@ final class MagnifierLensPanelView: NSView {
         // We always render coords + color (rows 3 and 2 in old layout).
         // Tip rows occupy 1 and 0 conditionally.
         var rowFromBottom = 0
-        let infoAreaBottom = infoBottomInset
         // totalRows in info area (coords + color + ratio + maybe copy + maybe shift)
         let totalRows = 3
             + (Defaults.magnifierLensPanelShowCopyHint ? 1 : 0)
@@ -441,123 +447,322 @@ final class MagnifierLensPanelView: NSView {
 
         func rowY(forIndex i: Int) -> CGFloat {
             // i is 0-based from bottom
-            infoAreaBottom + CGFloat(i) * infoRowHeight
+            let baseY = MagnifierLensPanelLayout.infoVerticalInset
+                + CGFloat(i) * MagnifierLensPanelLayout.infoRowHeight
+            let firstInfoItemRow = totalRows - 2
+            return baseY + (i >= firstInfoItemRow
+                ? MagnifierLensPanelLayout.infoGroupSpacing
+                : 0)
         }
 
         // Coordinates row (always)
         if currentSample != nil {
-            let coordsText: String
+            let coordsValue: String
             switch Defaults.magnifierLensPanelCoordinateMode {
             case .points:
                 let x = String(Int(mouseLocation.x))
                 let y = String(Int(mouseLocation.y))
-                coordsText = String(format: L10n.magnifierLensPanelCoordinates, x, y)
+                coordsValue = "\(x), \(y)"
             case .pixels:
                 let x = String(Int(currentPixelPoint.x))
                 let y = String(Int(currentPixelPoint.y))
-                coordsText = String(format: L10n.magnifierLensPanelCoordinates, x, y)
+                coordsValue = "\(x), \(y)"
             }
-            drawText(
-                coordsText,
-                attrs: infoAttrs,
-                at: rowY(forIndex: totalRows - 1),
-                availableWidth: bounds.width - infoLeftPadding - infoRightPadding
+            drawInfoRow(
+                label: L10n.magnifierLensPanelCoordinatesLabel,
+                value: coordsValue,
+                labelAttrs: labelAttrs,
+                valueAttrs: valueAttrs,
+                at: rowY(forIndex: totalRows - 1)
             )
         }
 
-        // Swatch + HEX/RGB row (always)
+        // HEX/RGB row (always)
         if let sample = currentSample {
             let rowIndex = totalRows - 2
-            let swatchRect = NSRect(
-                x: infoLeftPadding,
-                y: rowY(forIndex: rowIndex) + 1,
-                width: swatchSize,
-                height: swatchSize
-            )
-            NSColor(
-                srgbRed: CGFloat(sample.r) / 255.0,
-                green: CGFloat(sample.g) / 255.0,
-                blue: CGFloat(sample.b) / 255.0,
-                alpha: 1.0
-            ).setFill()
-            NSBezierPath(roundedRect: swatchRect, xRadius: 2, yRadius: 2).fill()
-            NSColor.labelColor.withAlphaComponent(0.3).setStroke()
-            let border = NSBezierPath(roundedRect: swatchRect, xRadius: 2, yRadius: 2)
-            border.lineWidth = 0.5
-            border.stroke()
-
-            let colorText: String
+            let colorValue: String
             switch format {
             case .hex:
-                colorText = String(format: L10n.magnifierLensPanelHex, hexString(sample))
+                colorValue = hexString(sample)
             case .rgb:
-                colorText = String(format: L10n.magnifierLensPanelRgb, L10n.magnifierLensPanelRgbString(r: sample.r, g: sample.g, b: sample.b))
+                colorValue = "\(sample.r), \(sample.g), \(sample.b)"
             }
-            drawText(
-                colorText,
-                attrs: infoAttrs,
-                at: rowY(forIndex: rowIndex),
-                leftOffset: infoLeftPadding + swatchSize + 6,
-                availableWidth: bounds.width - infoLeftPadding - swatchSize - 6 - infoRightPadding
+            drawColorInfoRow(
+                label: L10n.magnifierLensPanelColorValueLabel,
+                value: colorValue,
+                sample: sample,
+                labelAttrs: labelAttrs,
+                valueAttrs: valueAttrs,
+                at: rowY(forIndex: rowIndex)
             )
         }
 
-        drawText(
-            aspectHintText(),
+        drawHintRow(
+            label: L10n.magnifierLensPanelAspectHint,
+            value: aspectHintValue(),
             attrs: tipAttrs,
-            at: rowY(forIndex: totalRows - 3),
-            availableWidth: bounds.width - infoLeftPadding - infoRightPadding
+            at: rowY(forIndex: totalRows - 3)
         )
 
         // Tip rows (conditional)
         if Defaults.magnifierLensPanelShowCopyHint {
-            drawText(
-                L10n.magnifierLensPanelCopyHint,
+            drawHintRow(
+                label: L10n.magnifierLensPanelCopyHint,
+                value: nil,
                 attrs: tipAttrs,
-                at: rowY(forIndex: rowFromBottom),
-                availableWidth: bounds.width - infoLeftPadding - infoRightPadding
+                at: rowY(forIndex: rowFromBottom)
             )
             rowFromBottom += 1
         }
         if Defaults.magnifierLensPanelShowShiftHint {
-            drawText(
-                L10n.magnifierLensPanelShiftHint,
+            let colorFormat: String
+            switch format {
+            case .hex: colorFormat = "HEX"
+            case .rgb: colorFormat = "RGB"
+            }
+            drawHintRow(
+                label: L10n.magnifierLensPanelShiftHint,
+                value: colorFormat,
                 attrs: tipAttrs,
-                at: rowY(forIndex: rowFromBottom),
-                availableWidth: bounds.width - infoLeftPadding - infoRightPadding
+                at: rowY(forIndex: rowFromBottom)
             )
         }
-        _ = magnifiedBottom // silence unused warning
-        _ = panelHeight
     }
 
-    private func drawText(
+    private func drawInfoRow(
+        label: String,
+        value: String,
+        labelAttrs: [NSAttributedString.Key: Any],
+        valueAttrs: [NSAttributedString.Key: Any],
+        at y: CGFloat
+    ) {
+        let valueRightEdge = bounds.width - infoRightPadding
+        let availableColumnWidth = max(
+            0,
+            valueRightEdge - infoLeftPadding - infoColumnGap
+        )
+        let measuredLabelWidth = ceil((label as NSString).size(withAttributes: labelAttrs).width)
+        let labelWidth = min(measuredLabelWidth, floor(availableColumnWidth * 0.44))
+        let valueX = infoLeftPadding + labelWidth + infoColumnGap
+        let valueWidth = max(0, valueRightEdge - valueX)
+        let labelRect = NSRect(
+            x: infoLeftPadding,
+            y: y,
+            width: labelWidth,
+            height: MagnifierLensPanelLayout.infoRowHeight
+        )
+        let valueRect = NSRect(
+            x: valueX,
+            y: y,
+            width: valueWidth,
+            height: MagnifierLensPanelLayout.infoRowHeight
+        )
+        (label as NSString).draw(in: labelRect, withAttributes: labelAttrs)
+        (value as NSString).draw(in: valueRect, withAttributes: valueAttrs)
+    }
+
+    private func drawColorInfoRow(
+        label: String,
+        value: String,
+        sample: MagnifierLensPanelWindow.Sample,
+        labelAttrs: [NSAttributedString.Key: Any],
+        valueAttrs: [NSAttributedString.Key: Any],
+        at y: CGFloat
+    ) {
+        let valueRect = NSRect(
+            x: bounds.width - infoRightPadding - Self.hexValueSlotWidth,
+            y: y,
+            width: Self.hexValueSlotWidth,
+            height: MagnifierLensPanelLayout.infoRowHeight
+        )
+        let sourceLabelLine = CTLineCreateWithAttributedString(
+            NSAttributedString(string: label, attributes: labelAttrs)
+        )
+        let sourceLabelInkBounds = CTLineGetBoundsWithOptions(
+            sourceLabelLine,
+            [.useGlyphPathBounds]
+        )
+        let swatchSide = min(
+            MagnifierLensPanelLayout.infoRowHeight,
+            max(8, floor(sourceLabelInkBounds.height))
+        )
+        let measuredLabelWidth = ceil(CGFloat(CTLineGetTypographicBounds(
+            sourceLabelLine,
+            nil,
+            nil,
+            nil
+        )))
+        let labelWidth = min(
+            measuredLabelWidth,
+            max(
+                0,
+                valueRect.minX
+                    - infoColumnGap
+                    - swatchSide
+                    - colorSwatchGap
+                    - infoLeftPadding
+            )
+        )
+        let labelRect = NSRect(
+            x: infoLeftPadding,
+            y: y,
+            width: labelWidth,
+            height: MagnifierLensPanelLayout.infoRowHeight
+        )
+        let labelLine = coreTextLine(
+            label,
+            attrs: labelAttrs,
+            fitting: labelRect.width,
+            truncation: .end
+        )
+        let valueLine = coreTextLine(
+            value,
+            attrs: valueAttrs,
+            fitting: valueRect.width,
+            truncation: .start
+        )
+        let swatchRect = NSRect(
+            x: labelRect.maxX + colorSwatchGap,
+            y: labelRect.midY - swatchSide / 2,
+            width: swatchSide,
+            height: swatchSide
+        )
+        drawCoreTextLine(labelLine, inkCenteredIn: labelRect, rightAligned: false)
+        drawCoreTextLine(valueLine, inkCenteredIn: valueRect, rightAligned: true)
+
+        let swatchColor = NSColor(
+            srgbRed: CGFloat(sample.r) / 255.0,
+            green: CGFloat(sample.g) / 255.0,
+            blue: CGFloat(sample.b) / 255.0,
+            alpha: 1
+        )
+        let swatchPath = NSBezierPath(roundedRect: swatchRect, xRadius: 3, yRadius: 3)
+        swatchColor.setFill()
+        swatchPath.fill()
+        NSColor.labelColor.withAlphaComponent(0.35).setStroke()
+        swatchPath.lineWidth = 0.5
+        swatchPath.stroke()
+    }
+
+    private func coreTextLine(
         _ text: String,
         attrs: [NSAttributedString.Key: Any],
-        at y: CGFloat,
-        leftOffset: CGFloat = 0,
-        availableWidth: CGFloat = 0
+        fitting width: CGFloat,
+        truncation: CTLineTruncationType
+    ) -> CTLine {
+        let sourceLine = CTLineCreateWithAttributedString(
+            NSAttributedString(string: text, attributes: attrs)
+        )
+        let sourceWidth = CGFloat(CTLineGetTypographicBounds(sourceLine, nil, nil, nil))
+        guard sourceWidth > width else { return sourceLine }
+
+        let tokenLine = CTLineCreateWithAttributedString(
+            NSAttributedString(string: "…", attributes: attrs)
+        )
+        return CTLineCreateTruncatedLine(
+            sourceLine,
+            Double(max(0, width)),
+            truncation,
+            tokenLine
+        ) ?? sourceLine
+    }
+
+    private func drawCoreTextLine(
+        _ line: CTLine,
+        inkCenteredIn rect: NSRect,
+        rightAligned: Bool
     ) {
-        let x = leftOffset == 0 ? infoLeftPadding : leftOffset
-        let width = leftOffset == 0
-            ? bounds.width - infoLeftPadding - infoRightPadding
-            : availableWidth
-        let rect = NSRect(x: x, y: y, width: width, height: infoRowHeight)
-        (text as NSString).draw(in: rect, withAttributes: attrs)
+        guard let context = NSGraphicsContext.current?.cgContext else { return }
+        var inkBounds = CTLineGetBoundsWithOptions(line, [.useGlyphPathBounds])
+        let typographicWidth = CGFloat(CTLineGetTypographicBounds(line, nil, nil, nil))
+        if inkBounds.isEmpty {
+            var ascent: CGFloat = 0
+            var descent: CGFloat = 0
+            CTLineGetTypographicBounds(line, &ascent, &descent, nil)
+            inkBounds = CGRect(
+                x: 0,
+                y: -descent,
+                width: typographicWidth,
+                height: ascent + descent
+            )
+        }
+        let originX = rightAligned
+            ? rect.maxX - min(typographicWidth, rect.width)
+            : rect.minX
+        let baselineY = rect.midY - inkBounds.midY
+
+        context.saveGState()
+        context.clip(to: rect)
+        context.textMatrix = .identity
+        context.textPosition = CGPoint(x: originX, y: baselineY)
+        CTLineDraw(line, context)
+        context.restoreGState()
+    }
+
+    private func drawHintRow(
+        label: String,
+        value: String?,
+        attrs: [NSAttributedString.Key: Any],
+        at y: CGFloat
+    ) {
+        let rowRect = NSRect(
+            x: infoLeftPadding,
+            y: y,
+            width: bounds.width - infoLeftPadding - infoRightPadding,
+            height: MagnifierLensPanelLayout.infoRowHeight
+        )
+        var labelRect = rowRect
+
+        if let value {
+            let sourceValueLine = CTLineCreateWithAttributedString(
+                NSAttributedString(string: value, attributes: attrs)
+            )
+            let valueWidth = min(
+                rowRect.width,
+                ceil(CGFloat(CTLineGetTypographicBounds(
+                    sourceValueLine,
+                    nil,
+                    nil,
+                    nil
+                )))
+            )
+            let valueRect = NSRect(
+                x: rowRect.maxX - valueWidth,
+                y: y,
+                width: valueWidth,
+                height: MagnifierLensPanelLayout.infoRowHeight
+            )
+            labelRect.size.width = max(
+                0,
+                valueRect.minX - infoColumnGap - labelRect.minX
+            )
+            let valueLine = coreTextLine(
+                value,
+                attrs: attrs,
+                fitting: valueRect.width,
+                truncation: .end
+            )
+            drawCoreTextLine(valueLine, inkCenteredIn: valueRect, rightAligned: true)
+        }
+
+        let labelLine = coreTextLine(
+            label,
+            attrs: attrs,
+            fitting: labelRect.width,
+            truncation: .end
+        )
+        drawCoreTextLine(labelLine, inkCenteredIn: labelRect, rightAligned: false)
     }
 
     private func hexString(_ sample: MagnifierLensPanelWindow.Sample) -> String {
         String(format: "#%02X%02X%02X", sample.r, sample.g, sample.b)
     }
 
-    private func aspectHintText() -> String {
-        let label: String
+    private func aspectHintValue() -> String {
         if Defaults.hasSelectionAspectRatio {
-            label = aspectRatioLabel(for: CGFloat(Defaults.selectionAspectRatio))
-        } else {
-            label = L10n.magnifierLensPanelAspectFree
+            return aspectRatioLabel(for: CGFloat(Defaults.selectionAspectRatio))
         }
-        return L10n.magnifierLensPanelAspectHint(label)
+        return L10n.magnifierLensPanelAspectFree
     }
 
     private func aspectRatioLabel(for aspectRatio: CGFloat) -> String {

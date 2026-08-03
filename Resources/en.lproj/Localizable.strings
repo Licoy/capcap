@@ -629,14 +629,16 @@
 "chooseScreenshotSavePathTitle" = "Choose Screenshot Save Path";
 
 /* Magnifier lens panel */
+"magnifierLensPanelCoordinatesLabel" = "Coordinates";
+"magnifierLensPanelColorValueLabel" = "Color";
 "magnifierLensPanelCoordinates" = "Coordinates: %@, %@";
 "magnifierLensPanelHex" = "HEX: %@";
 "magnifierLensPanelRgb" = "RGB: %@";
 "magnifierLensPanelRgbString" = "rgb(%d, %d, %d)";
-"magnifierLensPanelCopyHint" = "Press ⌘+C to copy color";
-"magnifierLensPanelShiftHint" = "Press Shift to switch RGB";
+"magnifierLensPanelCopyHint" = "Copy color(C)";
+"magnifierLensPanelShiftHint" = "Color format(Shift)";
 "magnifierLensPanelAspectFree" = "Free";
-"magnifierLensPanelAspectHint" = "Press R to switch ratio: %@";
+"magnifierLensPanelAspectHint" = "Capture ratio(R)";
 /* File upload */
 "fileUploadShortcutHeader" = "Upload Files";
 "finderUploadShortcutDefaultDisplay" = "Not set";

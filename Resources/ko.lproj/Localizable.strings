@@ -629,14 +629,16 @@
 "chooseScreenshotSavePathTitle" = "스크린샷 저장 경로 선택";
 
 /* Magnifier lens panel */
+"magnifierLensPanelCoordinatesLabel" = "좌표";
+"magnifierLensPanelColorValueLabel" = "색상";
 "magnifierLensPanelCoordinates" = "좌표: %@, %@";
 "magnifierLensPanelHex" = "HEX: %@";
 "magnifierLensPanelRgb" = "RGB: %@";
 "magnifierLensPanelRgbString" = "rgb(%d, %d, %d)";
-"magnifierLensPanelCopyHint" = "⌘+C 로 색상 복사";
-"magnifierLensPanelShiftHint" = "Shift 로 RGB 전환";
+"magnifierLensPanelCopyHint" = "색상 복사(C)";
+"magnifierLensPanelShiftHint" = "색상 형식(Shift)";
 "magnifierLensPanelAspectFree" = "자유";
-"magnifierLensPanelAspectHint" = "R로 비율 전환: %@";
+"magnifierLensPanelAspectHint" = "캡처 비율(R)";
 /* 파일 업로드 */
 "fileUploadShortcutHeader" = "파일 업로드";
 "finderUploadShortcutDefaultDisplay" = "설정 안 함";

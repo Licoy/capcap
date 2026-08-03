@@ -629,14 +629,16 @@
 "chooseScreenshotSavePathTitle" = "Chọn đường dẫn lưu ảnh chụp";
 
 /* Magnifier lens panel */
+"magnifierLensPanelCoordinatesLabel" = "Tọa độ";
+"magnifierLensPanelColorValueLabel" = "Màu";
 "magnifierLensPanelCoordinates" = "Tọa độ: %@, %@";
 "magnifierLensPanelHex" = "HEX: %@";
 "magnifierLensPanelRgb" = "RGB: %@";
 "magnifierLensPanelRgbString" = "rgb(%d, %d, %d)";
-"magnifierLensPanelCopyHint" = "Nhấn ⌘+C để sao chép màu";
-"magnifierLensPanelShiftHint" = "Nhấn Shift để chuyển RGB";
+"magnifierLensPanelCopyHint" = "Sao chép màu(C)";
+"magnifierLensPanelShiftHint" = "Định dạng(Shift)";
 "magnifierLensPanelAspectFree" = "Tự do";
-"magnifierLensPanelAspectHint" = "Nhấn R để đổi tỷ lệ: %@";
+"magnifierLensPanelAspectHint" = "Tỷ lệ ảnh(R)";
 /* Tải tệp lên */
 "fileUploadShortcutHeader" = "Tải tệp lên";
 "finderUploadShortcutDefaultDisplay" = "Chưa đặt";

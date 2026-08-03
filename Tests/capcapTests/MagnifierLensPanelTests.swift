@@ -227,10 +227,10 @@ final class MagnifierLensPanelTests: XCTestCase {
         XCTAssertTrue(rgb.contains("23"))
     }
 
-    func testAspectHintStringIncludesRatioShortcutAndLabel() {
-        let hint = L10n.magnifierLensPanelAspectHint("16:9")
-        XCTAssertTrue(hint.contains("R"))
-        XCTAssertTrue(hint.contains("16:9"))
+    func testHintLabelsIncludeTheirShortcuts() {
+        XCTAssertTrue(L10n.magnifierLensPanelAspectHint.contains("R"))
+        XCTAssertTrue(L10n.magnifierLensPanelShiftHint.contains("Shift"))
+        XCTAssertTrue(L10n.magnifierLensPanelCopyHint.contains("C"))
         XCTAssertFalse(L10n.magnifierLensPanelAspectFree.isEmpty)
     }
 
