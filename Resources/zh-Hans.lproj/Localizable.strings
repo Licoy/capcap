@@ -629,11 +629,13 @@
 "chooseScreenshotSavePathTitle" = "选择截图保存路径";
 
 /* Magnifier lens panel */
+"magnifierLensPanelCoordinatesLabel" = "坐标";
+"magnifierLensPanelColorValueLabel" = "色值";
 "magnifierLensPanelCoordinates" = "坐标: %@, %@";
 "magnifierLensPanelHex" = "HEX: %@";
 "magnifierLensPanelRgb" = "RGB: %@";
 "magnifierLensPanelRgbString" = "rgb(%d, %d, %d)";
-"magnifierLensPanelCopyHint" = "按 ⌘+C 复制颜色";
+"magnifierLensPanelCopyHint" = "按 C 复制颜色";
 "magnifierLensPanelShiftHint" = "按 Shift 切换 RGB";
 "magnifierLensPanelAspectFree" = "自由";
 "magnifierLensPanelAspectHint" = "按 R 切换比例: %@";

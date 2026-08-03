@@ -195,6 +195,8 @@ enum L10n {
     static var colorPickerShortcutDefaultDisplay: String { s("colorPickerShortcutDefaultDisplay") }
 
     // Magnifier lens panel (overlay magnifier lens panel)
+    static var magnifierLensPanelCoordinatesLabel: String { s("magnifierLensPanelCoordinatesLabel") }
+    static var magnifierLensPanelColorValueLabel: String { s("magnifierLensPanelColorValueLabel") }
     static var magnifierLensPanelCoordinates: String { s("magnifierLensPanelCoordinates") }
     static var magnifierLensPanelHex: String { s("magnifierLensPanelHex") }
     static var magnifierLensPanelRgb: String { s("magnifierLensPanelRgb") }

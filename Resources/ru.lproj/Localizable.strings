@@ -629,11 +629,13 @@
 "chooseScreenshotSavePathTitle" = "Выберите путь для снимков";
 
 /* Magnifier lens panel */
+"magnifierLensPanelCoordinatesLabel" = "Координаты";
+"magnifierLensPanelColorValueLabel" = "Цвет";
 "magnifierLensPanelCoordinates" = "Координаты: %@, %@";
 "magnifierLensPanelHex" = "HEX: %@";
 "magnifierLensPanelRgb" = "RGB: %@";
 "magnifierLensPanelRgbString" = "rgb(%d, %d, %d)";
-"magnifierLensPanelCopyHint" = "Нажмите ⌘+C, чтобы скопировать цвет";
+"magnifierLensPanelCopyHint" = "Нажмите C, чтобы скопировать цвет";
 "magnifierLensPanelShiftHint" = "Нажмите Shift для переключения на RGB";
 "magnifierLensPanelAspectFree" = "Свободно";
 "magnifierLensPanelAspectHint" = "Нажмите R для смены пропорций: %@";

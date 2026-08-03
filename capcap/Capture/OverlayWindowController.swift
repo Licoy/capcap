@@ -610,8 +610,8 @@ class OverlayWindowController {
             if self?.editController?.isTextEditing == true {
                 return event
             }
-            if self?.handleMagnifierLensPanelCopyShortcut(for: event) == true {
-                return event
+            if self?.handleMagnifierLensPanelCopyShortcut(for: event, allowsPlainC: true) == true {
+                return nil
             }
             if self?.editController?.confirmCropFromKeyboard(for: event) == true {
                 return nil
@@ -675,13 +675,13 @@ class OverlayWindowController {
         }
         // The overlay is a non-activating panel, so keyboard events routed
         // to the foreground app never reach our local monitor. Mirror the
-        // Shift and ⌘+C handling with global monitors so they still fire
+        // Shift and legacy ⌘+C handling with global monitors so they still fire
         // when the user has Gemini (or any other app) focused underneath.
         magnifierLensPanelFlagsChangedGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
             self?.handleMagnifierLensPanelShiftFlagsChanged(event)
         }
         magnifierLensPanelKeyDownGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            self?.handleMagnifierLensPanelCopyShortcut(for: event)
+            self?.handleMagnifierLensPanelCopyShortcut(for: event, allowsPlainC: false)
         }
         mouseMovedLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { [weak self] event in
             self?.refreshMagnifierLensPanelContent()
@@ -1260,12 +1260,21 @@ class OverlayWindowController {
         magnifierLensPanel?.setFormat(magnifierLensPanelFormat)
     }
 
-    /// Returns `true` when the event represents ⌘+C and the lens should claim it.
-    private func handleMagnifierLensPanelCopyShortcut(for event: NSEvent) -> Bool {
+    /// Returns `true` when the event represents C (locally) or legacy ⌘+C.
+    /// Plain C is never claimed from the global monitor because that would also
+    /// type into whichever source app remains active beneath the overlay.
+    private func handleMagnifierLensPanelCopyShortcut(
+        for event: NSEvent,
+        allowsPlainC: Bool
+    ) -> Bool {
         guard magnifierLensPanelActive else { return false }
         guard event.keyCode == 8 else { return false } // kVK_ANSI_C
         let mods = event.modifierFlags.intersection([.command, .option, .control])
-        guard mods == .command else { return false }
+        let isLegacyCommandC = mods == .command
+        let isPlainC = allowsPlainC
+            && mods.isEmpty
+            && !event.modifierFlags.contains(.shift)
+        guard isPlainC || isLegacyCommandC else { return false }
         guard let lens = magnifierLensPanel, let sample = lens.currentSample else { return false }
         copyMagnifierLensPanelColor(sample)
         return true
