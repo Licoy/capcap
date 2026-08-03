@@ -15,9 +15,9 @@ enum DeepLTranslationProvider: DirectTranslationProvider {
         config: TranslationConfig
     ) async throws -> String {
         let result = try await requestTranslation(text: text, target: target, config: config)
-        if target != .english,
-           sourceMatchesTarget(result.detectedSourceLanguage, target: target) {
-            let fallback = try await requestTranslation(text: text, target: .english, config: config)
+        if sourceMatchesTarget(result.detectedSourceLanguage, target: target) {
+            let fallbackTarget: TranslationLanguage = target == .english ? .chinese : .english
+            let fallback = try await requestTranslation(text: text, target: fallbackTarget, config: config)
             return fallback.text
         }
         return result.text

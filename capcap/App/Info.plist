@@ -64,7 +64,7 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.6.12</string>
+	<string>1.6.22</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -77,17 +77,19 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>494</string>
+	<string>533</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>capcap reads the current Finder selection when you use image edit or pin shortcuts.</string>
+	<string>capcap reads the current Finder selection when you use edit, pin, or upload shortcuts</string>
 	<key>NSMainNibFile</key>
 	<string></string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>capcap needs microphone access to record audio with screen recordings</string>
 	<key>NSScreenCaptureUsageDescription</key>
 	<string>capcap needs screen recording access to capture screenshots and recordings.</string>
 </dict>

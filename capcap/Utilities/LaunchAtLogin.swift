@@ -18,7 +18,6 @@ enum LaunchAtLogin {
             }
             return true
         } catch {
-            NSLog("[capcap] LaunchAtLogin toggle failed: \(error.localizedDescription)")
             return false
         }
     }

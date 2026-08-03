@@ -16,7 +16,6 @@ enum QRCodeDetector {
         do {
             try handler.perform([request])
         } catch {
-            NSLog("capcap: QR detection failed: \(error)")
             return []
         }
 

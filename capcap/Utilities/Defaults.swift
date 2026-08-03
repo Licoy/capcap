@@ -187,10 +187,26 @@ enum L10n {
     static var recordShortcutDefaultDisplay: String { s("recordShortcutDefaultDisplay") }
     static var imageMergeShortcutHeader: String { s("imageMergeShortcutHeader") }
     static var imageMergeShortcutDefaultDisplay: String { s("imageMergeShortcutDefaultDisplay") }
+    static var fileUploadShortcutHeader: String { s("fileUploadShortcutHeader") }
+    static var finderUploadShortcutDefaultDisplay: String { s("finderUploadShortcutDefaultDisplay") }
     static var fullScreenScreenshotShortcutHeader: String { s("fullScreenScreenshotShortcutHeader") }
     static var fullScreenScreenshotShortcutDefaultDisplay: String { s("fullScreenScreenshotShortcutDefaultDisplay") }
     static var colorPickerShortcutHeader: String { s("colorPickerShortcutHeader") }
     static var colorPickerShortcutDefaultDisplay: String { s("colorPickerShortcutDefaultDisplay") }
+
+    // Magnifier lens panel (overlay magnifier lens panel)
+    static var magnifierLensPanelCoordinatesLabel: String { s("magnifierLensPanelCoordinatesLabel") }
+    static var magnifierLensPanelColorValueLabel: String { s("magnifierLensPanelColorValueLabel") }
+    static var magnifierLensPanelCoordinates: String { s("magnifierLensPanelCoordinates") }
+    static var magnifierLensPanelHex: String { s("magnifierLensPanelHex") }
+    static var magnifierLensPanelRgb: String { s("magnifierLensPanelRgb") }
+    static var magnifierLensPanelCopyHint: String { s("magnifierLensPanelCopyHint") }
+    static var magnifierLensPanelShiftHint: String { s("magnifierLensPanelShiftHint") }
+    static var magnifierLensPanelAspectFree: String { s("magnifierLensPanelAspectFree") }
+    static var magnifierLensPanelAspectHint: String { s("magnifierLensPanelAspectHint") }
+    static func magnifierLensPanelRgbString(r: Int, g: Int, b: Int) -> String {
+        String(format: s("magnifierLensPanelRgbString"), r, g, b)
+    }
 
     // Copy-to-clipboard shortcut (editor confirm)
     static var clipboardShortcutHeader: String { s("clipboardShortcutHeader") }
@@ -226,6 +242,7 @@ enum L10n {
     static var shortcutConflictScreenshotTranslation: String { s("shortcutConflictScreenshotTranslation") }
     static var shortcutConflictRecord: String { s("shortcutConflictRecord") }
     static var shortcutConflictImageMerge: String { s("shortcutConflictImageMerge") }
+    static var shortcutConflictFileUpload: String { s("shortcutConflictFileUpload") }
     static var shortcutConflictFullScreenScreenshot: String { s("shortcutConflictFullScreenScreenshot") }
     static var shortcutConflictColorPicker: String { s("shortcutConflictColorPicker") }
 
@@ -234,6 +251,7 @@ enum L10n {
     static var takeFullScreenScreenshot: String { s("takeFullScreenScreenshot") }
     static var record: String { s("record") }
     static var mergeImages: String { s("mergeImages") }
+    static var uploadFilesMenu: String { s("uploadFilesMenu") }
     static var colorPicker: String { s("colorPicker") }
     static var settings: String { s("settings") }
     static var quitApp: String { s("quitApp") }
@@ -258,6 +276,11 @@ enum L10n {
     static var historyPanelFilterMP4: String { s("historyPanelFilterMP4") }
     static var historyPanelFilterColors: String { s("historyPanelFilterColors") }
     static var historyPanelFilterText: String { s("historyPanelFilterText") }
+    static var historyPanelSearchColorsAndText: String { s("historyPanelSearchColorsAndText") }
+    static var historyPanelSearchColors: String { s("historyPanelSearchColors") }
+    static var historyPanelSearchText: String { s("historyPanelSearchText") }
+    static var historyPanelClearSearch: String { s("historyPanelClearSearch") }
+    static var historyPanelSearchNoResults: String { s("historyPanelSearchNoResults") }
     static var historyPreviewCopyText: String { s("historyPreviewCopyText") }
     static var historyPreviewTranslateText: String { s("historyPreviewTranslateText") }
     static var historyPreviewConvertToQRCode: String { s("historyPreviewConvertToQRCode") }
@@ -269,6 +292,29 @@ enum L10n {
     static var historyPanelCopyMarkdownLink: String { s("historyPanelCopyMarkdownLink") }
     static var historyPanelCopyPlainLink: String { s("historyPanelCopyPlainLink") }
     static var historyPanelEmpty: String { s("historyPanelEmpty") }
+    static var historyPanelShortcutGuide: String { s("historyPanelShortcutGuide") }
+    static var historyPanelShortcutGuideHide: String { s("historyPanelShortcutGuideHide") }
+    static var historyPanelShortcutKeyClick: String { s("historyPanelShortcutKeyClick") }
+    static var historyPanelShortcutKeyDrag: String { s("historyPanelShortcutKeyDrag") }
+    static var historyPanelShortcutKeySpace: String { s("historyPanelShortcutKeySpace") }
+    static var historyPanelShortcutSearch: String { s("historyPanelShortcutSearch") }
+    static var historyPanelShortcutSwitchFilter: String { s("historyPanelShortcutSwitchFilter") }
+    static var historyPanelShortcutToggleSelection: String { s("historyPanelShortcutToggleSelection") }
+    static var historyPanelShortcutRangeSelection: String { s("historyPanelShortcutRangeSelection") }
+    static var historyPanelShortcutSelectAll: String { s("historyPanelShortcutSelectAll") }
+    static var historyPanelShortcutCancel: String { s("historyPanelShortcutCancel") }
+    static var historyPanelShortcutCopyItem: String { s("historyPanelShortcutCopyItem") }
+    static var historyPanelShortcutDragItem: String { s("historyPanelShortcutDragItem") }
+    static var historyPanelShortcutOpenPreview: String { s("historyPanelShortcutOpenPreview") }
+    static var historyPanelShortcutBrowsePreview: String { s("historyPanelShortcutBrowsePreview") }
+    static var historyPanelShortcutClosePreview: String { s("historyPanelShortcutClosePreview") }
+    static var historyPanelShortcutCopyPreview: String { s("historyPanelShortcutCopyPreview") }
+    static var historyPanelShortcutEditImage: String { s("historyPanelShortcutEditImage") }
+    static var historyPanelShortcutPinImage: String { s("historyPanelShortcutPinImage") }
+    static var historyPanelShortcutUploadImage: String { s("historyPanelShortcutUploadImage") }
+    static var historyPanelShortcutTranslateText: String { s("historyPanelShortcutTranslateText") }
+    static var historyPanelShortcutQRCode: String { s("historyPanelShortcutQRCode") }
+    static var historyPanelShortcutToggleGuide: String { s("historyPanelShortcutToggleGuide") }
 
     // Cursor chip
     static var dragToScreenshot: String { s("dragToScreenshot") }
@@ -321,6 +367,28 @@ enum L10n {
     static var recordingFormatGIF: String { s("recordingFormatGIF") }
     static var recordingFormatChoiceTitle: String { s("recordingFormatChoiceTitle") }
     static var recordingFormatChoiceMessage: String { s("recordingFormatChoiceMessage") }
+
+    // Recording audio
+    static var recordingSystemAudioLabel: String { s("recordingSystemAudioLabel") }
+    static var recordingSystemAudioHint: String { s("recordingSystemAudioHint") }
+    static var recordingMicrophoneLabel: String { s("recordingMicrophoneLabel") }
+    static var recordingMicrophoneHint: String { s("recordingMicrophoneHint") }
+    static var recordingMicrophoneDeniedTitle: String { s("recordingMicrophoneDeniedTitle") }
+    static var recordingMicrophoneDeniedMessage: String { s("recordingMicrophoneDeniedMessage") }
+    static var recordingMicrophoneOpenSettings: String { s("recordingMicrophoneOpenSettings") }
+    static var recordingMicrophoneTooltipOn: String { s("recordingMicrophoneTooltipOn") }
+    static var recordingMicrophoneTooltipOff: String { s("recordingMicrophoneTooltipOff") }
+    static var recordingSystemAudioTooltipOn: String { s("recordingSystemAudioTooltipOn") }
+    static var recordingSystemAudioTooltipOff: String { s("recordingSystemAudioTooltipOff") }
+    static var recordingMicrophoneDeviceLabel: String { s("recordingMicrophoneDeviceLabel") }
+    static var recordingMicrophoneDeviceDefault: String { s("recordingMicrophoneDeviceDefault") }
+    static var recordingMicrophoneDeviceMenuHint: String { s("recordingMicrophoneDeviceMenuHint") }
+    static var recordingSystemAudioChangeFailed: String { s("recordingSystemAudioChangeFailed") }
+    static var recordingMicrophoneStartFailed: String { s("recordingMicrophoneStartFailed") }
+
+    // Microphone permission row
+    static var microphonePermission: String { s("microphonePermission") }
+    static var microphoneDescription: String { s("microphoneDescription") }
     static func screenshotSaved(to path: String) -> String {
         String(format: s("screenshotSaved"), path)
     }
@@ -346,6 +414,7 @@ enum L10n {
     static var tipLine: String { s("tipLine") }
     static var tipPen: String { s("tipPen") }
     static var tipMarker: String { s("tipMarker") }
+    static var tipSpotlight: String { s("tipSpotlight") }
     static var tipMosaic: String { s("tipMosaic") }
     static var mosaicGranularity: String { s("mosaicGranularity") }
     static var tipEraser: String { s("tipEraser") }
@@ -355,6 +424,7 @@ enum L10n {
     static var tipQRCode: String { s("tipQRCode") }
     static var tipEmoji: String { s("tipEmoji") }
     static var tipMoreEmoji: String { s("tipMoreEmoji") }
+    static var tipMoreBeautifyPresets: String { s("tipMoreBeautifyPresets") }
     static var tipInsertImage: String { s("tipInsertImage") }
     static var tipColorPicker: String { s("tipColorPicker") }
     static var tipPickedInkBottle: String { s("tipPickedInkBottle") }
@@ -385,6 +455,20 @@ enum L10n {
     static var beautifyPresetDeepPurple: String { s("beautifyPresetDeepPurple") }
     static var beautifyPresetNeutralGray: String { s("beautifyPresetNeutralGray") }
     static var beautifyPresetWallpaper: String { s("beautifyPresetWallpaper") }
+    static var beautifyPresetAurora: String { s("beautifyPresetAurora") }
+    static var beautifyPresetSunsetGlow: String { s("beautifyPresetSunsetGlow") }
+    static var beautifyPresetOceanBlue: String { s("beautifyPresetOceanBlue") }
+    static var beautifyPresetLavenderMist: String { s("beautifyPresetLavenderMist") }
+    static var beautifyPresetForestMint: String { s("beautifyPresetForestMint") }
+    static var beautifyPresetRoseGold: String { s("beautifyPresetRoseGold") }
+    static var beautifyPresetMorningSky: String { s("beautifyPresetMorningSky") }
+    static var beautifyPresetCandyPop: String { s("beautifyPresetCandyPop") }
+    static var beautifyPresetCitrusGlow: String { s("beautifyPresetCitrusGlow") }
+    static var beautifyPresetMidnight: String { s("beautifyPresetMidnight") }
+    static var beautifyPresetCoralBloom: String { s("beautifyPresetCoralBloom") }
+    static var beautifyPresetArcticIce: String { s("beautifyPresetArcticIce") }
+    static var beautifyPresetSageCream: String { s("beautifyPresetSageCream") }
+    static var beautifyPresetGraphite: String { s("beautifyPresetGraphite") }
     static var beautifyShadowEffect: String { s("beautifyShadowEffect") }
     static var beautifyAutoToggleLabel: String { s("beautifyAutoToggleLabel") }
     static var beautifyAutoToggleHint: String { s("beautifyAutoToggleHint") }
@@ -573,6 +657,32 @@ enum L10n {
     static var uploadFieldAccountId: String { s("uploadFieldAccountId") }
     static var uploadTestImageFailed: String { s("uploadTestImageFailed") }
 
+    // Upload — file dialog
+    static var finderUploadDialogTitle: String { s("finderUploadDialogTitle") }
+    static var finderUploadDialogHeading: String { s("finderUploadDialogHeading") }
+    static func finderUploadSummary(_ count: Int, _ provider: String) -> String {
+        String(format: s("finderUploadSummary"), count, provider)
+    }
+    static var finderUploadSelectAll: String { s("finderUploadSelectAll") }
+    static func finderUploadAction(_ count: Int) -> String {
+        String(format: s("finderUploadAction"), count)
+    }
+    static func finderUploadRetryAction(_ count: Int) -> String {
+        String(format: s("finderUploadRetryAction"), count)
+    }
+    static func finderUploadingProgress(_ current: Int, _ total: Int) -> String {
+        String(format: s("finderUploadingProgress"), current, total)
+    }
+    static var finderUploadSucceeded: String { s("finderUploadSucceeded") }
+    static var finderUploadFailed: String { s("finderUploadFailed") }
+    static var finderUploadErrorLogTitle: String { s("finderUploadErrorLogTitle") }
+    static var finderUploadUnknownSize: String { s("finderUploadUnknownSize") }
+    static func finderUploadReadFailed(_ message: String) -> String {
+        String(format: s("finderUploadReadFailed"), message)
+    }
+    static func finderUploadCompleted(_ count: Int) -> String {
+        String(format: s("finderUploadCompleted"), count)
+    }
     // Upload — provider names
     static var providerTencentCOS: String { s("providerTencentCOS") }
     static var providerQiniuKodo: String { s("providerQiniuKodo") }
@@ -856,6 +966,7 @@ struct Defaults {
         clearScreenshotTranslationHotkey()
         clearRecordHotkey()
         clearImageMergeHotkey()
+        clearFinderUploadHotkey()
         clearFullScreenScreenshotHotkey()
         clearColorPickerHotkey()
         clearClipboardHotkey()
@@ -1007,6 +1118,27 @@ struct Defaults {
         defaults.removeObject(forKey: "imageMergeHotkeyModifiers")
     }
 
+    // Custom file upload shortcut. This is a global Carbon hotkey with
+    // no default so users can choose a combination that fits their workflow.
+    static var finderUploadHotkeyKeyCode: Int {
+        get { defaults.integer(forKey: "finderUploadHotkeyKeyCode") }
+        set { defaults.set(newValue, forKey: "finderUploadHotkeyKeyCode") }
+    }
+
+    static var finderUploadHotkeyModifiers: Int {
+        get { defaults.integer(forKey: "finderUploadHotkeyModifiers") }
+        set { defaults.set(newValue, forKey: "finderUploadHotkeyModifiers") }
+    }
+
+    static var hasCustomFinderUploadHotkey: Bool {
+        defaults.object(forKey: "finderUploadHotkeyKeyCode") != nil
+    }
+
+    static func clearFinderUploadHotkey() {
+        defaults.removeObject(forKey: "finderUploadHotkeyKeyCode")
+        defaults.removeObject(forKey: "finderUploadHotkeyModifiers")
+    }
+
     static var fullScreenScreenshotHotkeyKeyCode: Int {
         get { defaults.integer(forKey: "fullScreenScreenshotHotkeyKeyCode") }
         set { defaults.set(newValue, forKey: "fullScreenScreenshotHotkeyKeyCode") }
@@ -1130,6 +1262,48 @@ struct Defaults {
         }
         set {
             defaults.set(newValue.rawValue, forKey: "recordingSavePreference")
+        }
+    }
+
+    /// Whether the next recording should capture system audio (what the Mac is
+    /// playing). Requires screen-recording permission (already needed for video)
+    /// — no separate permission prompt for the user.
+    static var recordingSystemAudioEnabled: Bool {
+        get {
+            if defaults.object(forKey: "recordingSystemAudioEnabled") == nil {
+                return false
+            }
+            return defaults.bool(forKey: "recordingSystemAudioEnabled")
+        }
+        set {
+            defaults.set(newValue, forKey: "recordingSystemAudioEnabled")
+        }
+    }
+
+    /// Whether the next recording should capture microphone audio. Requires
+    /// microphone permission; permission is requested lazily when the user
+    /// first enables this toggle.
+    static var recordingMicrophoneEnabled: Bool {
+        get {
+            if defaults.object(forKey: "recordingMicrophoneEnabled") == nil {
+                return false
+            }
+            return defaults.bool(forKey: "recordingMicrophoneEnabled")
+        }
+        set {
+            defaults.set(newValue, forKey: "recordingMicrophoneEnabled")
+        }
+    }
+
+    /// UID of the CoreAudio input device used for microphone recording.
+    /// nil means the system default input device. If the persisted device is
+    /// unplugged at recording time, the system default is used instead.
+    static var recordingMicrophoneDeviceUID: String? {
+        get {
+            defaults.string(forKey: "recordingMicrophoneDeviceUID")
+        }
+        set {
+            defaults.set(newValue, forKey: "recordingMicrophoneDeviceUID")
         }
     }
 
@@ -1650,9 +1824,39 @@ struct Defaults {
         min(max(width, editorLineWidthMin), markerLineWidthMax)
     }
 
+    private static func clampedUnitInterval(_ value: Double) -> Double {
+        min(1, max(0, value))
+    }
+
+    private static func normalizedMagnifierLensPanelMagnifiedSize(_ value: Int) -> Int {
+        switch value {
+        case 96, 144, 192:
+            return value
+        default:
+            return 144
+        }
+    }
+
     static var lastBeautifyPresetID: String? {
         get { defaults.string(forKey: "lastBeautifyPresetID") }
         set { defaults.set(newValue, forKey: "lastBeautifyPresetID") }
+    }
+
+    static var beautifyToolbarPresetIDs: [String] {
+        get {
+            normalizedUniqueStringList(
+                defaults.stringArray(forKey: "beautifyToolbarPresetIDs") ?? [],
+                limit: 8
+            )
+        }
+        set {
+            let normalized = normalizedUniqueStringList(newValue, limit: 8)
+            if normalized.isEmpty {
+                defaults.removeObject(forKey: "beautifyToolbarPresetIDs")
+            } else {
+                defaults.set(normalized, forKey: "beautifyToolbarPresetIDs")
+            }
+        }
     }
 
     static var lastBeautifyPadding: Double {
@@ -1678,6 +1882,17 @@ struct Defaults {
         set {
             defaults.set(newValue, forKey: "lastBeautifyShadowEnabled")
         }
+    }
+
+    private static func normalizedUniqueStringList(_ values: [String], limit: Int) -> [String] {
+        var result: [String] = []
+        for value in values {
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty, !result.contains(trimmed) else { continue }
+            result.append(trimmed)
+            if result.count == limit { break }
+        }
+        return result
     }
 
     /// When true, the annotation editor opens with beautify already active,
@@ -1718,6 +1933,187 @@ struct Defaults {
                 NotificationCenter.default.post(name: .historyCacheEnabledDidChange, object: nil)
             }
         }
+    }
+
+    /// Background color used in dark mode (when `magnifierLensPanelFollowSystemAppearance` is on).
+    /// Stored as 0–1 RGBA components. Default: black with 70% alpha.
+    static var magnifierLensPanelDarkBackgroundRed: Double {
+        get { defaults.object(forKey: "magnifierLensPanelDarkBackgroundRed") == nil ? 0 : defaults.double(forKey: "magnifierLensPanelDarkBackgroundRed") }
+        set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelDarkBackgroundRed") }
+    }
+    static var magnifierLensPanelDarkBackgroundGreen: Double {
+        get { defaults.object(forKey: "magnifierLensPanelDarkBackgroundGreen") == nil ? 0 : defaults.double(forKey: "magnifierLensPanelDarkBackgroundGreen") }
+        set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelDarkBackgroundGreen") }
+    }
+    static var magnifierLensPanelDarkBackgroundBlue: Double {
+        get { defaults.object(forKey: "magnifierLensPanelDarkBackgroundBlue") == nil ? 0 : defaults.double(forKey: "magnifierLensPanelDarkBackgroundBlue") }
+        set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelDarkBackgroundBlue") }
+    }
+    static var magnifierLensPanelDarkBackgroundAlpha: Double {
+        get { defaults.object(forKey: "magnifierLensPanelDarkBackgroundAlpha") == nil ? 0.80 : defaults.double(forKey: "magnifierLensPanelDarkBackgroundAlpha") }
+        set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelDarkBackgroundAlpha") }
+    }
+
+    /// Background color used in light mode (when `magnifierLensPanelFollowSystemAppearance` is on).
+    /// Stored as 0–1 RGBA components. Default: white with about 70% alpha.
+    static var magnifierLensPanelLightBackgroundRed: Double {
+        get { defaults.object(forKey: "magnifierLensPanelLightBackgroundRed") == nil ? 1 : defaults.double(forKey: "magnifierLensPanelLightBackgroundRed") }
+        set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelLightBackgroundRed") }
+    }
+    static var magnifierLensPanelLightBackgroundGreen: Double {
+        get { defaults.object(forKey: "magnifierLensPanelLightBackgroundGreen") == nil ? 1 : defaults.double(forKey: "magnifierLensPanelLightBackgroundGreen") }
+        set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelLightBackgroundGreen") }
+    }
+    static var magnifierLensPanelLightBackgroundBlue: Double {
+        get { defaults.object(forKey: "magnifierLensPanelLightBackgroundBlue") == nil ? 1 : defaults.double(forKey: "magnifierLensPanelLightBackgroundBlue") }
+        set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelLightBackgroundBlue") }
+    }
+    static var magnifierLensPanelLightBackgroundAlpha: Double {
+        get { defaults.object(forKey: "magnifierLensPanelLightBackgroundAlpha") == nil ? 0.80 : defaults.double(forKey: "magnifierLensPanelLightBackgroundAlpha") }
+        set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelLightBackgroundAlpha") }
+    }
+
+    /// When `true`, the lens picks the dark/light background color based on the
+    /// current macOS appearance. When `false`, the dark color is always used.
+    static var magnifierLensPanelFollowSystemAppearance: Bool {
+        get {
+            if defaults.object(forKey: "magnifierLensPanelFollowSystemAppearance") == nil {
+                return true
+            }
+            return defaults.bool(forKey: "magnifierLensPanelFollowSystemAppearance")
+        }
+        set {
+            defaults.set(newValue, forKey: "magnifierLensPanelFollowSystemAppearance")
+        }
+    }
+
+    /// Side length (in points) of the magnified area. One of 96, 144, 192.
+    static var magnifierLensPanelMagnifiedSize: Int {
+        get {
+            if defaults.object(forKey: "magnifierLensPanelMagnifiedSize") == nil {
+                return 144
+            }
+            return normalizedMagnifierLensPanelMagnifiedSize(defaults.integer(forKey: "magnifierLensPanelMagnifiedSize"))
+        }
+        set {
+            defaults.set(normalizedMagnifierLensPanelMagnifiedSize(newValue), forKey: "magnifierLensPanelMagnifiedSize")
+        }
+    }
+
+    /// Magnification factor for the lens. Controls how many source pixels are
+    /// sampled: source region = magnified display size / magnification.
+    /// Higher values = tighter zoom (smaller source region). Default 4×.
+    static var magnifierLensPanelMagnification: Double {
+        get {
+            if defaults.object(forKey: "magnifierLensPanelMagnification") == nil {
+                return 4.0
+            }
+            return defaults.double(forKey: "magnifierLensPanelMagnification")
+        }
+        set {
+            defaults.set(newValue, forKey: "magnifierLensPanelMagnification")
+        }
+    }
+
+    /// Horizontal offset (in points) between the cursor and the panel's left edge.
+    static var magnifierLensPanelOffsetX: Double {
+        get {
+            if defaults.object(forKey: "magnifierLensPanelOffsetX") == nil {
+                return 15
+            }
+            return defaults.double(forKey: "magnifierLensPanelOffsetX")
+        }
+        set {
+            defaults.set(newValue, forKey: "magnifierLensPanelOffsetX")
+        }
+    }
+
+    /// Vertical offset (in points) between the cursor and the panel's top edge
+    /// when the panel sits below the cursor.
+    static var magnifierLensPanelOffsetY: Double {
+        get {
+            if defaults.object(forKey: "magnifierLensPanelOffsetY") == nil {
+                return 15
+            }
+            return defaults.double(forKey: "magnifierLensPanelOffsetY")
+        }
+        set {
+            defaults.set(newValue, forKey: "magnifierLensPanelOffsetY")
+        }
+    }
+
+    /// Whether to show the "Press ⌘+C to copy color" hint row in the lens.
+    static var magnifierLensPanelShowCopyHint: Bool {
+        get {
+            if defaults.object(forKey: "magnifierLensPanelShowCopyHint") == nil {
+                return true
+            }
+            return defaults.bool(forKey: "magnifierLensPanelShowCopyHint")
+        }
+        set {
+            defaults.set(newValue, forKey: "magnifierLensPanelShowCopyHint")
+        }
+    }
+
+    /// Whether to show the "Press Shift to switch RGB" hint row in the lens.
+    static var magnifierLensPanelShowShiftHint: Bool {
+        get {
+            if defaults.object(forKey: "magnifierLensPanelShowShiftHint") == nil {
+                return true
+            }
+            return defaults.bool(forKey: "magnifierLensPanelShowShiftHint")
+        }
+        set {
+            defaults.set(newValue, forKey: "magnifierLensPanelShowShiftHint")
+        }
+    }
+
+    /// Coordinate mode for the lens display: `.points` shows AppKit
+    /// screen-point coordinates (default); `.pixels` shows physical
+    /// CGImage pixel coordinates matching the snapshot resolution.
+    enum MagnifierLensPanelCoordinateMode: String {
+        case points
+        case pixels
+    }
+    static var magnifierLensPanelCoordinateMode: MagnifierLensPanelCoordinateMode {
+        get {
+            guard let raw = defaults.string(forKey: "magnifierLensPanelCoordinateMode"),
+                  let mode = MagnifierLensPanelCoordinateMode(rawValue: raw) else {
+                return .pixels
+            }
+            return mode
+        }
+        set {
+            defaults.set(newValue.rawValue, forKey: "magnifierLensPanelCoordinateMode")
+        }
+    }
+
+    /// Crosshair colour — RGBA components stored as 0–1 doubles.
+    /// Default: #A8BDFC at 65% alpha.
+    static var magnifierLensPanelCrosshairRed: Double {
+        get { defaults.object(forKey: "magnifierLensPanelCrosshairRed") == nil ? 0xA8 / 255.0 : defaults.double(forKey: "magnifierLensPanelCrosshairRed") }
+        set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelCrosshairRed") }
+    }
+    static var magnifierLensPanelCrosshairGreen: Double {
+        get { defaults.object(forKey: "magnifierLensPanelCrosshairGreen") == nil ? 0xBD / 255.0 : defaults.double(forKey: "magnifierLensPanelCrosshairGreen") }
+        set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelCrosshairGreen") }
+    }
+    static var magnifierLensPanelCrosshairBlue: Double {
+        get { defaults.object(forKey: "magnifierLensPanelCrosshairBlue") == nil ? 0xFC / 255.0 : defaults.double(forKey: "magnifierLensPanelCrosshairBlue") }
+        set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelCrosshairBlue") }
+    }
+    static var magnifierLensPanelCrosshairAlpha: Double {
+        get { defaults.object(forKey: "magnifierLensPanelCrosshairAlpha") == nil ? 0.65 : defaults.double(forKey: "magnifierLensPanelCrosshairAlpha") }
+        set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelCrosshairAlpha") }
+    }
+
+    /// Crosshair line width in points. Default 6, clamped to 1–30.
+    static var magnifierLensPanelCrosshairWidth: Double {
+        get {
+            if defaults.object(forKey: "magnifierLensPanelCrosshairWidth") == nil { return 6 }
+            return defaults.double(forKey: "magnifierLensPanelCrosshairWidth")
+        }
+        set { defaults.set(min(30, max(1, newValue)), forKey: "magnifierLensPanelCrosshairWidth") }
     }
 
     static var clipboardTextCacheEnabled: Bool {

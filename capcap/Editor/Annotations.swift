@@ -880,6 +880,65 @@ struct MosaicAnnotation: Annotation {
     }
 }
 
+// MARK: - Spotlight Annotation
+
+/// A transparent rectangular window surrounded by a dimming layer. Spotlight
+/// annotations are composited together by `EditCanvasView`, so several
+/// windows share one overlay instead of repeatedly darkening each other.
+struct SpotlightAnnotation: Annotation {
+    let rect: NSRect
+
+    static let dimmingAlpha: CGFloat = 0.52
+    static let cornerRadius: CGFloat = 6
+
+    var boundingRect: NSRect { rect }
+
+    func draw(in context: CGContext, bounds: NSRect) {
+        Self.drawDimmingOverlay(highlightRects: [rect], in: context, bounds: bounds)
+    }
+
+    static func drawDimmingOverlay(
+        highlightRects: [NSRect],
+        in context: CGContext,
+        bounds: NSRect
+    ) {
+        guard !highlightRects.isEmpty else { return }
+        let visibleRects = highlightRects
+            .map { $0.intersection(bounds) }
+            .filter { !$0.isNull && $0.width > 0 && $0.height > 0 }
+
+        context.saveGState()
+        context.beginTransparencyLayer(auxiliaryInfo: nil)
+        context.setFillColor(NSColor.black.withAlphaComponent(dimmingAlpha).cgColor)
+        context.fill(bounds)
+        context.setBlendMode(.clear)
+        for rect in visibleRects {
+            let radius = min(cornerRadius, rect.width / 2, rect.height / 2)
+            context.addPath(CGPath(
+                roundedRect: rect,
+                cornerWidth: radius,
+                cornerHeight: radius,
+                transform: nil
+            ))
+            context.fillPath()
+        }
+        context.endTransparencyLayer()
+        context.restoreGState()
+    }
+
+    func containsPoint(_ point: NSPoint) -> Bool {
+        rect.contains(point)
+    }
+
+    func translated(by delta: NSPoint) -> Annotation {
+        SpotlightAnnotation(rect: rect.offsetBy(dx: delta.x, dy: delta.y))
+    }
+
+    func withRect(_ rect: NSRect) -> SpotlightAnnotation {
+        SpotlightAnnotation(rect: rect)
+    }
+}
+
 // MARK: - Magnifier Annotation
 
 /// A circular magnifying-glass lens placed over the screenshot. The lens
@@ -2173,6 +2232,10 @@ struct TextAnnotation: Annotation {
     /// Optional arrow tip pulled out from the callout bubble via the selection
     /// handle. nil means bubble only.
     var calloutTip: NSPoint? = nil
+    /// Optional second arrow tip. New text callouts leave this nil so the
+    /// creation drag still produces exactly one leader; a selected callout
+    /// exposes a separate add handle for pulling this one out.
+    var secondCalloutTip: NSPoint? = nil
 
     static let trailingCaretPadding: CGFloat = 12
     static let minimumEditorWidth: CGFloat = 32
@@ -2318,8 +2381,23 @@ struct TextAnnotation: Annotation {
         )
     }
 
+    var secondCalloutHandlePoint: NSPoint {
+        secondCalloutTip ?? NSPoint(
+            x: calloutBodyRect.minX - TextAnnotation.calloutHandleOffset,
+            y: calloutBodyRect.midY
+        )
+    }
+
     var hasCalloutArrow: Bool {
-        guard hasCallout, let tip = calloutTip else { return false }
+        hasCalloutArrow(to: calloutTip)
+    }
+
+    var hasSecondCalloutArrow: Bool {
+        hasCalloutArrow(to: secondCalloutTip)
+    }
+
+    private func hasCalloutArrow(to tip: NSPoint?) -> Bool {
+        guard hasCallout, let tip else { return false }
         guard !calloutBodyRect.insetBy(dx: -2, dy: -2).contains(tip) else { return false }
         let anchor = calloutAnchorPoint(for: tip)
         return hypot(tip.x - anchor.x, tip.y - anchor.y) >= TextAnnotation.calloutArrowMinDistance
@@ -2423,7 +2501,11 @@ struct TextAnnotation: Annotation {
     }
 
     private func calloutBackgroundPath(bodyRect: NSRect) -> CGPath {
-        guard hasCalloutArrow, let tip = calloutTip else {
+        let arrowTips = [
+            hasCalloutArrow ? calloutTip : nil,
+            hasSecondCalloutArrow ? secondCalloutTip : nil
+        ].compactMap { $0 }
+        guard let firstTip = arrowTips.first else {
             return CGPath(
                 roundedRect: bodyRect,
                 cornerWidth: TextAnnotation.calloutCornerRadius,
@@ -2431,7 +2513,34 @@ struct TextAnnotation: Annotation {
                 transform: nil
             )
         }
-        return calloutBubblePath(to: tip, bodyRect: bodyRect)
+        guard arrowTips.count > 1 else {
+            // Keep the established one-leader rendering path pixel-identical.
+            return calloutBubblePath(to: firstTip, bodyRect: bodyRect)
+        }
+
+        // With two leaders, fill the rounded body and each tail as overlapping
+        // subpaths. The shared fill makes a seamless union while allowing
+        // both tails to occupy the same edge without path-order conflicts.
+        let path = CGMutablePath()
+        path.addPath(CGPath(
+            roundedRect: bodyRect,
+            cornerWidth: TextAnnotation.calloutCornerRadius,
+            cornerHeight: TextAnnotation.calloutCornerRadius,
+            transform: nil
+        ))
+        for tip in arrowTips {
+            path.addPath(calloutTailPath(to: tip, bodyRect: bodyRect))
+        }
+        return path
+    }
+
+    private func calloutTailPath(to tip: NSPoint, bodyRect rect: NSRect) -> CGPath {
+        let base = calloutTailBase(for: tip, in: rect)
+        let path = CGMutablePath()
+        path.move(to: base.start)
+        appendCalloutTail(to: tip, base: base, in: path)
+        path.closeSubpath()
+        return path
     }
 
     private func calloutBubblePath(to tip: NSPoint, bodyRect rect: NSRect) -> CGPath {
@@ -2737,7 +2846,10 @@ struct TextAnnotation: Annotation {
             rotation: rotation,
             hasStroke: hasStroke,
             hasCallout: hasCallout,
-            calloutTip: calloutTip.map { NSPoint(x: $0.x + delta.x, y: $0.y + delta.y) }
+            calloutTip: calloutTip.map { NSPoint(x: $0.x + delta.x, y: $0.y + delta.y) },
+            secondCalloutTip: secondCalloutTip.map {
+                NSPoint(x: $0.x + delta.x, y: $0.y + delta.y)
+            }
         )
     }
 
@@ -2751,6 +2863,9 @@ struct TextAnnotation: Annotation {
             hasStroke: hasStroke,
             hasCallout: hasCallout,
             calloutTip: hasCalloutArrow ? calloutTip : calloutTip.map {
+                NSPoint(x: $0.x + delta.x, y: $0.y + delta.y)
+            },
+            secondCalloutTip: hasSecondCalloutArrow ? secondCalloutTip : secondCalloutTip.map {
                 NSPoint(x: $0.x + delta.x, y: $0.y + delta.y)
             }
         )
@@ -2771,7 +2886,8 @@ struct TextAnnotation: Annotation {
             rotation: rotation,
             hasStroke: hasStroke,
             hasCallout: hasCallout,
-            calloutTip: calloutTip
+            calloutTip: calloutTip,
+            secondCalloutTip: secondCalloutTip
         )
     }
 
@@ -2794,6 +2910,12 @@ struct TextAnnotation: Annotation {
         return copy
     }
 
+    func withSecondCalloutTip(_ tip: NSPoint?) -> TextAnnotation {
+        var copy = self
+        copy.secondCalloutTip = tip
+        return copy
+    }
+
     /// Resize the text in place. The visual top-left stays anchored — fonts
     /// grow downward in canvas coords, so the origin shifts by the full text
     /// block height delta to keep the cap line steady.
@@ -2811,7 +2933,8 @@ struct TextAnnotation: Annotation {
             rotation: rotation,
             hasStroke: hasStroke,
             hasCallout: hasCallout,
-            calloutTip: calloutTip
+            calloutTip: calloutTip,
+            secondCalloutTip: secondCalloutTip
         )
     }
 }

@@ -1,7 +1,6 @@
 import AVFoundation
 import AppKit
 import CoreText
-import NaturalLanguage
 import VisionKit
 
 // MARK: - Shared helpers
@@ -895,6 +894,8 @@ private final class AnimatedGradientTextLabel: NSView {
 }
 
 private final class TranslationResultView: NSView {
+    private static let streamFlushInterval: TimeInterval = 1.0 / 30.0
+
     let kind: TranslationProviderKind
 
     private let loadingStatusLabel = AnimatedGradientTextLabel()
@@ -909,6 +910,8 @@ private final class TranslationResultView: NSView {
     private var retrySleeve: ClosureSleeve?
     private var isCollapsed = false
     private let onLayoutChange: () -> Void
+    private var pendingDelta = ""
+    private var pendingFlushWorkItem: DispatchWorkItem?
 
     init(
         kind: TranslationProviderKind,
@@ -1017,7 +1020,13 @@ private final class TranslationResultView: NSView {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
+    deinit {
+        pendingFlushWorkItem?.cancel()
+    }
+
     func reset() {
+        cancelPendingFlush()
+        pendingDelta = ""
         textView.string = ""
         loadingStatusLabel.stringValue = L10n.ocrTranslating
         loadingStatusLabel.isHidden = false
@@ -1030,12 +1039,51 @@ private final class TranslationResultView: NSView {
     }
 
     func append(_ delta: String) {
-        textView.string += delta
+        guard !delta.isEmpty else { return }
+
+        // Show the first text immediately, then coalesce the model's many tiny
+        // SSE deltas so TextKit and the entire panel are not laid out per token.
+        if textView.string.isEmpty, pendingDelta.isEmpty {
+            apply(delta)
+            return
+        }
+
+        pendingDelta += delta
+        guard pendingFlushWorkItem == nil else { return }
+
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.pendingFlushWorkItem = nil
+            self.flushPendingDelta()
+        }
+        pendingFlushWorkItem = workItem
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + Self.streamFlushInterval,
+            execute: workItem
+        )
+    }
+
+    private func apply(_ text: String) {
+        textView.string += text
         updateTextHeight()
         onLayoutChange()
     }
 
+    private func flushPendingDelta() {
+        guard !pendingDelta.isEmpty else { return }
+        let delta = pendingDelta
+        pendingDelta = ""
+        apply(delta)
+    }
+
+    private func cancelPendingFlush() {
+        pendingFlushWorkItem?.cancel()
+        pendingFlushWorkItem = nil
+    }
+
     func markSuccess() {
+        cancelPendingFlush()
+        flushPendingDelta()
         loadingStatusLabel.stopAnimating()
         loadingStatusLabel.isHidden = true
         errorStatusLabel.stringValue = ""
@@ -1045,6 +1093,8 @@ private final class TranslationResultView: NSView {
     }
 
     func markFailure(_ error: Error) {
+        cancelPendingFlush()
+        flushPendingDelta()
         loadingStatusLabel.stopAnimating()
         loadingStatusLabel.isHidden = true
         errorStatusLabel.stringValue = "\(L10n.ocrTranslateFailedPrefix) \(error.localizedDescription)"
@@ -2103,88 +2153,10 @@ final class OCRTranslatePanel: NSPanel {
     }
 
     private var displayTargetLanguage: TranslationLanguage {
-        guard selectedTarget != .english,
-              Self.detectedLanguage(in: recognizedText) == selectedTarget else {
-            return selectedTarget
-        }
-        return .english
-    }
-
-    private static func detectedLanguage(in text: String) -> TranslationLanguage? {
-        let sample = text
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .prefix(1_000)
-        guard sample.count >= 2 else { return nil }
-
-        if let scriptLanguage = scriptDominantLanguage(in: String(sample)) {
-            return scriptLanguage
-        }
-
-        let recognizer = NLLanguageRecognizer()
-        recognizer.processString(String(sample))
-        if let hypothesis = recognizer.languageHypotheses(withMaximum: 1)
-            .max(by: { $0.value < $1.value }),
-           hypothesis.value >= 0.45,
-           let language = translationLanguage(for: hypothesis.key.rawValue) {
-            return language
-        }
-
-        return nil
-    }
-
-    private static func translationLanguage(for identifier: String) -> TranslationLanguage? {
-        let normalized = identifier.lowercased()
-        if normalized.hasPrefix("zh") { return .chinese }
-        switch normalized {
-        case "en": return .english
-        case "vi": return .vietnamese
-        case "hi": return .hindi
-        case "es": return .spanish
-        case "fr": return .french
-        case "ar": return .arabic
-        case "bn": return .bengali
-        case "pt": return .portuguese
-        case "ru": return .russian
-        case "ur": return .urdu
-        case "id": return .indonesian
-        case "de": return .german
-        case "ja": return .japanese
-        case "ko": return .korean
-        case "tr": return .turkish
-        default: return nil
-        }
-    }
-
-    private static func scriptDominantLanguage(in text: String) -> TranslationLanguage? {
-        var counts: [TranslationLanguage: Int] = [:]
-        var letterCount = 0
-
-        for scalar in text.unicodeScalars where CharacterSet.letters.contains(scalar) {
-            letterCount += 1
-            if scalar.isInRange(0x3040...0x30FF) {
-                counts[.japanese, default: 0] += 1
-            } else if scalar.isInRange(0xAC00...0xD7AF) || scalar.isInRange(0x1100...0x11FF) {
-                counts[.korean, default: 0] += 1
-            } else if scalar.isInRange(0x4E00...0x9FFF) || scalar.isInRange(0x3400...0x4DBF) {
-                counts[.chinese, default: 0] += 1
-            } else if scalar.isInRange(0x0400...0x04FF) {
-                counts[.russian, default: 0] += 1
-            } else if scalar.isInRange(0x0600...0x06FF) {
-                counts[.arabic, default: 0] += 1
-            } else if scalar.isInRange(0x0900...0x097F) {
-                counts[.hindi, default: 0] += 1
-            } else if scalar.isInRange(0x0980...0x09FF) {
-                counts[.bengali, default: 0] += 1
-            }
-        }
-
-        guard let dominant = counts.max(by: { $0.value < $1.value }),
-              dominant.value >= 2,
-              letterCount > 0,
-              Double(dominant.value) / Double(letterCount) >= 0.30 else {
-            return nil
-        }
-        return dominant.key
+        TranslationDirectionResolver.target(
+            for: recognizedText,
+            preferredTarget: selectedTarget
+        )
     }
 
     private func installEventMonitors() {
@@ -2301,12 +2273,6 @@ final class OCRTranslatePanel: NSPanel {
         s.spacing = 8
         s.translatesAutoresizingMaskIntoConstraints = false
         return s
-    }
-}
-
-private extension UnicodeScalar {
-    func isInRange(_ range: ClosedRange<UInt32>) -> Bool {
-        range.contains(value)
     }
 }
 

@@ -31,9 +31,7 @@ struct ScreenCapturer {
                     excludingWindowNumbers: excludedWindowNumbers
                 )
                 resultBox.set(image)
-            } catch {
-                NSLog("capcap: Screen capture failed: \(error)")
-            }
+            } catch {}
             semaphore.signal()
         }
 
@@ -41,15 +39,6 @@ struct ScreenCapturer {
             let waitResult = semaphore.wait(timeout: .now() + .milliseconds(max(1, Int(timeout * 1000))))
             if waitResult == .timedOut {
                 task.cancel()
-                DiagnosticLog.log(
-                    "screen-capture",
-                    "capture-timeout",
-                    metadata: [
-                        "rect": diagnosticRect(rect),
-                        "screenName": screen.localizedName,
-                        "timeoutSeconds": String(format: "%.2f", timeout),
-                    ]
-                )
                 return nil
             }
         } else {
@@ -79,9 +68,7 @@ struct ScreenCapturer {
             do {
                 let image = try await captureWindowAsync(windowID: windowID, pointSize: pointSize)
                 resultBox.set(image)
-            } catch {
-                NSLog("capcap: Window capture failed: \(error)")
-            }
+            } catch {}
             semaphore.signal()
         }
 
@@ -89,14 +76,6 @@ struct ScreenCapturer {
             let waitResult = semaphore.wait(timeout: .now() + .milliseconds(max(1, Int(timeout * 1000))))
             if waitResult == .timedOut {
                 task.cancel()
-                DiagnosticLog.log(
-                    "screen-capture",
-                    "window-capture-timeout",
-                    metadata: [
-                        "windowID": String(windowID),
-                        "timeoutSeconds": String(format: "%.2f", timeout),
-                    ]
-                )
                 return nil
             }
         } else {
@@ -283,14 +262,6 @@ struct ScreenCapturer {
 
         guard let cropped = snapshot.cropping(to: imageRect) else { return nil }
         return NSImage(cgImage: cropped, size: NSSize(width: captureRect.width, height: captureRect.height))
-    }
-
-    private static func diagnosticRect(_ rect: CGRect) -> String {
-        "x=\(diagnosticNumber(rect.origin.x)) y=\(diagnosticNumber(rect.origin.y)) w=\(diagnosticNumber(rect.width)) h=\(diagnosticNumber(rect.height))"
-    }
-
-    private static func diagnosticNumber(_ value: CGFloat) -> String {
-        String(format: "%.1f", Double(value))
     }
 
     private final class CaptureResultBox: @unchecked Sendable {

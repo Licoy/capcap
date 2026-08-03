@@ -7,6 +7,95 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.22] - 2026-08-01
+
+### Added
+- Support uploading files without a Finder selection (7b5eeec)
+
+## [1.6.21] - 2026-08-01
+
+### Added
+- Add a Finder selection upload shortcut and localization (bdc21a6)
+
+### Fixed
+- Preserve annotation positions when the canvas viewport moves (52e3408)
+
+### Changed
+- Improve translation direction handling and streaming performance (58440fe)
+
+## [1.6.20] - 2026-07-31
+
+### Added
+- Add system audio and microphone capture to screen recordings (6d6f323)
+- Add video playback to history previews (54ecf83)
+- Add a second leader handle to text callouts (b84e073)
+
+### Fixed
+- Harden live recording audio handling (756bbd5)
+
+### Changed
+- Reposition the history tile badge to the image corner (edd425a)
+
+## [1.6.19] - 2026-07-30
+
+### Added
+- Add an expanded beautify gradient picker with recent-preset promotion (da90e46)
+
+### Fixed
+- Preserve double-click confirmation in the annotation editor (2940879)
+
+## [1.6.18] - 2026-07-29
+
+### Added
+- Add a shortcut to toggle the history panel keyboard guide (ddcc65d)
+
+### Fixed
+- Prevent capture overlay surfaces from moving or resizing (0ac6a57)
+
+## [1.6.17] - 2026-07-26
+
+### Added
+- Add a keyboard shortcut guide to the history panel (d6e1760)
+
+### Fixed
+- Exclude the cursor chip from screen snapshots (ce251a6)
+
+## [1.6.16] - 2026-07-26
+
+### Added
+- Add localized search support to the history panel (0e069a2)
+
+### Fixed
+- Improve history search cursor positioning and clean up search mode state (f790366, a57e200)
+
+## [1.6.15] - 2026-07-25
+
+### Added
+- Add a spotlight annotation tool (3358e20)
+
+### Fixed
+- Fix capture overlay presentation during event tracking (a8792b8)
+
+## [1.6.14] - 2026-07-23
+
+### Added
+- Ask for a save location by default with an option to save directly (f5e9e29)
+- Add a transparent beautify background preset and enable beautification by default (b0789c8)
+
+### Fixed
+- Eliminate screenshot overlay startup stalls and move full-screen snapshots off the main thread (8b70220, 4bc32cd)
+
+### Changed
+- Refactor capture, editor, trigger, and utility internals and remove obsolete code (a6e9582)
+
+## [1.6.13] - 2026-07-22
+
+### Fixed
+- Defer text field resizing while marked text is being edited (ec68be6)
+
+### Changed
+- Extract editor toolbar placement logic into a reusable helper (53b1667)
+
 ## [1.6.12] - 2026-07-17
 
 ### Added

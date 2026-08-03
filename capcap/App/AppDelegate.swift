@@ -16,6 +16,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var recordingCancelGlobalMonitor: Any?
     private var recordingCancelRequested = false
     private var historyPanelController: HistoryPanelController?
+    private var fileUploadWindowController: FinderUploadWindowController?
+    private var fileUploadOpenPanel: NSOpenPanel?
     private var countdownActive = false
     private var appInitialized = false
     private var suspendedEditDraft: OverlayWindowController.SuspendedEditDraft?
@@ -136,6 +138,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             onTakeFullScreenScreenshot: { [weak self] in self?.handleFullScreenScreenshotTrigger() },
             onRecord: { [weak self] in self?.handleRecordingTrigger() },
             onMergeImages: { [weak self] in self?.handleImageMergeMenuTrigger() },
+            onUploadFiles: { [weak self] in self?.handleFileUploadTrigger() },
             onColorPicker: { [weak self] in self?.handleColorPickerTrigger() },
             onOpenHistoryPanel: { [weak self] in self?.handleHistoryPanelTrigger(holdOpenUntilMouseEnters: true) },
             onOpenSettings: { [weak self] in self?.openSettings() }
@@ -298,6 +301,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             HotkeyManager.shared.unregisterImageMerge()
         }
 
+        if Defaults.hasCustomFinderUploadHotkey {
+            HotkeyManager.shared.registerFinderUpload { [weak self] in
+                self?.handleFileUploadTrigger()
+            }
+        } else {
+            HotkeyManager.shared.unregisterFinderUpload()
+        }
+
         if Defaults.hasCustomFullScreenScreenshotHotkey {
             HotkeyManager.shared.registerFullScreenScreenshot { [weak self] in
                 self?.handleFullScreenScreenshotTrigger(fromShortcut: true)
@@ -334,6 +345,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         HotkeyManager.shared.unregisterScreenshotTranslation()
         HotkeyManager.shared.unregisterRecord()
         HotkeyManager.shared.unregisterImageMerge()
+        HotkeyManager.shared.unregisterFinderUpload()
         HotkeyManager.shared.unregisterFullScreenScreenshot()
         HotkeyManager.shared.unregisterColorPicker()
         HotkeyManager.shared.unregisterHistoryPanel()
@@ -646,6 +658,67 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         ImageMergeLauncher.shared.openFromShortcutSources()
     }
 
+    func handleFileUploadTrigger() {
+        guard overlayController == nil, recordingEngine == nil, !countdownActive else { return }
+
+        if let controller = fileUploadWindowController {
+            controller.show()
+            return
+        }
+
+        let urls = FinderSelection.currentFileURLs()
+        guard !urls.isEmpty else {
+            showFileUploadOpenPanel()
+            return
+        }
+
+        showFileUploadDialog(fileURLs: urls)
+    }
+
+    private func showFileUploadOpenPanel() {
+        if let panel = fileUploadOpenPanel {
+            NSApp.activate(ignoringOtherApps: true)
+            panel.makeKeyAndOrderFront(nil)
+            return
+        }
+
+        let focusRestorer = SourceAppFocusRestorer.captureFrontmostApplication()
+        let panel = NSOpenPanel()
+        panel.title = L10n.uploadFilesMenu
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = true
+        panel.resolvesAliases = true
+        fileUploadOpenPanel = panel
+
+        NSApp.activate(ignoringOtherApps: true)
+        panel.begin { [weak self, weak panel] response in
+            guard let self, let panel else { return }
+            if self.fileUploadOpenPanel === panel {
+                self.fileUploadOpenPanel = nil
+            }
+            guard response == .OK else {
+                focusRestorer.restore()
+                return
+            }
+            self.showFileUploadDialog(fileURLs: panel.urls)
+        }
+    }
+
+    private func showFileUploadDialog(fileURLs: [URL]) {
+        let urls = fileURLs.filter { url in
+            let values = try? url.resourceValues(forKeys: [.isRegularFileKey])
+            return values?.isRegularFile == true
+        }
+        guard !urls.isEmpty else { return }
+
+        let controller = FinderUploadWindowController(fileURLs: urls) { [weak self] in
+            self?.fileUploadWindowController = nil
+        }
+        fileUploadWindowController = controller
+        controller.show()
+    }
+
     func handleColorPickerTrigger() {
         guard overlayController == nil, recordingEngine == nil, !countdownActive else { return }
         let focusRestorer = SourceAppFocusRestorer.captureFrontmostApplication()
@@ -833,9 +906,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         borderPanel.orderFrontRegardless()
         recordingBorderPanel = borderPanel
 
+        let systemAudioOn = Defaults.recordingSystemAudioEnabled
+        let microphoneOn = Defaults.recordingMicrophoneEnabled && AppPermissions.microphoneGranted
+
         let hudPanel = RecordingHUDPanel()
         hudPanel.update(elapsedSeconds: 0)
         hudPanel.positionOnScreen(relativeTo: rect, screen: screen)
+        hudPanel.configureAudioButtons(systemAudio: systemAudioOn, microphone: microphoneOn)
         hudPanel.onStopRecording = { [weak self] in
             self?.stopRecordingAndSave()
         }
@@ -844,6 +921,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         hudPanel.onResumeRecording = { [weak self] in
             self?.recordingEngine?.resumeRecording()
+        }
+        hudPanel.onToggleSystemAudio = { [weak self] enabled in
+            self?.handleSystemAudioToggle(enabled: enabled)
+        }
+        hudPanel.onToggleMicrophone = { [weak self] enabled in
+            self?.handleMicrophoneToggle(enabled: enabled)
+        }
+        hudPanel.onSelectMicrophoneDevice = { [weak self] uid in
+            Defaults.recordingMicrophoneDeviceUID = uid
+            self?.recordingEngine?.setMicrophoneDeviceUID(uid)
         }
         hudPanel.orderFrontRegardless()
         recordingHUDPanel = hudPanel
@@ -858,6 +945,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         engine.onCompletion = { [weak self] url, error in
             self?.finishRecording(url: url, error: error)
         }
+        engine.onSystemAudioConfigurationFailed = { [weak self] appliedEnabled in
+            Defaults.recordingSystemAudioEnabled = appliedEnabled
+            self?.recordingHUDPanel?.configureAudioButtons(
+                systemAudio: appliedEnabled,
+                microphone: Defaults.recordingMicrophoneEnabled && AppPermissions.microphoneGranted
+            )
+            ToastWindow.show(message: L10n.recordingSystemAudioChangeFailed)
+        }
+        engine.onMicrophoneCaptureFailed = { [weak self] in
+            Defaults.recordingMicrophoneEnabled = false
+            self?.recordingHUDPanel?.configureAudioButtons(
+                systemAudio: Defaults.recordingSystemAudioEnabled,
+                microphone: false
+            )
+            ToastWindow.show(message: L10n.recordingMicrophoneStartFailed)
+        }
         recordingEngine = engine
         installRecordingCancelMonitors()
         applyHotkeyState()
@@ -866,7 +969,95 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             recordingBorderPanel.map { CGWindowID($0.windowNumber) },
             recordingHUDPanel.map { CGWindowID($0.windowNumber) },
         ].compactMap { $0 } + ToastWindow.captureExcludedWindowNumbers
-        engine.startRecording(rect: rect, screen: screen, excludeWindowNumbers: excludedWindows)
+        let audioOptions = RecordingAudioOptions(
+            systemAudio: systemAudioOn,
+            microphone: microphoneOn,
+            microphoneDeviceUID: Defaults.recordingMicrophoneDeviceUID
+        )
+        engine.startRecording(
+            rect: rect,
+            screen: screen,
+            excludeWindowNumbers: excludedWindows,
+            audioOptions: audioOptions
+        )
+    }
+
+    /// Toggling system audio from the HUD mutes/unmutes the current
+    /// recording live and persists the preference for the next one.
+    private func handleSystemAudioToggle(enabled: Bool) {
+        Defaults.recordingSystemAudioEnabled = enabled
+        recordingEngine?.setSystemAudioEnabled(enabled)
+    }
+
+    /// Toggling the mic from the HUD applies to the current recording live:
+    /// the writer track always exists, so enabling starts capture immediately
+    /// (once permission is granted) and disabling mutes the sample flow.
+    private func handleMicrophoneToggle(enabled: Bool) {
+        guard enabled else {
+            Defaults.recordingMicrophoneEnabled = false
+            recordingEngine?.setMicrophoneEnabled(false)
+            return
+        }
+
+        if AppPermissions.microphoneGranted {
+            Defaults.recordingMicrophoneEnabled = true
+            recordingEngine?.setMicrophoneEnabled(true)
+            return
+        }
+
+        if AppPermissions.microphoneDenied {
+            Defaults.recordingMicrophoneEnabled = false
+            // macOS won't re-show the prompt once denied — point to System
+            // Settings and revert the HUD toggle to the still-denied state.
+            presentMicrophoneDeniedAlert()
+            recordingHUDPanel?.configureAudioButtons(
+                systemAudio: Defaults.recordingSystemAudioEnabled,
+                microphone: false
+            )
+            return
+        }
+
+        AppPermissions.requestMicrophonePermission { [weak self] granted in
+            guard let self else { return }
+            if granted {
+                Defaults.recordingMicrophoneEnabled = true
+                self.recordingEngine?.setMicrophoneEnabled(true)
+            } else {
+                Defaults.recordingMicrophoneEnabled = false
+                self.recordingHUDPanel?.configureAudioButtons(
+                    systemAudio: Defaults.recordingSystemAudioEnabled,
+                    microphone: false
+                )
+            }
+        }
+    }
+
+    private func presentMicrophoneDeniedAlert() {
+        let alert = NSAlert()
+        alert.messageText = L10n.recordingMicrophoneDeniedTitle
+        alert.informativeText = L10n.recordingMicrophoneDeniedMessage
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: L10n.recordingMicrophoneOpenSettings)
+        alert.addButton(withTitle: L10n.shortcutCancel)
+        NSApp.activate(ignoringOtherApps: true)
+        // Use a sheet attached to the HUD panel when available so the alert
+        // doesn't block the whole app; fall back to app-modal otherwise.
+        if let panel = recordingHUDPanel {
+            alert.beginSheetModal(for: panel) { response in
+                if response == .alertFirstButtonReturn {
+                    self.openMicrophoneSystemSettings()
+                }
+            }
+        } else if alert.runModal() == .alertFirstButtonReturn {
+            openMicrophoneSystemSettings()
+        }
+    }
+
+    private func openMicrophoneSystemSettings() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_Microphone") else {
+            return
+        }
+        NSWorkspace.shared.open(url)
     }
 
     private func updateRecordingHUD(seconds: Int) {

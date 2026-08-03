@@ -1,7 +1,6 @@
 import Foundation
 
-/// Locates and reads the most recent capcap diagnostic log. This includes the
-/// app's own persisted error log plus macOS crash reports.
+/// Locates and reads the most recent macOS crash report for capcap.
 enum CrashLogReader {
     /// A log file on disk — its URL plus when it was written.
     struct Entry {
@@ -13,24 +12,10 @@ enum CrashLogReader {
     /// name matches capcap's CFBundleExecutable.
     private static let processName = "capcap"
 
-    /// Returns the newest app diagnostic log or macOS crash report belonging
-    /// to capcap, or nil if no log exists. This only stats the files — it does
-    /// not read any file contents.
+    /// Returns the newest macOS crash report belonging to capcap, or nil if no
+    /// report exists. This only stats the files and does not read their contents.
     static func latestLogFile() -> Entry? {
-        let diagnostic = DiagnosticLog.latestFile().map {
-            Entry(url: $0.url, date: $0.date)
-        }
-        let crash = latestCrashFile()
-        switch (diagnostic, crash) {
-        case let (d?, c?):
-            return d.date >= c.date ? d : c
-        case let (d?, nil):
-            return d
-        case let (nil, c?):
-            return c
-        case (nil, nil):
-            return nil
-        }
+        latestCrashFile()
     }
 
     /// Scans the standard DiagnosticReports directories and returns the newest
@@ -56,11 +41,9 @@ enum CrashLogReader {
         return newest
     }
 
-    /// Deletes capcap's persisted diagnostic log and any capcap-owned macOS
-    /// crash reports from the user's DiagnosticReports folders.
+    /// Deletes capcap-owned macOS crash reports from the user's
+    /// DiagnosticReports folders.
     static func deleteAllLogs() {
-        DiagnosticLog.deleteFile()
-
         for dir in diagnosticReportDirs() {
             guard let entries = try? fm.contentsOfDirectory(
                 at: dir,

@@ -37,36 +37,28 @@ final class ScreenSnapshotProvider: ScreenSnapshotProviding {
     func prewarm() {
         let contentCache = contentCache
         let cacheEpoch = cacheEpoch.current
-        let processID = ProcessInfo.processInfo.processIdentifier
         Task.detached(priority: .utility) {
             do {
                 _ = try await contentCache.captureContent(
                     requiredDisplayIDs: [],
-                    processID: processID,
                     cacheEpoch: cacheEpoch
                 )
-            } catch {
-                NSLog("capcap: Screen snapshot prewarm failed: \(error)")
-            }
+            } catch {}
         }
     }
 
     func invalidateAndPrewarm(displayIDs: Set<CGDirectDisplayID>) {
         let contentCache = contentCache
         let cacheEpoch = cacheEpoch.advance()
-        let processID = ProcessInfo.processInfo.processIdentifier
         Task.detached(priority: .utility) {
             do {
                 _ = try await contentCache.captureContent(
                     requiredDisplayIDs: displayIDs,
-                    processID: processID,
                     cacheEpoch: cacheEpoch
                 )
             } catch is CancellationError {
                 return
-            } catch {
-                NSLog("capcap: Screen snapshot metadata refresh failed: \(error)")
-            }
+            } catch {}
         }
     }
 
@@ -79,15 +71,13 @@ final class ScreenSnapshotProvider: ScreenSnapshotProviding {
         let contentCache = contentCache
         let requiredDisplayIDs = Set(targets.map(\.displayID))
         let cacheEpoch = cacheEpoch.current
-        let processID = ProcessInfo.processInfo.processIdentifier
 
         let task = Task.detached(priority: .userInitiated) {
             guard !Task.isCancelled else { return }
 
             do {
-                let captureContent = try await contentCache.captureContent(
+                let content = try await contentCache.captureContent(
                     requiredDisplayIDs: requiredDisplayIDs,
-                    processID: processID,
                     cacheEpoch: cacheEpoch
                 )
                 guard !Task.isCancelled else { return }
@@ -97,8 +87,7 @@ final class ScreenSnapshotProvider: ScreenSnapshotProviding {
                         group.addTask {
                             await Self.capture(
                                 target: target,
-                                content: captureContent.content,
-                                ownApplication: captureContent.ownApplication
+                                content: content
                             )
                         }
                     }
@@ -130,8 +119,7 @@ final class ScreenSnapshotProvider: ScreenSnapshotProviding {
 
     private static func capture(
         target: ScreenSnapshotTarget,
-        content: SCShareableContent,
-        ownApplication: SCRunningApplication
+        content: SCShareableContent
     ) async -> ScreenSnapshotEvent {
         guard target.bounds.width > 0,
               target.bounds.height > 0,
@@ -149,11 +137,11 @@ final class ScreenSnapshotProvider: ScreenSnapshotProviding {
             )
         }
 
-        let filter = SCContentFilter(
-            display: display,
-            excludingApplications: [ownApplication],
-            exceptingWindows: []
-        )
+        // The selection overlay and capture-only chrome opt out through
+        // NSWindow.sharingType = .none. Do not exclude the whole capcap
+        // process here: Settings, pinned images, menus and popovers are valid
+        // screenshot targets and must remain in the frozen desktop image.
+        let filter = SCContentFilter(display: display, excludingWindows: [])
 
         let configuration = SCStreamConfiguration()
         configuration.width = max(Int(ceil(target.bounds.width * target.scale)), 1)
@@ -172,11 +160,6 @@ final class ScreenSnapshotProvider: ScreenSnapshotProviding {
             return .failure(displayID: target.displayID, error: error)
         }
     }
-}
-
-private struct ScreenSnapshotCaptureContent: @unchecked Sendable {
-    let content: SCShareableContent
-    let ownApplication: SCRunningApplication
 }
 
 private final class ScreenSnapshotCacheEpoch: @unchecked Sendable {
@@ -202,63 +185,20 @@ private actor ScreenSnapshotContentCache {
     }
 
     private var cachedContent: SCShareableContent?
-    private var cachedOwnApplication: SCRunningApplication?
     private var loading: ContentLoad?
     private var activeEpoch = 0
 
     func captureContent(
         requiredDisplayIDs: Set<CGDirectDisplayID>,
-        processID: pid_t,
         cacheEpoch: Int
-    ) async throws -> ScreenSnapshotCaptureContent {
+    ) async throws -> SCShareableContent {
         synchronize(to: cacheEpoch)
         let content = try await displayContent(
             requiredDisplayIDs: requiredDisplayIDs,
             cacheEpoch: cacheEpoch
         )
         try validate(cacheEpoch)
-        do {
-            let captureContent = try await captureContent(
-                content: content,
-                processID: processID,
-                cacheEpoch: cacheEpoch
-            )
-            try validate(cacheEpoch)
-            return captureContent
-        } catch ScreenSnapshotProviderError.applicationNotFound {
-            // On macOS 14.0-14.3, prewarming before capcap owns a window can
-            // yield content without this process. Do not permanently reuse it.
-            cachedContent = nil
-            cachedOwnApplication = nil
-            let refreshedContent = try await displayContent(
-                requiredDisplayIDs: requiredDisplayIDs,
-                cacheEpoch: cacheEpoch
-            )
-            try validate(cacheEpoch)
-            let captureContent = try await captureContent(
-                content: refreshedContent,
-                processID: processID,
-                cacheEpoch: cacheEpoch
-            )
-            try validate(cacheEpoch)
-            return captureContent
-        }
-    }
-
-    private func captureContent(
-        content: SCShareableContent,
-        processID: pid_t,
-        cacheEpoch: Int
-    ) async throws -> ScreenSnapshotCaptureContent {
-        let ownApplication = try await ownApplication(
-            processID: processID,
-            fallbackContent: content,
-            cacheEpoch: cacheEpoch
-        )
-        return ScreenSnapshotCaptureContent(
-            content: content,
-            ownApplication: ownApplication
-        )
+        return content
     }
 
     private func displayContent(
@@ -285,35 +225,6 @@ private actor ScreenSnapshotContentCache {
         }
         cachedContent = content
         return content
-    }
-
-    private func ownApplication(
-        processID: pid_t,
-        fallbackContent: SCShareableContent,
-        cacheEpoch: Int
-    ) async throws -> SCRunningApplication {
-        try validate(cacheEpoch)
-        if let cachedOwnApplication,
-           cachedOwnApplication.processID == processID {
-            return cachedOwnApplication
-        }
-        if let application = fallbackContent.applications.first(where: {
-            $0.processID == processID
-        }) {
-            cachedOwnApplication = application
-            return application
-        }
-        if #available(macOS 14.4, *) {
-            let processContent = try await SCShareableContent.currentProcess
-            try validate(cacheEpoch)
-            if let application = processContent.applications.first(where: {
-                $0.processID == processID
-            }) {
-                cachedOwnApplication = application
-                return application
-            }
-        }
-        throw ScreenSnapshotProviderError.applicationNotFound(processID: processID)
     }
 
     private func loadFreshContent() async throws -> SCShareableContent {
@@ -348,7 +259,6 @@ private actor ScreenSnapshotContentCache {
         guard cacheEpoch > activeEpoch else { return }
         activeEpoch = cacheEpoch
         cachedContent = nil
-        cachedOwnApplication = nil
         loading?.task.cancel()
         loading = nil
     }
@@ -395,7 +305,6 @@ private final class ScreenSnapshotEventDelivery: @unchecked Sendable {
 private enum ScreenSnapshotProviderError: LocalizedError {
     case invalidTarget(displayID: CGDirectDisplayID)
     case displayNotFound(displayID: CGDirectDisplayID)
-    case applicationNotFound(processID: pid_t)
 
     var errorDescription: String? {
         switch self {
@@ -403,8 +312,6 @@ private enum ScreenSnapshotProviderError: LocalizedError {
             return "Invalid screen snapshot target for display \(displayID)"
         case let .displayNotFound(displayID):
             return "ScreenCaptureKit display \(displayID) was not found"
-        case let .applicationNotFound(processID):
-            return "ScreenCaptureKit application \(processID) was not found"
         }
     }
 }

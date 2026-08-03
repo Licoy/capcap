@@ -111,7 +111,6 @@ enum ImageEditLauncher {
             try FileManager.default.copyItem(at: source, to: dest)
             return dest
         } catch {
-            NSLog("capcap: failed to copy image to temp: \(error)")
             return nil
         }
     }
