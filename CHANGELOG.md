@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-08-03
+
+### Added
+- Add an idle magnifier with live preview, configurable magnification, coordinate modes, and crosshair styling (5a7d846, f27ff51, 2147f8a, 81e6972, d65b575, 93fea4c, c47c50c, 93ec2eb)
+- Add magnifier lens support during selection, resize, and move interactions (c5b27c0, d26c187)
+
+### Fixed
+- Stabilize magnifier lens sampling, boundaries, defaults, and preview refreshes (6df7730, 4d2d135, 6aa8f56, 4e4c33d, 241f7ce, a0704ff, 8d1af4b)
+- Keep the capture crosshair and cursor consistent across background, hover, snapping, and mouse movement states (0cb9a37, 14447f2, d680d44, b35e9f1, 06026be)
+
+### Changed
+- Restructure magnifier settings into focused sub-cards and remove the retired lens preference (70bd0b5, 5fd3e03, 7322e2e, 12bb1e2)
+- Refine magnifier panel layout, shortcuts, hint styling, and pin toolbar synchronization (c3e82a8, 261f882, 25545a3, 72bd267, b3beb23)
+
 ## [1.6.22] - 2026-08-01
 
 ### Added
