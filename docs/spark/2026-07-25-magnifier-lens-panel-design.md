@@ -44,7 +44,7 @@ The magnifier is **always enabled** during screenshot selection — there is no 
 
 ## Lens UI
 
-Panel size: **fixed** — 256 × 258 points (144 px magnified area + info rows). The lens is a borderless `NSPanel` (similar to `CursorChipWindow`), drawn at `level = .screenSaver + 1`, ignoring mouse events, with `sharingType = .none` so ScreenCaptureKit excludes it from frozen-desktop snapshots. Its background appearance automatically follows the system light/dark mode.
+Panel size: **fixed** — 220 × 258 points (144 pt magnified area + info rows). The lens is a borderless `NSPanel` (similar to `CursorChipWindow`), drawn at `level = .screenSaver + 1`, ignoring mouse events, with `sharingType = .none` so ScreenCaptureKit excludes it from frozen-desktop snapshots. Its background appearance automatically follows the system light/dark mode.
 
 ### Smart positioning
 
@@ -59,7 +59,7 @@ When the cursor is near the top of the screen, the panel still appears below it 
 
 ```
 +----------------------------+
-| [magnified 12×12 @ 12×]    |   <- 144 x 144 area, pixelated
+| [magnified 36×36 @ 4×]     |   <- 144 x 144 area, pixelated
 +----------------------------+
 | Coordinates: x, y          |
 | [##] HEX: #RRGGBB          |   <- 16x16 swatch + HEX or RGB label
@@ -72,14 +72,14 @@ The two tip rows are **permanent** — they do not fade out after appearance. Re
 
 ### Magnified area rendering
 
-The 12×12 source region centered on the cursor is extracted via `CGImage.cropping(to:)`. The cropped `CGImage` is drawn directly into the destination rect with `CGContext.draw(cropped, in: rect)`. `CGContext.draw` already maps the image's visual top-left to the destination rect's visual top-left, so **no manual y-flip transform is required** — adding one (`scaleBy(_, -scaleY)`) inverts the image and breaks pixel alignment.
+The 36×36 source region centered on the cursor is extracted via `CGImage.cropping(to:)` and magnified 4× into the 144-point destination rect. The cropped `CGImage` is drawn directly into the destination rect with `CGContext.draw(cropped, in: rect)`. `CGContext.draw` already maps the image's visual top-left to the destination rect's visual top-left, so **no manual y-flip transform is required** — adding one (`scaleBy(_, -scaleY)`) inverts the image and breaks pixel alignment.
 
-When the cursor approaches a screen edge and the 12×12 source region would extend beyond the snapshot bounds, the crop is clamped to the valid pixel range. The draw rect is adjusted so the out-of-bounds portion appears as the dimmed background fill while the valid pixels stay correctly positioned. A `context.clip(to: rect)` call prevents the crop from bleeding outside the magnified area.
+When the cursor approaches a screen edge and the 36×36 source region would extend beyond the snapshot bounds, the crop is clamped to the valid pixel range. The draw rect is adjusted so the out-of-bounds portion appears as the dimmed background fill while the valid pixels stay correctly positioned. A `context.clip(to: rect)` call prevents the crop from bleeding outside the magnified area.
 
 ### Crosshair
 
 Two layers ensure the centre is always visible:
-- A **10 px wide cross** in `#A5BAF9` at 65% alpha spans the full magnified area. This provides a strong background presence even on pure-white source pixels.
+- A **6 pt wide cross** in `#A8BDFC` at 65% alpha spans the full magnified area. This provides a strong background presence even on pure-white source pixels.
 - A **1 px fine white cross** at the exact centre marks the sampled pixel precisely.
 
 The crosshair at `destRect.midX / destRect.midY` is guaranteed to align with the sampled pixel.
@@ -126,10 +126,10 @@ Global monitors only observe — they cannot prevent the foreground app from rec
 
 The magnifier has **no user-facing settings**. Its size, position, visual styling, and behavior are all driven by sensible built-in defaults:
 
-- Magnified area: 144 × 144 points (12 × 12 source pixels at 12× magnification).
+- Magnified area: 144 × 144 points (36 × 36 source pixels at 4× magnification).
 - Panel offset: 15 points right, 14 points below the cursor (with smart edge flipping).
-- Appearance: automatically follows the system light/dark mode.
-- Crosshair: 10 px wide cross in `#A5BAF9` at 65% alpha, with a 1 px white centre cross.
+- Appearance: automatically follows the system light/dark mode. Dark background defaults to black at 70% alpha; light background defaults to white at 80% alpha.
+- Crosshair: 6 pt wide cross in `#A8BDFC` at 65% alpha, with a 1 px white centre cross.
 - Hint rows: coordinate label, color swatch + value, `Press ⌘+C to copy color`, `Press Shift to switch RGB`, and aspect-ratio prompt are all always visible.
 
 These defaults are stored on `Defaults` but are not exposed in the Settings window. The entire magnifier section (toggle, size picker, appearance controls, preview, etc.) has been removed from Settings.
