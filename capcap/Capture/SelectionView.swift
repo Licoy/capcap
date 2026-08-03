@@ -181,10 +181,28 @@ class SelectionView: NSView {
         }
     }
 
+    // MARK: - Cursors
+
+    /// Registers a crosshair cursor rect covering the entire view when idle.
+    /// WindowServer evaluates cursor rects regardless of which app is
+    /// frontmost, so the crosshair is visible even when another app is active.
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        if state == .idle, !selectionLocked {
+            addCursorRect(bounds, cursor: .crosshair)
+        }
+    }
+
+    /// Tells WindowServer to re-evaluate cursor rects for this view.
+    /// Call after state changes that affect which cursor should appear.
+    func refreshCursorRects() {
+        window?.invalidateCursorRects(for: self)
+    }
+
     // MARK: - Mouse Events
 
     override func mouseDown(with event: NSEvent) {
-        NSCursor.arrow.set()
+        NSCursor.crosshair.set()
         let point = convert(event.locationInWindow, from: nil)
         if shouldConfirmFromSelectionDoubleClick(event: event, point: point) {
             dragAction = .none
@@ -278,7 +296,7 @@ class SelectionView: NSView {
 
     override func mouseDragged(with event: NSEvent) {
         guard selectionInteractionEnabled else { return }
-        NSCursor.arrow.set()
+        NSCursor.crosshair.set()
         let point = convert(event.locationInWindow, from: nil)
 
         switch dragAction {
@@ -377,7 +395,6 @@ class SelectionView: NSView {
     }
 
     override func mouseMoved(with event: NSEvent) {
-        NSCursor.arrow.set()
         guard selectionInteractionEnabled else { return }
 
         // In idle state, detect windows under cursor for hover highlight
@@ -402,7 +419,6 @@ class SelectionView: NSView {
     }
 
     private func updateWindowHover(screenPoint: NSPoint) {
-        NSCursor.arrow.set()
         guard let detector = windowDetector,
               let win = self.window,
               let screen = win.screen else {

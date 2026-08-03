@@ -103,7 +103,7 @@ final class OverlayPresentationTests: XCTestCase {
         )
     }
 
-    func testSelectionPointerEventsKeepDefaultArrowCursor() throws {
+    func testCaptureStartsWithCrosshairAndPointerEventsKeepIt() throws {
         _ = NSApplication.shared
         let originalCursor = NSCursor.current
         let controller = OverlayWindowController(
@@ -117,6 +117,7 @@ final class OverlayPresentationTests: XCTestCase {
         }
 
         controller.activate()
+        XCTAssertEqual(NSCursor.current, NSCursor.crosshair)
         let selectionView = try XCTUnwrap(
             controller.activeSelectionViews.first(where: { $0.window?.isKeyWindow == true })
         )
@@ -163,15 +164,36 @@ final class OverlayPresentationTests: XCTestCase {
 
         NSCursor.crosshair.set()
         selectionView.mouseMoved(with: mouseMoved)
-        XCTAssertEqual(NSCursor.current, NSCursor.arrow)
+        XCTAssertEqual(NSCursor.current, NSCursor.crosshair)
 
         NSCursor.openHand.set()
         selectionView.mouseDown(with: mouseDown)
-        XCTAssertEqual(NSCursor.current, NSCursor.arrow)
+        XCTAssertEqual(NSCursor.current, NSCursor.crosshair)
 
         NSCursor.closedHand.set()
         selectionView.mouseDragged(with: mouseDragged)
-        XCTAssertEqual(NSCursor.current, NSCursor.arrow)
+        XCTAssertEqual(NSCursor.current, NSCursor.crosshair)
+    }
+
+    func testCaptureReassertsCrosshairAfterTriggerModifierReleaseWithoutMouseMovement() {
+        _ = NSApplication.shared
+        let originalCursor = NSCursor.current
+        let controller = OverlayWindowController(
+            snapshotProvider: ControlledScreenSnapshotProvider(delay: 2),
+            windowSnapshotLoader: { _ in .success([]) },
+            onComplete: { _ in }
+        )
+        defer {
+            controller.cancel()
+            originalCursor.set()
+        }
+
+        controller.activate()
+        // The overlay registers a crosshair cursor rect covering the full
+        // SelectionView. WindowServer evaluates cursor rects regardless of
+        // which app is frontmost, so the crosshair should be visible without
+        // any mouse movement.
+        XCTAssertEqual(NSCursor.current, NSCursor.crosshair)
     }
 
     func testCursorChipIsExcludedFromScreenSnapshots() {

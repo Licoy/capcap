@@ -701,9 +701,17 @@ class OverlayWindowController {
         }
 
         if presetImage == nil, suspendedDraft == nil {
-            NSCursor.arrow.push()
+            NSCursor.crosshair.push()
             cursorWasPushed = true
             claimSelectionKeyboardFocus()
+            refreshSelectionCursor()
+            NSCursor.crosshair.set()
+            // Activate capcap so NSCursor APIs and cursor rects take effect.
+            // Without activation, cursor changes from an LSUIElement background
+            // app are ignored by WindowServer. The caller (AppDelegate) captures
+            // the previous frontmost app before this point and restores focus
+            // via onRequestFocusReturn when the capture session ends.
+            NSApp.activate(ignoringOtherApps: true)
         } else {
             // Skip cursor push so tearDown's pop doesn't strip an unrelated cursor.
             cursorPopped = true
@@ -729,6 +737,17 @@ class OverlayWindowController {
         guard let targetView, let targetWindow = targetView.window else { return }
         targetWindow.makeKeyAndOrderFront(nil)
         targetWindow.makeFirstResponder(targetView)
+    }
+
+    /// Force the crosshair cursor to appear even when capcap is not frontmost.
+    ///
+    /// NSCursor.push() is application-scoped — it has no visible effect when
+    /// another app is active. Instead we trigger WindowServer cursor-rect
+    /// evaluation. SelectionView registers a crosshair cursor rect covering
+    /// the entire view in resetCursorRects, so invalidating cursor rects
+    /// makes WindowServer pick it up regardless of which app is frontmost.
+    private func refreshSelectionCursor() {
+        activeSelectionViews.forEach { $0.refreshCursorRects() }
     }
 
     private func recordFirstDraw(generation: Int) {
