@@ -1837,6 +1837,11 @@ struct Defaults {
         }
     }
 
+    private static func normalizedMagnifierLensPanelMagnification(_ value: Double) -> Double {
+        guard value.isFinite else { return 4.0 }
+        return min(16.0, max(1.0, value))
+    }
+
     static var lastBeautifyPresetID: String? {
         get { defaults.string(forKey: "lastBeautifyPresetID") }
         set { defaults.set(newValue, forKey: "lastBeautifyPresetID") }
@@ -2002,16 +2007,22 @@ struct Defaults {
 
     /// Magnification factor for the lens. Controls how many source pixels are
     /// sampled: source region = magnified display size / magnification.
-    /// Higher values = tighter zoom (smaller source region). Default 4×.
+    /// Higher values = tighter zoom (smaller source region). Default 4×,
+    /// clamped to 1×...16× for hidden UserDefaults overrides.
     static var magnifierLensPanelMagnification: Double {
         get {
             if defaults.object(forKey: "magnifierLensPanelMagnification") == nil {
                 return 4.0
             }
-            return defaults.double(forKey: "magnifierLensPanelMagnification")
+            return normalizedMagnifierLensPanelMagnification(
+                defaults.double(forKey: "magnifierLensPanelMagnification")
+            )
         }
         set {
-            defaults.set(newValue, forKey: "magnifierLensPanelMagnification")
+            defaults.set(
+                normalizedMagnifierLensPanelMagnification(newValue),
+                forKey: "magnifierLensPanelMagnification"
+            )
         }
     }
 

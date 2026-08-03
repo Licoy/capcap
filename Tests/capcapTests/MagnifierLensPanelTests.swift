@@ -268,6 +268,14 @@ final class MagnifierLensPanelTests: XCTestCase {
         XCTAssertEqual(Defaults.magnifierLensPanelMagnifiedSize, 192)
         UserDefaults.standard.removeObject(forKey: "magnifierLensPanelMagnification")
         XCTAssertEqual(Defaults.magnifierLensPanelMagnification, 4.0, accuracy: 0.001)
+        Defaults.magnifierLensPanelMagnification = .infinity
+        XCTAssertEqual(Defaults.magnifierLensPanelMagnification, 4.0, accuracy: 0.001)
+        Defaults.magnifierLensPanelMagnification = 0.25
+        XCTAssertEqual(Defaults.magnifierLensPanelMagnification, 1.0, accuracy: 0.001)
+        Defaults.magnifierLensPanelMagnification = 40
+        XCTAssertEqual(Defaults.magnifierLensPanelMagnification, 16.0, accuracy: 0.001)
+        Defaults.magnifierLensPanelMagnification = 8
+        XCTAssertEqual(Defaults.magnifierLensPanelMagnification, 8.0, accuracy: 0.001)
         // Offsets default to (15, 14).
         UserDefaults.standard.removeObject(forKey: "magnifierLensPanelOffsetX")
         UserDefaults.standard.removeObject(forKey: "magnifierLensPanelOffsetY")

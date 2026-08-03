@@ -133,6 +133,7 @@ The magnifier has **no user-facing settings**. Its size, position, visual stylin
 - Hint rows: coordinate label, color swatch + value, `Press ⌘+C to copy color`, `Press Shift to switch RGB`, and aspect-ratio prompt are all always visible.
 
 These defaults are stored on `Defaults` but are not exposed in the Settings window. The entire magnifier section (toggle, size picker, appearance controls, preview, etc.) has been removed from Settings.
+Hidden magnification overrides are normalized to a finite 1×...16× range, with invalid values falling back to 4×.
 
 ## Localization
 
