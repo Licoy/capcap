@@ -1,6 +1,6 @@
 # Magnifier Lens Panel Design
 
-Date: 2026-07-25 (updated 2026-07-27)
+Date: 2026-07-25 (updated 2026-08-03)
 Status: Implemented and verified on branch `feat_idle-magnifier-color-picker`
 Project: capcap
 
@@ -8,7 +8,7 @@ Project: capcap
 
 Add a magnifier color picker (lens) to the screenshot overlay. When the user has triggered an overlay session, the cursor is followed by a configurable panel that shows the current pixel coordinates, RGB/HEX value, and a magnified view of the area around the cursor. The lens is visible in three states: (1) idle (before any selection), (2) during drag-to-select, and (3) while resizing or moving an existing selection rectangle. The user can press `⌘+C` to copy the currently displayed value, or `Shift` (single tap) to toggle between HEX and RGB display. Clicking the cursor still triggers the existing window-selection capture. Pressing `Esc` cancels as before. The lens replaces the legacy "drag to screenshot" cursor chip while the overlay is active.
 
-The feature is controlled by a `Defaults.magnifierLensPanelEnabled` toggle (default `true` so new users get the magnifier experience immediately). Users who prefer the legacy "drag to screenshot" chip can disable it in **Settings → General → Show magnifier while selecting**. The lens reuses the existing `backgroundSnapshot` for pixel sampling, so no new screen-capture permission is required.
+The magnifier is **always enabled** during screenshot selection — there is no user-facing toggle. When the user triggers a capture, the cursor immediately switches to the standard crosshair, and the magnifier panel follows the cursor showing coordinates and color values. The magnifier automatically follows the system appearance (light/dark mode) and uses sensible built-in defaults for its size, position, and visual styling. No magnifier-related settings appear in the Settings window.
 
 ## Goals
 
@@ -27,12 +27,12 @@ The feature is controlled by a `Defaults.magnifierLensPanelEnabled` toggle (defa
 - Not introducing new permissions or new background-capture paths.
 - Not changing `SelectionView` mouse handling beyond calling `selectionDidStart()` for resize/move paths to keep the lens alive.
 - Not refactoring `OverlayWindowController.activate()` signature.
-- Not promoting the overlay panel to a key window — events are observed via global monitors instead so the foreground app keeps focus.
+- Not promoting the overlay panel to a key window — the app activates via `NSApp.activate(ignoringOtherApps: true)` when capture begins (required for the crosshair cursor to take effect), then the previous app is restored by `SourceAppFocusRestorer` when the capture session ends.
 
 ## User Flow
 
 1. User triggers screenshot via cmd+cmd (or any configured screenshot hotkey, or countdown shortcut).
-2. `OverlayWindowController` presents the overlay. If `presetImage == nil` and `Defaults.magnifierLensPanelEnabled` is true, a `MagnifierLensPanelWindow` is created and replaces the "drag to screenshot" cursor chip.
+2. `OverlayWindowController` presents the overlay. The cursor switches to the standard crosshair immediately (via `NSCursor.crosshair.push()` + `NSApp.activate`). A `MagnifierLensPanelWindow` is created and replaces the "drag to screenshot" cursor chip.
 3. Mouse moves: lens position follows the cursor; the magnified area, coordinates, and HEX/RGB value update live.
 4. `Shift` (single tap, no other modifiers): toggles between HEX and RGB display. The new state persists for the current session and resets to HEX on the next overlay activation.
 5. `⌘+C`: copies the currently displayed value (HEX → `#RRGGBB`, RGB → `rgb(r, g, b)`) to the clipboard, shows the existing `L10n.colorCopied` toast, and updates `HistoryManager` + `Defaults.lastPickedColorHex` if `Defaults.historyCacheEnabled` is true. The ratio row and the optional tip rows (`Press ⌘+C…` and `Press Shift…`) remain visible for the entire overlay session — they do not fade out.
@@ -44,11 +44,11 @@ The feature is controlled by a `Defaults.magnifierLensPanelEnabled` toggle (defa
 
 ## Lens UI
 
-Panel size: **dynamic** — computed from `Defaults.magnifierLensPanelMagnifiedSize` (default 144) plus info rows (3–5 depending on optional hint visibility). The default configuration produces a 256 × 258 point panel. The lens is a borderless `NSPanel` (similar to `CursorChipWindow`), drawn at `level = .screenSaver + 1`, ignoring mouse events, with `sharingType = .none` so ScreenCaptureKit excludes it from frozen-desktop snapshots.
+Panel size: **fixed** — 256 × 258 points (144 px magnified area + info rows). The lens is a borderless `NSPanel` (similar to `CursorChipWindow`), drawn at `level = .screenSaver + 1`, ignoring mouse events, with `sharingType = .none` so ScreenCaptureKit excludes it from frozen-desktop snapshots. Its background appearance automatically follows the system light/dark mode.
 
 ### Smart positioning
 
-The panel **defaults to directly below the cursor** (panel top edge sits at `cursor.y - offsetY`, where `offsetY = 14`). Two edge-flip rules handle overflow:
+The panel **defaults to directly below the cursor** (panel top edge sits at `cursor.y - 14`). Two edge-flip rules handle overflow:
 
 - Right edge would exceed screen → flip to the left side of the cursor.
 - Bottom edge would fall below the screen bottom → flip above the cursor.
@@ -124,12 +124,15 @@ Global monitors only observe — they cannot prevent the foreground app from rec
 
 ## Settings
 
-New `Defaults.magnifierLensPanelEnabled: Bool` (default `true`).
+The magnifier has **no user-facing settings**. Its size, position, visual styling, and behavior are all driven by sensible built-in defaults:
 
-- When `true` (default): `OverlayWindowController` creates the lens instead of the `dragToScreenshot` cursor chip in idle.
-- When `false`: legacy `CursorChipWindow` chip with `L10n.dragToScreenshot` text is shown.
+- Magnified area: 144 × 144 points (12 × 12 source pixels at 12× magnification).
+- Panel offset: 15 points right, 14 points below the cursor (with smart edge flipping).
+- Appearance: automatically follows the system light/dark mode.
+- Crosshair: 10 px wide cross in `#A5BAF9` at 65% alpha, with a 1 px white centre cross.
+- Hint rows: coordinate label, color swatch + value, `Press ⌘+C to copy color`, `Press Shift to switch RGB`, and aspect-ratio prompt are all always visible.
 
-The feature has its own **dedicated card** in Settings → General (see below), with a master toggle, configurable options, and a live preview of the lens.
+These defaults are stored on `Defaults` but are not exposed in the Settings window. The entire magnifier section (toggle, size picker, appearance controls, preview, etc.) has been removed from Settings.
 
 ## Localization
 
@@ -145,108 +148,47 @@ New L10n keys (added to all 8 `.lproj/Localizable.strings`):
 | `magnifierLensPanelShiftHint` | `Press Shift to switch RGB` | `按 Shift 切换 RGB` |
 | `magnifierLensPanelAspectFree` | `Free` | `自由` |
 | `magnifierLensPanelAspectHint` | `Press R to switch ratio: %@` | `按 R 切换比例: %@` |
-| `settingsMagnifierLensPanelTitle` | `Show magnifier while selecting` | `空闲态显示放大镜取色` |
-| `settingsMagnifierLensPanelHint` | `Magnify the area around the cursor when picking screenshot points or adjusting the selection` | `绘制前在光标旁显示带 RGB/HEX 的放大镜` |
-| `settingsMagnifierLensPanelMagnifiedSizeLabel` | `Magnified area size` | `放大区域尺寸` |
-| `settingsMagnifierLensPanelMagnificationLabel` | `Magnification` | `放大倍率` |
-| `settingsMagnifierLensPanelOffsetLabel` | `Panel offset` | `面板偏移` |
-| `settingsMagnifierLensPanelFollowSystemAppearanceTitle` | `Follow system appearance` | `跟随系统外观` |
-| `settingsMagnifierLensPanelFollowSystemAppearanceHint` | `Match the lens background to the current light or dark mode` | `将放大镜背景与当前浅色或深色模式匹配` |
-| `settingsMagnifierLensPanelDarkBackgroundLabel` | `Dark mode` | `深色模式` |
-| `settingsMagnifierLensPanelLightBackgroundLabel` | `Light mode` | `浅色模式` |
-| `settingsMagnifierLensPanelCoordinateModeLabel` | `Coordinates mode` | `坐标模式` |
-| `settingsMagnifierLensPanelCoordinateModePoints` | `Points` | `逻辑点` |
-| `settingsMagnifierLensPanelCoordinateModePixels` | `Pixels` | `物理像素` |
 
 All translations follow the project rule: **no trailing punctuation** on user-facing strings.
-
-## Settings Card Layout
-
-```
-+----------------------------------------------+
-| [ON/OFF] Show magnifier while selecting      |
-| Magnify the area around the cursor...        |
-+----------------------------------------------+
-| Magnified area size: [144 × 144 v]           |
-| Coordinates mode: [Points v]                 |
-| Panel offset (X, Y): [15]  [14]             |
-|   [ON] Follow system appearance              |
-|   Dark mode  [■]  alpha: ━━━━━━━              |
-|   Light mode [□]  alpha: ━━━━━━━              |
-| +------------------+ +----------------------+ |
-| | [preview panel] | | Show ⌘+C hint  [ON]  | |
-| | - magnifier     | | Show Shift hint [ON]  | |
-| | - coordinates   | +----------------------+ |
-| | - swatch + HEX  |                         | |
-| | - ratio row     |                         | |
-| | - hint rows     |                         | |
-| +------------------+                         | |
-+----------------------------------------------+
-```
-
-### Configurable options
-
-All options live on `Defaults` and take effect the next time the lens is created (or, for the live preview, immediately).
-
-| Key | Type | Default | Purpose |
-| --- | --- | --- | --- |
-| `magnifierLensPanelEnabled` | `Bool` | `true` | Master toggle. When off, the legacy "drag to screenshot" cursor chip is shown. |
-| `magnifierLensPanelMagnifiedSize` | `Int` | `144` | Side length of the magnified square. Choices: 96, 144, 192. |
-| `magnifierLensPanelMagnification` | `Double` | `12.0` | Zoom factor for the magnified square. Settings choices: 4, 6, 8, 10, 12, 16, 20, 24. |
-| `magnifierLensPanelOffsetX` | `Double` | `15` | Horizontal offset (in points) between the cursor and the panel's left edge. |
-| `magnifierLensPanelOffsetY` | `Double` | `14` | Vertical offset (in points) between the cursor and the panel's top edge (when below the cursor). |
-| `magnifierLensPanelFollowSystemAppearance` | `Bool` | `true` | When on, the lens picks the dark/light background based on `effectiveAppearance`. When off, it always uses the dark colour. |
-| `magnifierLensPanelDarkBackground{R,G,B,Alpha}` | `Double` × 4 | `0, 0, 0, 0.7` | RGBA used in dark mode (or always when `followSystemAppearance` is off). Components are clamped to 0…1. |
-| `magnifierLensPanelLightBackground{R,G,B,Alpha}` | `Double` × 4 | `1, 1, 1, 0.8` | RGBA used in light mode (only honoured when `followSystemAppearance` is on). Components are clamped to 0…1. |
-| `magnifierLensPanelShowCopyHint` | `Bool` | `true` | Whether to render the "Press ⌘+C to copy color" row. |
-| `magnifierLensPanelShowShiftHint` | `Bool` | `true` | Whether to render the "Press Shift to switch RGB" row. |
-| `magnifierLensPanelCoordinateMode` | `String` (`.points` / `.pixels`) | `.points` | Whether coordinates are shown as AppKit logical points or CGImage physical pixels. |
-| `magnifierLensPanelCrosshair{R,G,B,Alpha}` | `Double` × 4 | `0.659, 0.741, 0.988, 0.65` | RGBA used for the wide crosshair. Components are clamped to 0…1. |
-| `magnifierLensPanelCrosshairWidth` | `Double` | `6` | Wide crosshair line width in points, clamped to 1…30. |
-
-The lens panel size is recomputed from these defaults every time the panel is created — pick a different `magnifierLensPanelMagnifiedSize` and the panel grows to fit.
-
-### Preview
-
-The right side of the card hosts a `MagnifierPreviewView` (defined in `capcap/Settings/MagnifierPreviewView.swift`). It draws a stylised "app icon" inside the magnified square, mock coordinates (`590, 445`) and a swatch + HEX (`#0B63FE`) that match the dominant icon colour, plus the conditional hint rows. The preview re-renders via a `UserDefaults.didChangeNotification` observer so changes to background colour, hint visibility, or follow-system appearance reflect immediately.
 
 ## Files Touched
 
 ### New
 
 - `capcap/UI/MagnifierLensPanelWindow.swift` — `NSPanel` subclass plus `MagnifierLensPanelView` (drawing, magnification, swatch, layout) and the pure `MagnifierLensPanelSampler` enum for pixel-coordinate mapping, single-pixel sampling, and background-colour selection (`backgroundColor(forAppearance:)`, `darkBackgroundColor()`, `lightBackgroundColor()`).
-- `capcap/Settings/MagnifierPreviewView.swift` — `NSView` subclass that mocks the lens for the Settings card; reads from `Defaults` directly and re-renders on `UserDefaults.didChangeNotification`.
 - `Tests/capcapTests/MagnifierLensPanelTests.swift` — Unit tests covering `pixelCoordinate` mapping (including offset-screen cases), single-pixel sampling, Y-axis orientation, clamp-to-bounds, all new `Defaults` defaults, and alpha-setter clamping.
-- `docs/spark/2026-07-25-idle-color-lens-design.md` — This document.
+- `docs/spark/2026-07-25-magnifier-lens-panel-design.md` — This document.
 
 ### Modified
 
-- `capcap/Capture/OverlayWindowController.swift` — Owns the lens lifecycle, mouse-tracking (`.mouseMoved` + `.leftMouseDragged`), and `Shift` / `⌘+C` routing via local + global monitors. `refreshMagnifierLensPanelContent` uses inclusive edge-boundary screen detection. `setupMagnifierLensPanel` guards against duplicates. `selectionDidStart` recreates the lens if it was dismissed by a previous `selectionDidComplete` (for resize/move handle drags).
-- `capcap/Utilities/Defaults.swift` — Adds `magnifierLensPanelEnabled`, normalized configurable lens defaults, and the L10n accessors for the new keys.
-- `capcap/Settings/SettingsView.swift` — Builds the dedicated magnifier lens panel card in `General` (master toggle + every option above + live preview). The previous single-line toggle inside the General `Toggles` card was removed.
-- `capcap/Capture/SelectionView.swift` — Calls `delegate?.selectionDidStart()` for `.resize` and `.move` drag-action paths so the lens stays visible while adjusting an existing selection.
-- `Resources/*.lproj/Localizable.strings` × 8 — Adds the lens-related keys (`magnifierLensPanel*`, `settingsMagnifierLensPanel*`).
+- `capcap/Capture/OverlayWindowController.swift` — Owns the lens lifecycle, mouse-tracking (`.mouseMoved` + `.leftMouseDragged`), and `Shift` / `⌘+C` routing via local + global monitors. `refreshMagnifierLensPanelContent` uses inclusive edge-boundary screen detection. `setupMagnifierLensPanel` guards against duplicates. `selectionDidStart` recreates the lens if it was dismissed by a previous `selectionDidComplete` (for resize/move handle drags). Calls `NSApp.activate(ignoringOtherApps: true)` in `presentOverlay` capture branch so the crosshair cursor and lens cursor rects take effect.
+- `capcap/Utilities/Defaults.swift` — Adds magnifier lens panel defaults (size, offset, appearance, crosshair, hints, coordinate mode).
+- `capcap/Capture/SelectionView.swift` — Calls `delegate?.selectionDidStart()` for `.resize` and `.move` drag-action paths so the lens stays visible while adjusting an existing selection. Added `resetCursorRects` override with crosshair cursor rect and `refreshCursorRects()` for WindowServer cursor-rect evaluation.
+- `Resources/*.lproj/Localizable.strings` × 8 — Adds the lens-related keys (`magnifierLensPanel*`).
+
+### Removed
+
+- `capcap/Settings/MagnifierPreviewView.swift` — The Settings preview view is no longer used since the magnifier section has been removed from Settings.
 
 ## Verification
 
-- `bash scripts/compile-check.sh` — passes (0 errors) on every iteration of the design.
-- Manual runtime verification performed on `feat_idle-magnifier-color-picker`:
-  - cmd+cmd activates the overlay; lens replaces the "drag to screenshot" chip.
+- `bash scripts/compile-check.sh` — passes (0 errors).
+- `swift test --filter OverlayPresentationTests` — all 16 tests pass, including crosshair cursor assertions.
+- Manual runtime verification:
+  - cmd+cmd activates the overlay; cursor switches to crosshair immediately regardless of which app is frontmost.
+  - Magnifier lens replaces the "drag to screenshot" chip and follows the cursor.
   - Cursor moves update the magnified area, coordinates, and HEX value live.
   - Ratio row stays visible and updates when R cycles free / fixed aspect modes.
-  - Tip rows stay visible for the entire idle session (conditional on `magnifierLensPanelShowCopyHint` / `magnifierLensPanelShowShiftHint`).
+  - Tip rows stay visible for the entire idle session.
   - ⌘+C copies the currently shown format; toast and clipboard confirm.
   - Single-tap Shift toggles HEX ↔ RGB; next cmd+cmd session resets to HEX.
   - Drag starts a selection — lens stays visible and tracks the drag endpoint.
   - Resizing or moving an existing selection via handles — lens stays visible.
-  - Settings toggle hides the lens and restores the legacy chip.
   - Multi-monitor: cursor on a secondary screen left of the main display reports negative coordinates and samples the correct screen's snapshot.
-  - Edge cases: panel flips left when the cursor is near the right edge; flips up when the cursor is near the bottom edge; defaults to below the cursor when the cursor is near the top.
-  - **Top-edge pixel**: cursor at the absolute top of any screen (y == frame.maxY) correctly resolves a snapshot, magnifies, and samples the colour — no blank/missing pixel.
-  - **Ghost lens**: first cmd+cmd activation shows exactly one lens (no shadow/frozen duplicate). Confirmed `sharingType = .none` prevents ScreenCaptureKit from capturing the lens in its own background snapshot.
-  - **Points/Pixels mode**: Settings popup switches between logical points (e.g. `590, 445`) and physical pixels (e.g. `1180, 890` on a 2× Retina display).
-- The unit tests in `MagnifierLensPanelTests.swift` cover the pixel-coordinate math, the x/y-axis-correct sample path, every new `Defaults` key (magnified size, panel offsets, hint toggles, follow-system appearance, and RGBA component clamping). Running them requires Xcode (the `XCTest` framework is not bundled with the available `xcode-select` command-line tools).
-- Manual runtime verification on `feat_idle-magnifier-color-picker` covers the dedicated Settings card: master toggle, magnified-area size picker (96 / 144 / 192), X / Y offset fields, dark + light NSColorWells with alpha sliders, follow-system-appearance toggle, and the two hint toggles all take effect; the `MagnifierPreviewView` on the right of the card mirrors every change in real time.
+  - Edge cases: panel flips left when cursor near right edge; flips up when cursor near bottom edge.
+  - Settings window: no magnifier-related settings visible.
+  - Lens background automatically matches system light/dark mode.
+  - Focus is restored to the previous frontmost app when the capture session ends.
 
 ## Out of Scope
 
@@ -254,6 +196,7 @@ The right side of the card hosts a `MagnifierPreviewView` (defined in `capcap/Se
 - Re-skinning or replacing the existing `ColorPickerRunner` modal.
 - A new shortcut slot — the lens only surfaces the existing `R` aspect-ratio shortcut and claims `Shift` / `⌘+C` for lens-specific actions.
 - Making the overlay panel a key window to fully intercept `⌘+C` from the foreground app. The current design uses global monitors (observe-only), accepting that the foreground app still receives `⌘+C` in parallel.
+- User-facing magnifier settings (toggle, size, appearance, hints) — all removed in favour of built-in defaults.
 
 ## Iteration Log
 
@@ -272,3 +215,4 @@ The right side of the card hosts a `MagnifierPreviewView` (defined in `capcap/Se
 - v13 — **MagnifierLensPanel rename**: Swift types, Defaults keys, L10n keys, tests, and docs were renamed from the earlier idle-color-lens terminology to the `MagnifierLensPanel` naming used by the Settings panel.
 - v14 — **review hardening**: single-pixel sampling now disables interpolation and uses integer alignment, panel screen lookup uses inclusive edge bounds, snapshot arrival refreshes an already visible panel, local `⌘+C` copy no longer consumes the event, color defaults clamp RGB/alpha components, magnified size normalizes to supported choices, unused Settings state/resources were removed, and docs were brought back in sync.
 - v15 — **aspect-ratio prompt parity**: the lens now renders a `Press R to switch ratio: ...` row backed by the same persisted aspect-ratio state as the legacy cursor chip, and pressing `R` redraws the lens immediately so the fixed-ratio shortcut remains discoverable.
+- v16 — **always-on + settings removal + crosshair fix**: magnifier is now always enabled during capture (no toggle). The entire magnifier section (toggle, size picker, appearance controls, crosshair styling, hints, live preview) removed from Settings. Lens size/position/appearance use hardcoded sensible defaults. Crosshair cursor now appears immediately on capture start regardless of which app is frontmost (`NSApp.activate(ignoringOtherApps: true)` in `presentOverlay`). `SelectionView` added `resetCursorRects` override with crosshair cursor rect as supporting infrastructure. Focus restored to previous app when capture ends via `SourceAppFocusRestorer`.
