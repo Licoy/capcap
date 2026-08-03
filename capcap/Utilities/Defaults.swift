@@ -1941,7 +1941,7 @@ struct Defaults {
     }
 
     /// Background color used in dark mode (when `magnifierLensPanelFollowSystemAppearance` is on).
-    /// Stored as 0–1 RGBA components. Default: black with 70% alpha.
+    /// Stored as 0–1 RGBA components. Default: black with 80% alpha.
     static var magnifierLensPanelDarkBackgroundRed: Double {
         get { defaults.object(forKey: "magnifierLensPanelDarkBackgroundRed") == nil ? 0 : defaults.double(forKey: "magnifierLensPanelDarkBackgroundRed") }
         set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelDarkBackgroundRed") }
@@ -1955,7 +1955,7 @@ struct Defaults {
         set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelDarkBackgroundBlue") }
     }
     static var magnifierLensPanelDarkBackgroundAlpha: Double {
-        get { defaults.object(forKey: "magnifierLensPanelDarkBackgroundAlpha") == nil ? 0.70 : defaults.double(forKey: "magnifierLensPanelDarkBackgroundAlpha") }
+        get { defaults.object(forKey: "magnifierLensPanelDarkBackgroundAlpha") == nil ? 0.80 : defaults.double(forKey: "magnifierLensPanelDarkBackgroundAlpha") }
         set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelDarkBackgroundAlpha") }
     }
 
@@ -2044,7 +2044,7 @@ struct Defaults {
     static var magnifierLensPanelOffsetY: Double {
         get {
             if defaults.object(forKey: "magnifierLensPanelOffsetY") == nil {
-                return 14
+                return 15
             }
             return defaults.double(forKey: "magnifierLensPanelOffsetY")
         }

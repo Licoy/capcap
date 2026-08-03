@@ -276,11 +276,11 @@ final class MagnifierLensPanelTests: XCTestCase {
         XCTAssertEqual(Defaults.magnifierLensPanelMagnification, 16.0, accuracy: 0.001)
         Defaults.magnifierLensPanelMagnification = 8
         XCTAssertEqual(Defaults.magnifierLensPanelMagnification, 8.0, accuracy: 0.001)
-        // Offsets default to (15, 14).
+        // Offsets default to (15, 15).
         UserDefaults.standard.removeObject(forKey: "magnifierLensPanelOffsetX")
         UserDefaults.standard.removeObject(forKey: "magnifierLensPanelOffsetY")
         XCTAssertEqual(Defaults.magnifierLensPanelOffsetX, 15)
-        XCTAssertEqual(Defaults.magnifierLensPanelOffsetY, 14)
+        XCTAssertEqual(Defaults.magnifierLensPanelOffsetY, 15)
         // Hint toggles default on.
         UserDefaults.standard.removeObject(forKey: "magnifierLensPanelShowCopyHint")
         UserDefaults.standard.removeObject(forKey: "magnifierLensPanelShowShiftHint")
@@ -291,7 +291,7 @@ final class MagnifierLensPanelTests: XCTestCase {
         XCTAssertTrue(Defaults.magnifierLensPanelFollowSystemAppearance)
         UserDefaults.standard.removeObject(forKey: "magnifierLensPanelDarkBackgroundAlpha")
         UserDefaults.standard.removeObject(forKey: "magnifierLensPanelLightBackgroundAlpha")
-        XCTAssertEqual(Defaults.magnifierLensPanelDarkBackgroundAlpha, 0.7, accuracy: 0.001)
+        XCTAssertEqual(Defaults.magnifierLensPanelDarkBackgroundAlpha, 0.8, accuracy: 0.001)
         XCTAssertEqual(Defaults.magnifierLensPanelLightBackgroundAlpha, 0.8, accuracy: 0.001)
         UserDefaults.standard.removeObject(forKey: "magnifierLensPanelCrosshairRed")
         UserDefaults.standard.removeObject(forKey: "magnifierLensPanelCrosshairGreen")

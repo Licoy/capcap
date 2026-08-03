@@ -127,8 +127,8 @@ Global monitors only observe — they cannot prevent the foreground app from rec
 The magnifier has **no user-facing settings**. Its size, position, visual styling, and behavior are all driven by sensible built-in defaults:
 
 - Magnified area: 144 × 144 points (36 × 36 source pixels at 4× magnification).
-- Panel offset: 15 points right, 14 points below the cursor (with smart edge flipping).
-- Appearance: automatically follows the system light/dark mode. Dark background defaults to black at 70% alpha; light background defaults to white at 80% alpha.
+- Panel offset: 15 points right, 15 points below the cursor (with smart edge flipping).
+- Appearance: automatically follows the system light/dark mode. Dark background defaults to black at 80% alpha; light background defaults to white at 80% alpha.
 - Crosshair: 6 pt wide cross in `#A8BDFC` at 65% alpha, with a 1 px white centre cross.
 - Hint rows: coordinate label, color swatch + value, `Press ⌘+C to copy color`, `Press Shift to switch RGB`, and aspect-ratio prompt are all always visible.
 
