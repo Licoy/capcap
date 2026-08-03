@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.1] - 2026-08-03
+
+### Fixed
+- Align magnifier lens defaults and tests with the finalized panel behavior (820dd3e)
+
 ## [1.7.0] - 2026-08-03
 
 ### Added
