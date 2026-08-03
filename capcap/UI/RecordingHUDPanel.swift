@@ -24,7 +24,7 @@ final class RecordingHUDPanel: NSPanel {
     private var microphoneEnabled = false
 
     /// Width grows with the two audio buttons so tooltips never clip.
-    private let baseHudSize = NSSize(width: 164, height: 32)
+    private let baseHudSize = NSSize(width: 164, height: FloatingControlChrome.height)
     private let audioButtonWidth: CGFloat = 24
     private let audioButtonGap: CGFloat = 2
 
@@ -39,7 +39,7 @@ final class RecordingHUDPanel: NSPanel {
         // hudSize depends on self; compute the equivalent inline before super.init.
         let initialSize = NSSize(
             width: 164 + 2 * (24 + 2),
-            height: 32
+            height: FloatingControlChrome.height
         )
         super.init(
             contentRect: NSRect(origin: .zero, size: initialSize),
@@ -58,8 +58,8 @@ final class RecordingHUDPanel: NSPanel {
 
         containerView.panel = self
         containerView.wantsLayer = true
-        containerView.layer?.cornerRadius = 10
-        containerView.layer?.borderWidth = 0.5
+        containerView.layer?.cornerRadius = FloatingControlChrome.cornerRadius
+        containerView.layer?.borderWidth = FloatingControlChrome.borderWidth
         containerView.applyAppearance()
         contentView = containerView
 
@@ -97,23 +97,11 @@ final class RecordingHUDPanel: NSPanel {
     }
 
     func positionOnScreen(relativeTo screenRect: NSRect, screen: NSScreen?) {
-        let size = hudSize
-        let gap: CGFloat = 8
-        var origin = NSPoint(
-            x: screenRect.maxX - size.width - gap,
-            y: screenRect.maxY + gap
-        )
-
-        if let screen {
-            let visible = screen.visibleFrame
-            if origin.y + size.height > visible.maxY {
-                origin.y = screenRect.minY - size.height - gap
-            }
-            origin.x = max(visible.minX + 4, min(origin.x, visible.maxX - size.width - 4))
-            origin.y = max(visible.minY + 4, min(origin.y, visible.maxY - size.height - 4))
-        }
-
-        setFrameOrigin(origin)
+        setFrameOrigin(FloatingControlChrome.origin(
+            for: hudSize,
+            relativeTo: screenRect,
+            visibleFrame: screen?.visibleFrame
+        ))
     }
 
     private func setupControls() {
@@ -196,7 +184,7 @@ final class RecordingHUDPanel: NSPanel {
     }
 
     private func layoutControls() {
-        let buttonSize: CGFloat = 24
+        let buttonSize = FloatingControlChrome.buttonSide
         let padding: CGFloat = 6
         let height = hudSize.height
 
