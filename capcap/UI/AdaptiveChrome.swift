@@ -96,6 +96,42 @@ enum AdaptiveChrome {
     }
 }
 
+/// Shared geometry and surface metrics for compact floating operation bars
+/// such as the recording HUD and the PIN image toolbar
+enum FloatingControlChrome {
+    static let height: CGFloat = 32
+    static let buttonSide: CGFloat = 24
+    static let cornerRadius: CGFloat = 10
+    static let borderWidth: CGFloat = 0.5
+    static let gap: CGFloat = 8
+    static let screenEdgeInset: CGFloat = 4
+
+    static func origin(
+        for size: NSSize,
+        relativeTo anchorRect: NSRect,
+        visibleFrame: NSRect?
+    ) -> NSPoint {
+        var origin = NSPoint(
+            x: anchorRect.maxX - size.width - gap,
+            y: anchorRect.maxY + gap
+        )
+
+        guard let visibleFrame else { return origin }
+        if origin.y + size.height > visibleFrame.maxY {
+            origin.y = anchorRect.minY - size.height - gap
+        }
+        origin.x = max(
+            visibleFrame.minX + screenEdgeInset,
+            min(origin.x, visibleFrame.maxX - size.width - screenEdgeInset)
+        )
+        origin.y = max(
+            visibleFrame.minY + screenEdgeInset,
+            min(origin.y, visibleFrame.maxY - size.height - screenEdgeInset)
+        )
+        return origin
+    }
+}
+
 /// Layer-backed rounded surface whose colors continue to follow live system
 /// appearance changes
 final class AdaptiveChromeSurfaceView: NSView {

@@ -26,6 +26,28 @@ final class AdaptiveChromeTests: XCTestCase {
         XCTAssertGreaterThan(lightColor.blue, darkColor.blue)
     }
 
+    func testFloatingControlOriginUsesExternalTopRightPlacement() {
+        let origin = FloatingControlChrome.origin(
+            for: NSSize(width: 216, height: 32),
+            relativeTo: NSRect(x: 100, y: 100, width: 300, height: 200),
+            visibleFrame: NSRect(x: 0, y: 0, width: 1440, height: 900)
+        )
+
+        XCTAssertEqual(origin.x, 176)
+        XCTAssertEqual(origin.y, 308)
+    }
+
+    func testFloatingControlOriginFallsBelowWhenTopSpaceIsUnavailable() {
+        let origin = FloatingControlChrome.origin(
+            for: NSSize(width: 216, height: 32),
+            relativeTo: NSRect(x: 100, y: 700, width: 300, height: 180),
+            visibleFrame: NSRect(x: 0, y: 0, width: 1440, height: 900)
+        )
+
+        XCTAssertEqual(origin.x, 176)
+        XCTAssertEqual(origin.y, 660)
+    }
+
     private func colorComponents(_ color: CGColor) throws -> (red: CGFloat, green: CGFloat, blue: CGFloat) {
         let converted = try XCTUnwrap(
             color.converted(to: CGColorSpace(name: CGColorSpace.sRGB)!, intent: .defaultIntent, options: nil)
