@@ -628,6 +628,37 @@
 "chooseRecordingSavePathTitle" = "録画の保存先を選択";
 "chooseScreenshotSavePathTitle" = "スクリーンショットの保存先を選択";
 
+/* Magnifier lens panel */
+"magnifierLensPanelCoordinates" = "座標: %@, %@";
+"magnifierLensPanelHex" = "HEX: %@";
+"magnifierLensPanelRgb" = "RGB: %@";
+"magnifierLensPanelRgbString" = "rgb(%d, %d, %d)";
+"magnifierLensPanelCopyHint" = "⌘+C で色をコピー";
+"magnifierLensPanelShiftHint" = "Shift で RGB に切替";
+"magnifierLensPanelAspectFree" = "自由";
+"magnifierLensPanelAspectHint" = "R で比率を切替: %@";
+"settingsMagnifierLensPanelTitle" = "選択時に拡大鏡を表示";
+"settingsMagnifierLensPanelHint" = "スクリーンショットのポイント選択や選択範囲の調整時にカーソル付近を拡大表示";
+"settingsMagnifierLensPanelMagnifiedSizeLabel" = "拡大エリアのサイズ";
+"settingsMagnifierLensPanelMagnificationLabel" = "拡大倍率";
+"settingsMagnifierLensPanelOffsetLabel" = "パネルオフセット (X, Y)";
+"settingsMagnifierLensPanelFollowSystemAppearanceTitle" = "システムの外観に追従";
+"settingsMagnifierLensPanelFollowSystemAppearanceHint" = "現在の macOS 外観に応じてダーク/ライト背景を自動選択";
+"settingsMagnifierLensPanelDarkBackgroundLabel" = "ダークモード";
+"settingsMagnifierLensPanelLightBackgroundLabel" = "ライトモード";
+"settingsMagnifierLensPanelCoordinateModeLabel" = "座標モード";
+"settingsMagnifierLensPanelCoordinateModePoints" = "論理ポイント";
+"settingsMagnifierLensPanelCoordinateModePixels" = "物理ピクセル";
+"settingsMagnifierLensPanelCoordinateModeHint" = "Pointsは画面左下を原点とし、Pixelsは画像左上を原点とします";
+"settingsMagnifierLensPanelMagnifierLabel" = "拡大鏡";
+"settingsMagnifierLensPanelAppearanceLabel" = "パネル外観";
+"settingsMagnifierLensPanelKeyboardActionLabel" = "キーボード操作";
+"settingsMagnifierLensPanelLivePreviewTitle" = "ライブプレビュー";
+"settingsMagnifierLensPanelLivePreviewHint" = "トリガーアイコンにカーソルを合わせると拡大鏡パネルをリアルタイムプレビュー";
+"settingsMagnifierLensPanelPreviewHint" = "設定に基づいてプレビューが更新されます。変更は即座に反映され、細かく調整できます";
+"settingsMagnifierLensPanelCrosshairLabel" = "クロスヘア";
+"settingsMagnifierLensPanelCrosshairHint" = "拡大領域の中央インジケーター";
+"settingsMagnifierLensPanelCrosshairWidthLabel" = "幅";
 /* ファイルのアップロード */
 "fileUploadShortcutHeader" = "ファイルをアップロード";
 "finderUploadShortcutDefaultDisplay" = "未設定";

@@ -38,8 +38,8 @@ struct ClipboardManager {
         }
     }
 
-    static func copyToClipboard(text: String) {
-        writeTextToClipboard(text)
+    static func copyToClipboard(text: String, skipHistory: Bool = false) {
+        writeTextToClipboard(text, skipHistory: skipHistory)
     }
 
     static func copyColorToClipboard(hex: String) {

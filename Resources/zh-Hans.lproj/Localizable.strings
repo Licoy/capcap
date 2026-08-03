@@ -628,6 +628,37 @@
 "chooseRecordingSavePathTitle" = "选择录制保存路径";
 "chooseScreenshotSavePathTitle" = "选择截图保存路径";
 
+/* Magnifier lens panel */
+"magnifierLensPanelCoordinates" = "坐标: %@, %@";
+"magnifierLensPanelHex" = "HEX: %@";
+"magnifierLensPanelRgb" = "RGB: %@";
+"magnifierLensPanelRgbString" = "rgb(%d, %d, %d)";
+"magnifierLensPanelCopyHint" = "按 ⌘+C 复制颜色";
+"magnifierLensPanelShiftHint" = "按 Shift 切换 RGB";
+"magnifierLensPanelAspectFree" = "自由";
+"magnifierLensPanelAspectHint" = "按 R 切换比例: %@";
+"settingsMagnifierLensPanelTitle" = "选择时显示放大镜";
+"settingsMagnifierLensPanelHint" = "选取截图点或调整选区时，在光标旁放大显示";
+"settingsMagnifierLensPanelMagnifiedSizeLabel" = "放大区尺寸";
+"settingsMagnifierLensPanelMagnificationLabel" = "放大倍率";
+"settingsMagnifierLensPanelOffsetLabel" = "面板偏移 (X, Y)";
+"settingsMagnifierLensPanelFollowSystemAppearanceTitle" = "跟随系统外观";
+"settingsMagnifierLensPanelFollowSystemAppearanceHint" = "根据 macOS 当前外观自动选择深色或浅色背景";
+"settingsMagnifierLensPanelDarkBackgroundLabel" = "深色模式";
+"settingsMagnifierLensPanelLightBackgroundLabel" = "浅色模式";
+"settingsMagnifierLensPanelCoordinateModeLabel" = "坐标模式";
+"settingsMagnifierLensPanelCoordinateModePoints" = "逻辑点";
+"settingsMagnifierLensPanelCoordinateModePixels" = "物理像素";
+"settingsMagnifierLensPanelCoordinateModeHint" = "Points 以屏幕左下角为原点，Pixels 以图像左上角为原点";
+"settingsMagnifierLensPanelMagnifierLabel" = "放大镜";
+"settingsMagnifierLensPanelAppearanceLabel" = "面板外观";
+"settingsMagnifierLensPanelKeyboardActionLabel" = "键盘操作";
+"settingsMagnifierLensPanelLivePreviewTitle" = "实时预览";
+"settingsMagnifierLensPanelLivePreviewHint" = "将鼠标悬停在触发图标上时，放大镜面板的实时预览";
+"settingsMagnifierLensPanelPreviewHint" = "预览会根据你的设置实时更新，修改即时生效，方便你精细调整体验";
+"settingsMagnifierLensPanelCrosshairLabel" = "十字线";
+"settingsMagnifierLensPanelCrosshairHint" = "放大区域中心的定位指示器";
+"settingsMagnifierLensPanelCrosshairWidthLabel" = "宽度";
 /* 文件上传 */
 "fileUploadShortcutHeader" = "上传文件";
 "finderUploadShortcutDefaultDisplay" = "未设置";

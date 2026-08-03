@@ -71,6 +71,7 @@ class SettingsView: NSView {
     private var langPicker: NSPopUpButton!
     private var historyCacheSwitch: NSSwitch!
     private var clipboardTextCacheSwitch: NSSwitch!
+
     private var historyCacheSlider: SettingsTickSlider!
     private var historyCacheValueLabel: NSTextField!
     private var clipboardTextHistoryLimitSlider: SettingsTickSlider!
@@ -754,6 +755,7 @@ class SettingsView: NSView {
         pinAcrossSpacesSwitch = pinAcrossSpaces.toggle
         togglesInner.addArrangedSubview(pinAcrossSpaces.row)
         pinAcrossSpaces.row.widthAnchor.constraint(equalTo: togglesInner.widthAnchor).isActive = true
+        togglesInner.addArrangedSubview(rowDivider())
 
         stack.addArrangedSubview(togglesCard)
         togglesCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
@@ -2660,6 +2662,39 @@ class SettingsView: NSView {
         v.translatesAutoresizingMaskIntoConstraints = false
         v.heightAnchor.constraint(equalToConstant: 1).isActive = true
         return v
+    }
+
+    /// Creates a rounded-bordered sub-card container for grouping related
+    /// settings inside the idle-lens card.
+    private func makeSubCard(title: String) -> (NSBox, NSStackView) {
+        let box = NSBox()
+        box.boxType = .custom
+        box.cornerRadius = 8
+        box.borderWidth = 1
+        box.borderColor = NSColor.white.withAlphaComponent(0.06)
+        box.fillColor = NSColor.white.withAlphaComponent(0.02)
+        box.titlePosition = .noTitle
+        box.translatesAutoresizingMaskIntoConstraints = false
+
+        let inner = NSStackView()
+        inner.orientation = .vertical
+        inner.alignment = .leading
+        inner.spacing = 6
+        inner.translatesAutoresizingMaskIntoConstraints = false
+
+        let titleLabel = NSTextField(labelWithString: title)
+        titleLabel.font = .systemFont(ofSize: 11, weight: .semibold)
+        titleLabel.textColor = .secondaryLabelColor
+        inner.addArrangedSubview(titleLabel)
+
+        box.addSubview(inner)
+        NSLayoutConstraint.activate([
+            inner.topAnchor.constraint(equalTo: box.topAnchor, constant: 8),
+            inner.bottomAnchor.constraint(equalTo: box.bottomAnchor, constant: -10),
+            inner.leadingAnchor.constraint(equalTo: box.leadingAnchor, constant: 10),
+            inner.trailingAnchor.constraint(equalTo: box.trailingAnchor, constant: -10),
+        ])
+        return (box, inner)
     }
 
     private func flexSpacer() -> NSView {

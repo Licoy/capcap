@@ -47,6 +47,29 @@ final class OverlayPresentationTests: XCTestCase {
         XCTAssertEqual(provider.cancellationCount, 1)
     }
 
+    func testLegacyDisabledMagnifierPreferenceIsIgnored() {
+        _ = NSApplication.shared
+        let key = "magnifierLensPanelEnabled"
+        let previousValue = UserDefaults.standard.object(forKey: key)
+        UserDefaults.standard.set(false, forKey: key)
+        defer {
+            if let previousValue {
+                UserDefaults.standard.set(previousValue, forKey: key)
+            } else {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+        }
+
+        let controller = OverlayWindowController(
+            snapshotProvider: ControlledScreenSnapshotProvider(delay: 2),
+            onComplete: { _ in }
+        )
+        controller.activate()
+        defer { controller.cancel() }
+
+        XCTAssertTrue(controller.isMagnifierLensPanelPresented)
+    }
+
     func testRShortcutIsHandledWhileSnapshotPreparationIsPending() throws {
         _ = NSApplication.shared
         let previousAspectRatio = Defaults.hasSelectionAspectRatio
@@ -103,7 +126,7 @@ final class OverlayPresentationTests: XCTestCase {
         )
     }
 
-    func testSelectionPointerEventsKeepDefaultArrowCursor() throws {
+    func testCaptureStartsWithCrosshairAndPointerEventsKeepIt() throws {
         _ = NSApplication.shared
         let originalCursor = NSCursor.current
         let controller = OverlayWindowController(
@@ -117,6 +140,7 @@ final class OverlayPresentationTests: XCTestCase {
         }
 
         controller.activate()
+        XCTAssertEqual(NSCursor.current, NSCursor.crosshair)
         let selectionView = try XCTUnwrap(
             controller.activeSelectionViews.first(where: { $0.window?.isKeyWindow == true })
         )
@@ -163,15 +187,35 @@ final class OverlayPresentationTests: XCTestCase {
 
         NSCursor.crosshair.set()
         selectionView.mouseMoved(with: mouseMoved)
-        XCTAssertEqual(NSCursor.current, NSCursor.arrow)
+        XCTAssertEqual(NSCursor.current, NSCursor.crosshair)
 
         NSCursor.openHand.set()
         selectionView.mouseDown(with: mouseDown)
-        XCTAssertEqual(NSCursor.current, NSCursor.arrow)
+        XCTAssertEqual(NSCursor.current, NSCursor.crosshair)
 
         NSCursor.closedHand.set()
         selectionView.mouseDragged(with: mouseDragged)
-        XCTAssertEqual(NSCursor.current, NSCursor.arrow)
+        XCTAssertEqual(NSCursor.current, NSCursor.crosshair)
+    }
+
+    func testCaptureReassertsCrosshairAfterTriggerModifierReleaseWithoutMouseMovement() {
+        _ = NSApplication.shared
+        let originalCursor = NSCursor.current
+        let controller = OverlayWindowController(
+            snapshotProvider: ControlledScreenSnapshotProvider(delay: 2),
+            windowSnapshotLoader: { _ in .success([]) },
+            onComplete: { _ in }
+        )
+        defer {
+            controller.cancel()
+            originalCursor.set()
+        }
+
+        controller.activate()
+        // The overlay activates capcap, then registers and invalidates a
+        // full-view crosshair cursor rect, so the crosshair should be visible
+        // without any mouse movement.
+        XCTAssertEqual(NSCursor.current, NSCursor.crosshair)
     }
 
     func testCursorChipIsExcludedFromScreenSnapshots() {

@@ -628,6 +628,37 @@
 "chooseRecordingSavePathTitle" = "Choose Recording Save Path";
 "chooseScreenshotSavePathTitle" = "Choose Screenshot Save Path";
 
+/* Magnifier lens panel */
+"magnifierLensPanelCoordinates" = "Coordinates: %@, %@";
+"magnifierLensPanelHex" = "HEX: %@";
+"magnifierLensPanelRgb" = "RGB: %@";
+"magnifierLensPanelRgbString" = "rgb(%d, %d, %d)";
+"magnifierLensPanelCopyHint" = "Press ⌘+C to copy color";
+"magnifierLensPanelShiftHint" = "Press Shift to switch RGB";
+"magnifierLensPanelAspectFree" = "Free";
+"magnifierLensPanelAspectHint" = "Press R to switch ratio: %@";
+"settingsMagnifierLensPanelTitle" = "Show magnifier while selecting";
+"settingsMagnifierLensPanelHint" = "Magnify the area around the cursor when picking screenshot points or adjusting the selection";
+"settingsMagnifierLensPanelMagnifiedSizeLabel" = "Magnified area size";
+"settingsMagnifierLensPanelMagnificationLabel" = "Magnification";
+"settingsMagnifierLensPanelOffsetLabel" = "Panel offset (X, Y)";
+"settingsMagnifierLensPanelFollowSystemAppearanceTitle" = "Follow system appearance";
+"settingsMagnifierLensPanelFollowSystemAppearanceHint" = "Auto-pick the dark or light background based on the current macOS appearance";
+"settingsMagnifierLensPanelDarkBackgroundLabel" = "Dark mode";
+"settingsMagnifierLensPanelLightBackgroundLabel" = "Light mode";
+"settingsMagnifierLensPanelCoordinateModeLabel" = "Coordinates mode";
+"settingsMagnifierLensPanelCoordinateModePoints" = "Points";
+"settingsMagnifierLensPanelCoordinateModePixels" = "Pixels";
+"settingsMagnifierLensPanelCoordinateModeHint" = "Points measure from bottom-left. Pixels measure from top-left";
+"settingsMagnifierLensPanelMagnifierLabel" = "Magnifier";
+"settingsMagnifierLensPanelAppearanceLabel" = "Panel Appearance";
+"settingsMagnifierLensPanelKeyboardActionLabel" = "Keyboard action";
+"settingsMagnifierLensPanelLivePreviewTitle" = "Live Preview";
+"settingsMagnifierLensPanelLivePreviewHint" = "Real-time preview of the magnifier panel when hovering over the trigger icon";
+"settingsMagnifierLensPanelPreviewHint" = "The preview updates based on your settings. Changes apply instantly so you can fine-tune your experience";
+"settingsMagnifierLensPanelCrosshairLabel" = "Crosshair";
+"settingsMagnifierLensPanelCrosshairHint" = "Center indicator inside the magnified area";
+"settingsMagnifierLensPanelCrosshairWidthLabel" = "Width";
 /* File upload */
 "fileUploadShortcutHeader" = "Upload Files";
 "finderUploadShortcutDefaultDisplay" = "Not set";

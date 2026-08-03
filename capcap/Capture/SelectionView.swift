@@ -181,10 +181,28 @@ class SelectionView: NSView {
         }
     }
 
+    // MARK: - Cursors
+
+    /// Registers a crosshair cursor rect covering the entire idle view.
+    /// OverlayWindowController activates capcap before invalidating cursor
+    /// rects, because AppKit cursor ownership is scoped to the frontmost app.
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        if state == .idle, !selectionLocked {
+            addCursorRect(bounds, cursor: .crosshair)
+        }
+    }
+
+    /// Tells WindowServer to re-evaluate cursor rects for this view.
+    /// Call after state changes that affect which cursor should appear.
+    func refreshCursorRects() {
+        window?.invalidateCursorRects(for: self)
+    }
+
     // MARK: - Mouse Events
 
     override func mouseDown(with event: NSEvent) {
-        NSCursor.arrow.set()
+        NSCursor.crosshair.set()
         let point = convert(event.locationInWindow, from: nil)
         if shouldConfirmFromSelectionDoubleClick(event: event, point: point) {
             dragAction = .none
@@ -226,6 +244,7 @@ class SelectionView: NSView {
                 dragAction = .resize(handle)
                 dragStart = point
                 dragOriginalRect = rect
+                delegate?.selectionDidStart()
                 return
             }
             // Check inside selection for move
@@ -237,6 +256,7 @@ class SelectionView: NSView {
                 dragAction = .move
                 dragStart = point
                 dragOriginalRect = rect
+                delegate?.selectionDidStart()
                 return
             }
             // Click outside selection — if locked (editor active), ignore
@@ -276,7 +296,7 @@ class SelectionView: NSView {
 
     override func mouseDragged(with event: NSEvent) {
         guard selectionInteractionEnabled else { return }
-        NSCursor.arrow.set()
+        NSCursor.crosshair.set()
         let point = convert(event.locationInWindow, from: nil)
 
         switch dragAction {
@@ -375,11 +395,17 @@ class SelectionView: NSView {
     }
 
     override func mouseMoved(with event: NSEvent) {
-        NSCursor.arrow.set()
         guard selectionInteractionEnabled else { return }
 
         // In idle state, detect windows under cursor for hover highlight
         if state == .idle && !selectionLocked {
+            // capcap may lose activation over time, which causes WindowServer
+            // to ignore the crosshair cursor rect registered in resetCursorRects.
+            // Re-activate on every mouse-move so the cursor stays crosshair.
+            if !NSApp.isActive {
+                NSApp.activate(ignoringOtherApps: true)
+            }
+            NSCursor.crosshair.set()
             updateWindowHover(with: event)
         }
     }
@@ -400,7 +426,6 @@ class SelectionView: NSView {
     }
 
     private func updateWindowHover(screenPoint: NSPoint) {
-        NSCursor.arrow.set()
         guard let detector = windowDetector,
               let win = self.window,
               let screen = win.screen else {

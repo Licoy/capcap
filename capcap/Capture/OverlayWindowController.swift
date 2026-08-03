@@ -62,6 +62,16 @@ class OverlayWindowController {
 
     private var windows: [NSWindow] = []
     private var chipWindow: CursorChipWindow?
+    private var magnifierLensPanel: MagnifierLensPanelWindow?
+    private var magnifierLensPanelFormat: MagnifierLensPanelWindow.Format = .hex
+    private var mouseMovedLocalMonitor: Any?
+    private var mouseMovedGlobalMonitor: Any?
+    private var magnifierLensPanelFlagsChangedLocalMonitor: Any?
+    private var magnifierLensPanelFlagsChangedGlobalMonitor: Any?
+    private var magnifierLensPanelKeyDownGlobalMonitor: Any?
+    private var lastMagnifierLensPanelShiftDown: TimeInterval = 0
+    private var magnifierLensPanelActive: Bool { magnifierLensPanel != nil }
+    private var screenFramesByDisplayID: [CGDirectDisplayID: NSRect] = [:]
     private var escLocalMonitor: Any?
     private var escGlobalMonitor: Any?
     private var leftMouseLocalMonitor: Any?
@@ -333,6 +343,10 @@ class OverlayWindowController {
         !windows.isEmpty && windows.allSatisfy(\.isVisible)
     }
 
+    var isMagnifierLensPanelPresented: Bool {
+        magnifierLensPanelActive
+    }
+
     var isSelectionInteractive: Bool {
         windows.compactMap { $0.contentView as? SelectionView }
             .contains(where: \.selectionInteractionEnabled)
@@ -446,6 +460,9 @@ class OverlayWindowController {
         switch event {
         case .image(let displayID, let image):
             screenSnapshots[displayID] = image
+            if magnifierLensPanel != nil {
+                refreshMagnifierLensPanelContent()
+            }
             if let selectionView = selectionViewsByDisplayID[displayID] {
                 selectionView.setBackgroundSnapshot(
                     cgImage: image,
@@ -507,6 +524,15 @@ class OverlayWindowController {
 
     private func presentOverlay(generation: Int) {
         guard windows.isEmpty else { return }
+
+        // Cache each screen's AppKit frame so the magnifier lens panel can map a
+        // global mouse location onto the matching snapshot's pixel coords.
+        screenFramesByDisplayID.removeAll(keepingCapacity: true)
+        for screen in NSScreen.screens {
+            if let displayID = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID {
+                screenFramesByDisplayID[displayID] = screen.frame
+            }
+        }
 
         // The transparent selection shell is deliberately created without
         // waiting for frozen pixels. Until a snapshot arrives, AppKit simply
@@ -570,11 +596,21 @@ class OverlayWindowController {
         CATransaction.commit()
         triggerContext?.mark(.overlayOrderedFront)
 
-        chipWindow = CursorChipWindow(text: currentCursorChipText)
-        chipWindow?.show()
+        if shouldShowMagnifierLensPanel {
+            // Lens replaces the drag-to-screenshot hint while the overlay is
+            // sitting in the idle state. Chip stays nil so its text doesn't
+            // double up with the lens.
+            setupMagnifierLensPanel()
+        } else {
+            chipWindow = CursorChipWindow(text: currentCursorChipText)
+            chipWindow?.show()
+        }
 
         escLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if self?.editController?.isTextEditing == true {
+                return event
+            }
+            if self?.handleMagnifierLensPanelCopyShortcut(for: event) == true {
                 return event
             }
             if self?.editController?.confirmCropFromKeyboard(for: event) == true {
@@ -633,6 +669,27 @@ class OverlayWindowController {
                 self?.cancel()
             }
         }
+        magnifierLensPanelFlagsChangedLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            self?.handleMagnifierLensPanelShiftFlagsChanged(event)
+            return event
+        }
+        // The overlay is a non-activating panel, so keyboard events routed
+        // to the foreground app never reach our local monitor. Mirror the
+        // Shift and ⌘+C handling with global monitors so they still fire
+        // when the user has Gemini (or any other app) focused underneath.
+        magnifierLensPanelFlagsChangedGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            self?.handleMagnifierLensPanelShiftFlagsChanged(event)
+        }
+        magnifierLensPanelKeyDownGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            self?.handleMagnifierLensPanelCopyShortcut(for: event)
+        }
+        mouseMovedLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { [weak self] event in
+            self?.refreshMagnifierLensPanelContent()
+            return event
+        }
+        mouseMovedGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { [weak self] _ in
+            self?.refreshMagnifierLensPanelContent()
+        }
         rightMouseLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .rightMouseDown) { [weak self] event in
             if self?.editController?.isTextEditing == true {
                 return event
@@ -648,9 +705,17 @@ class OverlayWindowController {
         }
 
         if presetImage == nil, suspendedDraft == nil {
-            NSCursor.arrow.push()
+            NSCursor.crosshair.push()
             cursorWasPushed = true
             claimSelectionKeyboardFocus()
+            refreshSelectionCursor()
+            NSCursor.crosshair.set()
+            // Activate capcap so NSCursor APIs and cursor rects take effect.
+            // Without activation, cursor changes from an LSUIElement background
+            // app are ignored by WindowServer. The caller (AppDelegate) captures
+            // the previous frontmost app before this point and restores focus
+            // via onRequestFocusReturn when the capture session ends.
+            NSApp.activate(ignoringOtherApps: true)
         } else {
             // Skip cursor push so tearDown's pop doesn't strip an unrelated cursor.
             cursorPopped = true
@@ -665,10 +730,9 @@ class OverlayWindowController {
         }
     }
 
-    /// Leave the source app's activation state untouched so its visual state
-    /// remains capturable, but make the nonactivating selection panel own key
-    /// events. This prevents a previously focused text field from receiving
-    /// capture shortcuts such as R.
+    /// Make the nonactivating selection panel own key events before capcap is
+    /// activated for cursor ownership. This prevents a previously focused text
+    /// field from receiving capture shortcuts such as R.
     private func claimSelectionKeyboardFocus() {
         let targetView = firstFrameTargetDisplayID
             .flatMap { selectionViewsByDisplayID[$0] }
@@ -676,6 +740,16 @@ class OverlayWindowController {
         guard let targetView, let targetWindow = targetView.window else { return }
         targetWindow.makeKeyAndOrderFront(nil)
         targetWindow.makeFirstResponder(targetView)
+    }
+
+    /// Refresh the selection cursor after capcap claims activation.
+    ///
+    /// AppKit cursor APIs are ignored while another app is frontmost. Once
+    /// presentOverlay activates capcap, invalidating cursor rects lets
+    /// WindowServer re-evaluate the full-view crosshair rect registered by
+    /// SelectionView.resetCursorRects.
+    private func refreshSelectionCursor() {
+        activeSelectionViews.forEach { $0.refreshCursorRects() }
     }
 
     private func recordFirstDraw(generation: Int) {
@@ -812,6 +886,7 @@ class OverlayWindowController {
         applySelectionAspectRatio(nextAspectRatio)
         if usesAspectRatioSelection {
             chipWindow?.updateText(Self.aspectRatioCursorChipText(for: postCaptureAction, aspectRatio: nextAspectRatio))
+            magnifierLensPanel?.refreshDisplay()
         }
         return true
     }
@@ -1063,8 +1138,18 @@ class OverlayWindowController {
         chipWindow?.dismiss()
         chipWindow = nil
 
+        magnifierLensPanel?.dismiss()
+        magnifierLensPanel = nil
+        magnifierLensPanelFormat = .hex
+        lastMagnifierLensPanelShiftDown = 0
+
         if let m = escLocalMonitor { NSEvent.removeMonitor(m); escLocalMonitor = nil }
         if let m = escGlobalMonitor { NSEvent.removeMonitor(m); escGlobalMonitor = nil }
+        if let m = magnifierLensPanelFlagsChangedLocalMonitor { NSEvent.removeMonitor(m); magnifierLensPanelFlagsChangedLocalMonitor = nil }
+        if let m = magnifierLensPanelFlagsChangedGlobalMonitor { NSEvent.removeMonitor(m); magnifierLensPanelFlagsChangedGlobalMonitor = nil }
+        if let m = magnifierLensPanelKeyDownGlobalMonitor { NSEvent.removeMonitor(m); magnifierLensPanelKeyDownGlobalMonitor = nil }
+        if let m = mouseMovedLocalMonitor { NSEvent.removeMonitor(m); mouseMovedLocalMonitor = nil }
+        if let m = mouseMovedGlobalMonitor { NSEvent.removeMonitor(m); mouseMovedGlobalMonitor = nil }
         if let m = leftMouseLocalMonitor { NSEvent.removeMonitor(m); leftMouseLocalMonitor = nil }
         if let m = rightMouseLocalMonitor { NSEvent.removeMonitor(m); rightMouseLocalMonitor = nil }
         if let m = rightMouseGlobalMonitor { NSEvent.removeMonitor(m); rightMouseGlobalMonitor = nil }
@@ -1106,6 +1191,105 @@ class OverlayWindowController {
             height: screenRect.height
         )
     }
+
+    // MARK: - Magnifier lens panel
+
+    private var shouldShowMagnifierLensPanel: Bool {
+        guard presetImage == nil,
+              suspendedDraft == nil else { return false }
+        return postCaptureAction == .edit
+    }
+
+    private func setupMagnifierLensPanel() {
+        guard magnifierLensPanel == nil else { return }
+        let lens = MagnifierLensPanelWindow()
+        magnifierLensPanel = lens
+        magnifierLensPanelFormat = .hex
+        lens.show()
+        refreshMagnifierLensPanelContent()
+    }
+
+    private func refreshMagnifierLensPanelContent() {
+        guard let lens = magnifierLensPanel else { return }
+        let mouseLocation = NSEvent.mouseLocation
+        // CGRect.contains uses a half-open [min, max) interval so a cursor
+        // sitting on the top or right screen edge is treated as outside.
+        // Use an inclusive test instead so the lens still resolves a
+        // snapshot at extreme boundaries.
+        guard let screen = NSScreen.screens.first(where: { screen in
+            let f = screen.frame
+            return mouseLocation.x >= f.minX && mouseLocation.x <= f.maxX
+                && mouseLocation.y >= f.minY && mouseLocation.y <= f.maxY
+        }),
+              let displayID = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID,
+              let snapshot = screenSnapshots[displayID],
+              let screenFrame = screenFramesByDisplayID[displayID] else {
+            lens.update(snapshot: nil, screenFrame: .zero, mouseLocation: mouseLocation, format: magnifierLensPanelFormat)
+            return
+        }
+        lens.update(
+            snapshot: snapshot,
+            screenFrame: screenFrame,
+            mouseLocation: mouseLocation,
+            format: magnifierLensPanelFormat
+        )
+    }
+
+    private func handleMagnifierLensPanelShiftFlagsChanged(_ event: NSEvent) {
+        guard magnifierLensPanelActive else { return }
+        // Shift left/right keyCode is 56 / 60. We accept either.
+        guard event.keyCode == 56 || event.keyCode == 60 else { return }
+        let shiftIsDown = event.modifierFlags.contains(.shift)
+        let now = event.timestamp
+        if shiftIsDown {
+            lastMagnifierLensPanelShiftDown = now
+        } else if lastMagnifierLensPanelShiftDown > 0 {
+            let duration = now - lastMagnifierLensPanelShiftDown
+            lastMagnifierLensPanelShiftDown = 0
+            // Tap detection: quick press-and-release of Shift without other keys.
+            // 500 ms is generous enough for a deliberate tap but short enough to
+            // ignore Shift+letter holds where Shift stays down longer.
+            if duration < 0.5 {
+                toggleMagnifierLensPanelFormat()
+            }
+        }
+    }
+
+    private func toggleMagnifierLensPanelFormat() {
+        magnifierLensPanelFormat = (magnifierLensPanelFormat == .hex) ? .rgb : .hex
+        magnifierLensPanel?.setFormat(magnifierLensPanelFormat)
+    }
+
+    /// Returns `true` when the event represents ⌘+C and the lens should claim it.
+    private func handleMagnifierLensPanelCopyShortcut(for event: NSEvent) -> Bool {
+        guard magnifierLensPanelActive else { return false }
+        guard event.keyCode == 8 else { return false } // kVK_ANSI_C
+        let mods = event.modifierFlags.intersection([.command, .option, .control])
+        guard mods == .command else { return false }
+        guard let lens = magnifierLensPanel, let sample = lens.currentSample else { return false }
+        copyMagnifierLensPanelColor(sample)
+        return true
+    }
+
+    private func copyMagnifierLensPanelColor(_ sample: MagnifierLensPanelWindow.Sample) {
+        let hex = String(format: "#%02X%02X%02X", sample.r, sample.g, sample.b)
+        let rgb = L10n.magnifierLensPanelRgbString(r: sample.r, g: sample.g, b: sample.b)
+        let value: String
+        switch magnifierLensPanelFormat {
+        case .hex:
+            value = hex
+            ClipboardManager.copyColorToClipboard(hex: hex)
+        case .rgb:
+            value = rgb
+            ClipboardManager.copyToClipboard(text: rgb, skipHistory: true)
+        }
+        if Defaults.historyCacheEnabled {
+            HistoryManager.shared.addColor(hex: hex)
+            Defaults.lastPickedColorHex = hex
+        }
+        let toastScreen = NSScreen.screens.first(where: { $0.frame.contains(NSEvent.mouseLocation) }) ?? NSScreen.main
+        ToastWindow.show(message: L10n.colorCopied(value), on: toastScreen)
+    }
 }
 
 // MARK: - SelectionViewDelegate
@@ -1114,6 +1298,12 @@ extension OverlayWindowController: SelectionViewDelegate {
     func selectionDidStart() {
         chipWindow?.dismiss()
         chipWindow = nil
+        // If the lens was dismissed by a previous selection completion
+        // (e.g. the user is now resizing or moving an existing selection),
+        // bring it back so the drag endpoint can be magnified.
+        if magnifierLensPanel == nil, shouldShowMagnifierLensPanel {
+            setupMagnifierLensPanel()
+        }
     }
 
     func selectionMaskDidDoubleClick(inView view: NSView) {
@@ -1125,6 +1315,10 @@ extension OverlayWindowController: SelectionViewDelegate {
     }
 
     func selectionDidComplete(rect: NSRect, inView view: NSView, isWindowSelection: Bool, windowID: CGWindowID?) {
+        // Selection is done — the lens has served its purpose during drag.
+        magnifierLensPanel?.dismiss()
+        magnifierLensPanel = nil
+
         guard let window = view.window, let screen = window.screen else {
             cancel()
             return
