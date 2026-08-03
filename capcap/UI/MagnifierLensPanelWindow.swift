@@ -4,6 +4,7 @@ import CoreText
 private enum MagnifierLensPanelLayout {
     static let panelWidth: CGFloat = 148
     static let infoRowHeight: CGFloat = 18
+    static let infoGroupSpacing: CGFloat = 4
     static let infoVerticalInset: CGFloat = 8
     static let cornerRadius: CGFloat = 8
 }
@@ -39,6 +40,7 @@ final class MagnifierLensPanelWindow: NSPanel {
             + (Defaults.magnifierLensPanelShowCopyHint ? 1 : 0)
             + (Defaults.magnifierLensPanelShowShiftHint ? 1 : 0)
         let infoHeight = CGFloat(infoRows) * MagnifierLensPanelLayout.infoRowHeight
+            + MagnifierLensPanelLayout.infoGroupSpacing
             + MagnifierLensPanelLayout.infoVerticalInset * 2
         let width = MagnifierLensPanelLayout.panelWidth
         let height = width + infoHeight
@@ -339,7 +341,7 @@ final class MagnifierLensPanelView: NSView {
 
         // Panel background — pick dark or light based on appearance + setting.
         let bgPath = NSBezierPath(
-            roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5),
+            roundedRect: bounds,
             xRadius: MagnifierLensPanelLayout.cornerRadius,
             yRadius: MagnifierLensPanelLayout.cornerRadius
         )
@@ -352,10 +354,6 @@ final class MagnifierLensPanelView: NSView {
         drawMagnifiedArea(in: magnifiedRect)
         drawInfo()
         NSGraphicsContext.current?.restoreGraphicsState()
-
-        AdaptiveChrome.border.setStroke()
-        bgPath.lineWidth = 0.5
-        bgPath.stroke()
     }
 
     private func drawMagnifiedArea(in rect: NSRect) {
@@ -403,18 +401,12 @@ final class MagnifierLensPanelView: NSView {
         context.draw(cropped, in: drawRect)
         context.restoreGState()
 
-        // Border
-        NSColor.labelColor.withAlphaComponent(0.4).setStroke()
-        let borderPath = NSBezierPath(rect: rect.insetBy(dx: 0.5, dy: 0.5))
-        borderPath.lineWidth = 0.5
-        borderPath.stroke()
-
         // Thin app-accent crosshair spanning the full magnified area.
         let centerX = rect.midX
         let centerY = rect.midY
         accentGreen.setStroke()
         let bigCross = NSBezierPath()
-        bigCross.lineWidth = 1
+        bigCross.lineWidth = 2
         bigCross.move(to: NSPoint(x: rect.minX, y: centerY))
         bigCross.line(to: NSPoint(x: rect.maxX, y: centerY))
         bigCross.move(to: NSPoint(x: centerX, y: rect.minY))
@@ -455,8 +447,12 @@ final class MagnifierLensPanelView: NSView {
 
         func rowY(forIndex i: Int) -> CGFloat {
             // i is 0-based from bottom
-            MagnifierLensPanelLayout.infoVerticalInset
+            let baseY = MagnifierLensPanelLayout.infoVerticalInset
                 + CGFloat(i) * MagnifierLensPanelLayout.infoRowHeight
+            let firstInfoItemRow = totalRows - 2
+            return baseY + (i >= firstInfoItemRow
+                ? MagnifierLensPanelLayout.infoGroupSpacing
+                : 0)
         }
 
         // Coordinates row (always)
