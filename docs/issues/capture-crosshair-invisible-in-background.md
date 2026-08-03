@@ -78,6 +78,55 @@ if presetImage == nil, suspendedDraft == nil {
 - `Tests/capcapTests/OverlayPresentationTests.swift` — restored
   crosshair assertions and `testCaptureReassertsCrosshair` test.
 
+## Follow-Up: Crosshair Reverts to Arrow During Mouse Movement
+
+### Symptom
+
+After the `NSApp.activate` fix, the crosshair appears correctly on
+capture start. However, after moving the mouse around for a while
+(typically a few seconds to tens of seconds), the cursor silently
+reverts to the default arrow — without any click or keyboard event.
+
+### Root Cause
+
+macOS may return activation to the previously frontmost app over time
+(e.g. system-level focus reclamation, transient UI elements). When
+capcap loses frontmost status:
+
+- `NSCursor.crosshair.set()` called in `presentOverlay()` is no longer
+  honored by WindowServer.
+- The crosshair cursor rect registered in `resetCursorRects` is also
+  ignored (cursor rects are app-scoped).
+- `SelectionView.mouseMoved` keeps firing — the `NSTrackingArea` uses
+  `.activeAlways` — but it performed no cursor work. The cursor thus
+  stayed as the default arrow.
+
+### Fix
+
+In `SelectionView.mouseMoved`, re-assert activation and explicitly set
+the crosshair on every mouse-move event during idle state:
+
+```swift
+override func mouseMoved(with event: NSEvent) {
+    guard selectionInteractionEnabled else { return }
+    if state == .idle && !selectionLocked {
+        if !NSApp.isActive {
+            NSApp.activate(ignoringOtherApps: true)
+        }
+        NSCursor.crosshair.set()
+        updateWindowHover(with: event)
+    }
+}
+```
+
+- `NSApp.isActive` is a cheap property check; `NSApp.activate` is only
+  called when activation has actually been lost.
+- `NSCursor.crosshair.set()` on every move provides a belt-and-suspenders
+  guarantee: even if cursor rect invalidation is missed for any reason,
+  the explicit set keeps the crosshair.
+- `SourceAppFocusRestorer` still correctly restores the original app
+  when the capture session ends.
+
 ## Verification
 
 ```bash
@@ -87,4 +136,5 @@ bash scripts/rebuild-and-open.sh
 ```
 
 16/16 OverlayPresentationTests pass. Manual testing confirms crosshair
-appears regardless of which app is frontmost when cmd+cmd is pressed.
+appears regardless of which app is frontmost when cmd+cmd is pressed,
+and persists through extended mouse movement.

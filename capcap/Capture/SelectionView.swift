@@ -399,6 +399,13 @@ class SelectionView: NSView {
 
         // In idle state, detect windows under cursor for hover highlight
         if state == .idle && !selectionLocked {
+            // capcap may lose activation over time, which causes WindowServer
+            // to ignore the crosshair cursor rect registered in resetCursorRects.
+            // Re-activate on every mouse-move so the cursor stays crosshair.
+            if !NSApp.isActive {
+                NSApp.activate(ignoringOtherApps: true)
+            }
+            NSCursor.crosshair.set()
             updateWindowHover(with: event)
         }
     }
