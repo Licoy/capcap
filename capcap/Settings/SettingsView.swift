@@ -2664,39 +2664,6 @@ class SettingsView: NSView {
         return v
     }
 
-    /// Creates a rounded-bordered sub-card container for grouping related
-    /// settings inside the idle-lens card.
-    private func makeSubCard(title: String) -> (NSBox, NSStackView) {
-        let box = NSBox()
-        box.boxType = .custom
-        box.cornerRadius = 8
-        box.borderWidth = 1
-        box.borderColor = NSColor.white.withAlphaComponent(0.06)
-        box.fillColor = NSColor.white.withAlphaComponent(0.02)
-        box.titlePosition = .noTitle
-        box.translatesAutoresizingMaskIntoConstraints = false
-
-        let inner = NSStackView()
-        inner.orientation = .vertical
-        inner.alignment = .leading
-        inner.spacing = 6
-        inner.translatesAutoresizingMaskIntoConstraints = false
-
-        let titleLabel = NSTextField(labelWithString: title)
-        titleLabel.font = .systemFont(ofSize: 11, weight: .semibold)
-        titleLabel.textColor = .secondaryLabelColor
-        inner.addArrangedSubview(titleLabel)
-
-        box.addSubview(inner)
-        NSLayoutConstraint.activate([
-            inner.topAnchor.constraint(equalTo: box.topAnchor, constant: 8),
-            inner.bottomAnchor.constraint(equalTo: box.bottomAnchor, constant: -10),
-            inner.leadingAnchor.constraint(equalTo: box.leadingAnchor, constant: 10),
-            inner.trailingAnchor.constraint(equalTo: box.trailingAnchor, constant: -10),
-        ])
-        return (box, inner)
-    }
-
     private func flexSpacer() -> NSView {
         let v = NSView()
         v.translatesAutoresizingMaskIntoConstraints = false

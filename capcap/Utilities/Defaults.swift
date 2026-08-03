@@ -1837,6 +1837,11 @@ struct Defaults {
         }
     }
 
+    private static func normalizedMagnifierLensPanelMagnification(_ value: Double) -> Double {
+        guard value.isFinite else { return 4.0 }
+        return min(16.0, max(1.0, value))
+    }
+
     static var lastBeautifyPresetID: String? {
         get { defaults.string(forKey: "lastBeautifyPresetID") }
         set { defaults.set(newValue, forKey: "lastBeautifyPresetID") }
@@ -1950,12 +1955,12 @@ struct Defaults {
         set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelDarkBackgroundBlue") }
     }
     static var magnifierLensPanelDarkBackgroundAlpha: Double {
-        get { defaults.object(forKey: "magnifierLensPanelDarkBackgroundAlpha") == nil ? 0.80 : defaults.double(forKey: "magnifierLensPanelDarkBackgroundAlpha") }
+        get { defaults.object(forKey: "magnifierLensPanelDarkBackgroundAlpha") == nil ? 0.70 : defaults.double(forKey: "magnifierLensPanelDarkBackgroundAlpha") }
         set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelDarkBackgroundAlpha") }
     }
 
     /// Background color used in light mode (when `magnifierLensPanelFollowSystemAppearance` is on).
-    /// Stored as 0–1 RGBA components. Default: white with about 70% alpha.
+    /// Stored as 0–1 RGBA components. Default: white with 80% alpha.
     static var magnifierLensPanelLightBackgroundRed: Double {
         get { defaults.object(forKey: "magnifierLensPanelLightBackgroundRed") == nil ? 1 : defaults.double(forKey: "magnifierLensPanelLightBackgroundRed") }
         set { defaults.set(clampedUnitInterval(newValue), forKey: "magnifierLensPanelLightBackgroundRed") }
@@ -2002,16 +2007,22 @@ struct Defaults {
 
     /// Magnification factor for the lens. Controls how many source pixels are
     /// sampled: source region = magnified display size / magnification.
-    /// Higher values = tighter zoom (smaller source region). Default 4×.
+    /// Higher values = tighter zoom (smaller source region). Default 4×,
+    /// clamped to 1×...16× for hidden UserDefaults overrides.
     static var magnifierLensPanelMagnification: Double {
         get {
             if defaults.object(forKey: "magnifierLensPanelMagnification") == nil {
                 return 4.0
             }
-            return defaults.double(forKey: "magnifierLensPanelMagnification")
+            return normalizedMagnifierLensPanelMagnification(
+                defaults.double(forKey: "magnifierLensPanelMagnification")
+            )
         }
         set {
-            defaults.set(newValue, forKey: "magnifierLensPanelMagnification")
+            defaults.set(
+                normalizedMagnifierLensPanelMagnification(newValue),
+                forKey: "magnifierLensPanelMagnification"
+            )
         }
     }
 
@@ -2033,7 +2044,7 @@ struct Defaults {
     static var magnifierLensPanelOffsetY: Double {
         get {
             if defaults.object(forKey: "magnifierLensPanelOffsetY") == nil {
-                return 15
+                return 14
             }
             return defaults.double(forKey: "magnifierLensPanelOffsetY")
         }
