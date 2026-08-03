@@ -343,6 +343,10 @@ class OverlayWindowController {
         !windows.isEmpty && windows.allSatisfy(\.isVisible)
     }
 
+    var isMagnifierLensPanelPresented: Bool {
+        magnifierLensPanelActive
+    }
+
     var isSelectionInteractive: Bool {
         windows.compactMap { $0.contentView as? SelectionView }
             .contains(where: \.selectionInteractionEnabled)
@@ -1192,8 +1196,7 @@ class OverlayWindowController {
 
     private var shouldShowMagnifierLensPanel: Bool {
         guard presetImage == nil,
-              suspendedDraft == nil,
-              Defaults.magnifierLensPanelEnabled else { return false }
+              suspendedDraft == nil else { return false }
         return postCaptureAction == .edit
     }
 

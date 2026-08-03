@@ -1935,21 +1935,6 @@ struct Defaults {
         }
     }
 
-    /// Whether to show the magnifier color picker on the overlay's idle state
-    /// (replaces the legacy "drag to screenshot" cursor chip when enabled).
-    /// Default is `true` so new users get the magnifier experience immediately.
-    static var magnifierLensPanelEnabled: Bool {
-        get {
-            if defaults.object(forKey: "magnifierLensPanelEnabled") == nil {
-                return true
-            }
-            return defaults.bool(forKey: "magnifierLensPanelEnabled")
-        }
-        set {
-            defaults.set(newValue, forKey: "magnifierLensPanelEnabled")
-        }
-    }
-
     /// Background color used in dark mode (when `magnifierLensPanelFollowSystemAppearance` is on).
     /// Stored as 0–1 RGBA components. Default: black with 70% alpha.
     static var magnifierLensPanelDarkBackgroundRed: Double {

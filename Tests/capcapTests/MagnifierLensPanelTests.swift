@@ -234,15 +234,6 @@ final class MagnifierLensPanelTests: XCTestCase {
         XCTAssertFalse(L10n.magnifierLensPanelAspectFree.isEmpty)
     }
 
-    func testDefaultsMagnifierLensPanelEnabledIsOnByDefault() {
-        // Wipe any persisted value and ensure the default is true so new users
-        // get the magnifier experience immediately.
-        let key = "magnifierLensPanelEnabled"
-        UserDefaults.standard.removeObject(forKey: key)
-        XCTAssertTrue(Defaults.magnifierLensPanelEnabled)
-        UserDefaults.standard.removeObject(forKey: key)
-    }
-
     func testDefaultsLensVisualDefaults() {
         let keys = [
             "magnifierLensPanelMagnifiedSize",

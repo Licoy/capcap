@@ -47,6 +47,29 @@ final class OverlayPresentationTests: XCTestCase {
         XCTAssertEqual(provider.cancellationCount, 1)
     }
 
+    func testLegacyDisabledMagnifierPreferenceIsIgnored() {
+        _ = NSApplication.shared
+        let key = "magnifierLensPanelEnabled"
+        let previousValue = UserDefaults.standard.object(forKey: key)
+        UserDefaults.standard.set(false, forKey: key)
+        defer {
+            if let previousValue {
+                UserDefaults.standard.set(previousValue, forKey: key)
+            } else {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+        }
+
+        let controller = OverlayWindowController(
+            snapshotProvider: ControlledScreenSnapshotProvider(delay: 2),
+            onComplete: { _ in }
+        )
+        controller.activate()
+        defer { controller.cancel() }
+
+        XCTAssertTrue(controller.isMagnifierLensPanelPresented)
+    }
+
     func testRShortcutIsHandledWhileSnapshotPreparationIsPending() throws {
         _ = NSApplication.shared
         let previousAspectRatio = Defaults.hasSelectionAspectRatio
