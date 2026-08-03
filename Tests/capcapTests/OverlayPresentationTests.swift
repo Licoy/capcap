@@ -189,10 +189,9 @@ final class OverlayPresentationTests: XCTestCase {
         }
 
         controller.activate()
-        // The overlay registers a crosshair cursor rect covering the full
-        // SelectionView. WindowServer evaluates cursor rects regardless of
-        // which app is frontmost, so the crosshair should be visible without
-        // any mouse movement.
+        // The overlay activates capcap, then registers and invalidates a
+        // full-view crosshair cursor rect, so the crosshair should be visible
+        // without any mouse movement.
         XCTAssertEqual(NSCursor.current, NSCursor.crosshair)
     }
 

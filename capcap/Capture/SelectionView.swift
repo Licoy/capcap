@@ -183,9 +183,9 @@ class SelectionView: NSView {
 
     // MARK: - Cursors
 
-    /// Registers a crosshair cursor rect covering the entire view when idle.
-    /// WindowServer evaluates cursor rects regardless of which app is
-    /// frontmost, so the crosshair is visible even when another app is active.
+    /// Registers a crosshair cursor rect covering the entire idle view.
+    /// OverlayWindowController activates capcap before invalidating cursor
+    /// rects, because AppKit cursor ownership is scoped to the frontmost app.
     override func resetCursorRects() {
         super.resetCursorRects()
         if state == .idle, !selectionLocked {

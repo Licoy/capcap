@@ -726,10 +726,9 @@ class OverlayWindowController {
         }
     }
 
-    /// Leave the source app's activation state untouched so its visual state
-    /// remains capturable, but make the nonactivating selection panel own key
-    /// events. This prevents a previously focused text field from receiving
-    /// capture shortcuts such as R.
+    /// Make the nonactivating selection panel own key events before capcap is
+    /// activated for cursor ownership. This prevents a previously focused text
+    /// field from receiving capture shortcuts such as R.
     private func claimSelectionKeyboardFocus() {
         let targetView = firstFrameTargetDisplayID
             .flatMap { selectionViewsByDisplayID[$0] }
@@ -739,13 +738,12 @@ class OverlayWindowController {
         targetWindow.makeFirstResponder(targetView)
     }
 
-    /// Force the crosshair cursor to appear even when capcap is not frontmost.
+    /// Refresh the selection cursor after capcap claims activation.
     ///
-    /// NSCursor.push() is application-scoped — it has no visible effect when
-    /// another app is active. Instead we trigger WindowServer cursor-rect
-    /// evaluation. SelectionView registers a crosshair cursor rect covering
-    /// the entire view in resetCursorRects, so invalidating cursor rects
-    /// makes WindowServer pick it up regardless of which app is frontmost.
+    /// AppKit cursor APIs are ignored while another app is frontmost. Once
+    /// presentOverlay activates capcap, invalidating cursor rects lets
+    /// WindowServer re-evaluate the full-view crosshair rect registered by
+    /// SelectionView.resetCursorRects.
     private func refreshSelectionCursor() {
         activeSelectionViews.forEach { $0.refreshCursorRects() }
     }
