@@ -409,34 +409,17 @@ final class MagnifierLensPanelView: NSView {
         borderPath.lineWidth = 0.5
         borderPath.stroke()
 
-        // Enhanced crosshair spanning the full magnified area. Sits behind the
-        // fine white cross so the centre remains visible even on pure-white
-        // backgrounds.
+        // Thin app-accent crosshair spanning the full magnified area.
         let centerX = rect.midX
         let centerY = rect.midY
-        let cr = CGFloat(Defaults.magnifierLensPanelCrosshairRed)
-        let cg = CGFloat(Defaults.magnifierLensPanelCrosshairGreen)
-        let cb = CGFloat(Defaults.magnifierLensPanelCrosshairBlue)
-        let ca = CGFloat(Defaults.magnifierLensPanelCrosshairAlpha)
-        let cw = CGFloat(Defaults.magnifierLensPanelCrosshairWidth)
-        NSColor(srgbRed: cr, green: cg, blue: cb, alpha: ca).setStroke()
+        accentGreen.setStroke()
         let bigCross = NSBezierPath()
-        bigCross.lineWidth = cw
+        bigCross.lineWidth = 1
         bigCross.move(to: NSPoint(x: rect.minX, y: centerY))
         bigCross.line(to: NSPoint(x: rect.maxX, y: centerY))
         bigCross.move(to: NSPoint(x: centerX, y: rect.minY))
         bigCross.line(to: NSPoint(x: centerX, y: rect.maxY))
         bigCross.stroke()
-
-        // Fine white crosshair — aligns with the sampled pixel.
-        NSColor.white.setStroke()
-        let cross = NSBezierPath()
-        cross.lineWidth = 1.0
-        cross.move(to: NSPoint(x: centerX - 4, y: centerY))
-        cross.line(to: NSPoint(x: centerX + 4, y: centerY))
-        cross.move(to: NSPoint(x: centerX, y: centerY - 4))
-        cross.line(to: NSPoint(x: centerX, y: centerY + 4))
-        cross.stroke()
     }
 
     private func drawInfo() {
@@ -588,15 +571,23 @@ final class MagnifierLensPanelView: NSView {
             width: Self.hexValueSlotWidth,
             height: MagnifierLensPanelLayout.infoRowHeight
         )
-        let labelLine = CTLineCreateWithAttributedString(
+        let sourceLabelLine = CTLineCreateWithAttributedString(
             NSAttributedString(string: label, attributes: labelAttrs)
         )
-        let labelInkBounds = CTLineGetBoundsWithOptions(labelLine, [.useGlyphPathBounds])
+        let sourceLabelInkBounds = CTLineGetBoundsWithOptions(
+            sourceLabelLine,
+            [.useGlyphPathBounds]
+        )
         let swatchSide = min(
             MagnifierLensPanelLayout.infoRowHeight,
-            max(8, ceil(labelInkBounds.height))
+            max(8, floor(sourceLabelInkBounds.height))
         )
-        let measuredLabelWidth = ceil((label as NSString).size(withAttributes: labelAttrs).width)
+        let measuredLabelWidth = ceil(CGFloat(CTLineGetTypographicBounds(
+            sourceLabelLine,
+            nil,
+            nil,
+            nil
+        )))
         let labelWidth = min(
             measuredLabelWidth,
             max(
@@ -614,15 +605,26 @@ final class MagnifierLensPanelView: NSView {
             width: labelWidth,
             height: MagnifierLensPanelLayout.infoRowHeight
         )
-        let horizontalAxisY = y + MagnifierLensPanelLayout.infoRowHeight / 2
+        let labelLine = coreTextLine(
+            label,
+            attrs: labelAttrs,
+            fitting: labelRect.width,
+            truncation: .end
+        )
+        let valueLine = coreTextLine(
+            value,
+            attrs: valueAttrs,
+            fitting: valueRect.width,
+            truncation: .start
+        )
         let swatchRect = NSRect(
             x: labelRect.maxX + colorSwatchGap,
-            y: horizontalAxisY - swatchSide / 2,
+            y: labelRect.midY - swatchSide / 2,
             width: swatchSide,
             height: swatchSide
         )
-        (label as NSString).draw(in: labelRect, withAttributes: labelAttrs)
-        (value as NSString).draw(in: valueRect, withAttributes: valueAttrs)
+        drawCoreTextLine(labelLine, inkCenteredIn: labelRect, rightAligned: false)
+        drawCoreTextLine(valueLine, inkCenteredIn: valueRect, rightAligned: true)
 
         let swatchColor = NSColor(
             srgbRed: CGFloat(sample.r) / 255.0,
@@ -636,6 +638,61 @@ final class MagnifierLensPanelView: NSView {
         NSColor.labelColor.withAlphaComponent(0.35).setStroke()
         swatchPath.lineWidth = 0.5
         swatchPath.stroke()
+    }
+
+    private func coreTextLine(
+        _ text: String,
+        attrs: [NSAttributedString.Key: Any],
+        fitting width: CGFloat,
+        truncation: CTLineTruncationType
+    ) -> CTLine {
+        let sourceLine = CTLineCreateWithAttributedString(
+            NSAttributedString(string: text, attributes: attrs)
+        )
+        let sourceWidth = CGFloat(CTLineGetTypographicBounds(sourceLine, nil, nil, nil))
+        guard sourceWidth > width else { return sourceLine }
+
+        let tokenLine = CTLineCreateWithAttributedString(
+            NSAttributedString(string: "…", attributes: attrs)
+        )
+        return CTLineCreateTruncatedLine(
+            sourceLine,
+            Double(max(0, width)),
+            truncation,
+            tokenLine
+        ) ?? sourceLine
+    }
+
+    private func drawCoreTextLine(
+        _ line: CTLine,
+        inkCenteredIn rect: NSRect,
+        rightAligned: Bool
+    ) {
+        guard let context = NSGraphicsContext.current?.cgContext else { return }
+        var inkBounds = CTLineGetBoundsWithOptions(line, [.useGlyphPathBounds])
+        let typographicWidth = CGFloat(CTLineGetTypographicBounds(line, nil, nil, nil))
+        if inkBounds.isEmpty {
+            var ascent: CGFloat = 0
+            var descent: CGFloat = 0
+            CTLineGetTypographicBounds(line, &ascent, &descent, nil)
+            inkBounds = CGRect(
+                x: 0,
+                y: -descent,
+                width: typographicWidth,
+                height: ascent + descent
+            )
+        }
+        let originX = rightAligned
+            ? rect.maxX - min(typographicWidth, rect.width)
+            : rect.minX
+        let baselineY = rect.midY - inkBounds.midY
+
+        context.saveGState()
+        context.clip(to: rect)
+        context.textMatrix = .identity
+        context.textPosition = CGPoint(x: originX, y: baselineY)
+        CTLineDraw(line, context)
+        context.restoreGState()
     }
 
     private func drawText(
