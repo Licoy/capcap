@@ -635,10 +635,10 @@
 "magnifierLensPanelHex" = "HEX: %@";
 "magnifierLensPanelRgb" = "RGB: %@";
 "magnifierLensPanelRgbString" = "rgb(%d, %d, %d)";
-"magnifierLensPanelCopyHint" = "C で色をコピー";
-"magnifierLensPanelShiftHint" = "Shift で RGB に切替";
+"magnifierLensPanelCopyHint" = "色をコピー(C)";
+"magnifierLensPanelShiftHint" = "カラー形式(Shift)";
 "magnifierLensPanelAspectFree" = "自由";
-"magnifierLensPanelAspectHint" = "R で比率を切替: %@";
+"magnifierLensPanelAspectHint" = "撮影比率(R)";
 "settingsMagnifierLensPanelTitle" = "選択時に拡大鏡を表示";
 "settingsMagnifierLensPanelHint" = "スクリーンショットのポイント選択や選択範囲の調整時にカーソル付近を拡大表示";
 "settingsMagnifierLensPanelMagnifiedSizeLabel" = "拡大エリアのサイズ";

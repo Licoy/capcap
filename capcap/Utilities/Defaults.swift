@@ -203,9 +203,7 @@ enum L10n {
     static var magnifierLensPanelCopyHint: String { s("magnifierLensPanelCopyHint") }
     static var magnifierLensPanelShiftHint: String { s("magnifierLensPanelShiftHint") }
     static var magnifierLensPanelAspectFree: String { s("magnifierLensPanelAspectFree") }
-    static func magnifierLensPanelAspectHint(_ ratio: String) -> String {
-        String(format: s("magnifierLensPanelAspectHint"), ratio)
-    }
+    static var magnifierLensPanelAspectHint: String { s("magnifierLensPanelAspectHint") }
     static func magnifierLensPanelRgbString(r: Int, g: Int, b: Int) -> String {
         String(format: s("magnifierLensPanelRgbString"), r, g, b)
     }

@@ -497,24 +497,32 @@ final class MagnifierLensPanelView: NSView {
             )
         }
 
-        drawText(
-            aspectHintText(),
+        drawHintRow(
+            label: L10n.magnifierLensPanelAspectHint,
+            value: aspectHintValue(),
             attrs: tipAttrs,
             at: rowY(forIndex: totalRows - 3)
         )
 
         // Tip rows (conditional)
         if Defaults.magnifierLensPanelShowCopyHint {
-            drawText(
-                L10n.magnifierLensPanelCopyHint,
+            drawHintRow(
+                label: L10n.magnifierLensPanelCopyHint,
+                value: nil,
                 attrs: tipAttrs,
                 at: rowY(forIndex: rowFromBottom)
             )
             rowFromBottom += 1
         }
         if Defaults.magnifierLensPanelShowShiftHint {
-            drawText(
-                L10n.magnifierLensPanelShiftHint,
+            let colorFormat: String
+            switch format {
+            case .hex: colorFormat = "HEX"
+            case .rgb: colorFormat = "RGB"
+            }
+            drawHintRow(
+                label: L10n.magnifierLensPanelShiftHint,
+                value: colorFormat,
                 attrs: tipAttrs,
                 at: rowY(forIndex: rowFromBottom)
             )
@@ -691,32 +699,70 @@ final class MagnifierLensPanelView: NSView {
         context.restoreGState()
     }
 
-    private func drawText(
-        _ text: String,
+    private func drawHintRow(
+        label: String,
+        value: String?,
         attrs: [NSAttributedString.Key: Any],
         at y: CGFloat
     ) {
-        let rect = NSRect(
+        let rowRect = NSRect(
             x: infoLeftPadding,
             y: y,
             width: bounds.width - infoLeftPadding - infoRightPadding,
             height: MagnifierLensPanelLayout.infoRowHeight
         )
-        (text as NSString).draw(in: rect, withAttributes: attrs)
+        var labelRect = rowRect
+
+        if let value {
+            let sourceValueLine = CTLineCreateWithAttributedString(
+                NSAttributedString(string: value, attributes: attrs)
+            )
+            let valueWidth = min(
+                rowRect.width,
+                ceil(CGFloat(CTLineGetTypographicBounds(
+                    sourceValueLine,
+                    nil,
+                    nil,
+                    nil
+                )))
+            )
+            let valueRect = NSRect(
+                x: rowRect.maxX - valueWidth,
+                y: y,
+                width: valueWidth,
+                height: MagnifierLensPanelLayout.infoRowHeight
+            )
+            labelRect.size.width = max(
+                0,
+                valueRect.minX - infoColumnGap - labelRect.minX
+            )
+            let valueLine = coreTextLine(
+                value,
+                attrs: attrs,
+                fitting: valueRect.width,
+                truncation: .end
+            )
+            drawCoreTextLine(valueLine, inkCenteredIn: valueRect, rightAligned: true)
+        }
+
+        let labelLine = coreTextLine(
+            label,
+            attrs: attrs,
+            fitting: labelRect.width,
+            truncation: .end
+        )
+        drawCoreTextLine(labelLine, inkCenteredIn: labelRect, rightAligned: false)
     }
 
     private func hexString(_ sample: MagnifierLensPanelWindow.Sample) -> String {
         String(format: "#%02X%02X%02X", sample.r, sample.g, sample.b)
     }
 
-    private func aspectHintText() -> String {
-        let label: String
+    private func aspectHintValue() -> String {
         if Defaults.hasSelectionAspectRatio {
-            label = aspectRatioLabel(for: CGFloat(Defaults.selectionAspectRatio))
-        } else {
-            label = L10n.magnifierLensPanelAspectFree
+            return aspectRatioLabel(for: CGFloat(Defaults.selectionAspectRatio))
         }
-        return L10n.magnifierLensPanelAspectHint(label)
+        return L10n.magnifierLensPanelAspectFree
     }
 
     private func aspectRatioLabel(for aspectRatio: CGFloat) -> String {

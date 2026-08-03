@@ -635,10 +635,10 @@
 "magnifierLensPanelHex" = "HEX: %@";
 "magnifierLensPanelRgb" = "RGB: %@";
 "magnifierLensPanelRgbString" = "rgb(%d, %d, %d)";
-"magnifierLensPanelCopyHint" = "Press C to copy color";
-"magnifierLensPanelShiftHint" = "Press Shift to switch RGB";
+"magnifierLensPanelCopyHint" = "Copy color(C)";
+"magnifierLensPanelShiftHint" = "Color format(Shift)";
 "magnifierLensPanelAspectFree" = "Free";
-"magnifierLensPanelAspectHint" = "Press R to switch ratio: %@";
+"magnifierLensPanelAspectHint" = "Capture ratio(R)";
 "settingsMagnifierLensPanelTitle" = "Show magnifier while selecting";
 "settingsMagnifierLensPanelHint" = "Magnify the area around the cursor when picking screenshot points or adjusting the selection";
 "settingsMagnifierLensPanelMagnifiedSizeLabel" = "Magnified area size";

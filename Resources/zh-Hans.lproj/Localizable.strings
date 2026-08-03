@@ -635,10 +635,10 @@
 "magnifierLensPanelHex" = "HEX: %@";
 "magnifierLensPanelRgb" = "RGB: %@";
 "magnifierLensPanelRgbString" = "rgb(%d, %d, %d)";
-"magnifierLensPanelCopyHint" = "按 C 复制颜色";
-"magnifierLensPanelShiftHint" = "按 Shift 切换 RGB";
+"magnifierLensPanelCopyHint" = "复制颜色(C)";
+"magnifierLensPanelShiftHint" = "色值格式(Shift)";
 "magnifierLensPanelAspectFree" = "自由";
-"magnifierLensPanelAspectHint" = "按 R 切换比例: %@";
+"magnifierLensPanelAspectHint" = "截图比例(R)";
 "settingsMagnifierLensPanelTitle" = "选择时显示放大镜";
 "settingsMagnifierLensPanelHint" = "选取截图点或调整选区时，在光标旁放大显示";
 "settingsMagnifierLensPanelMagnifiedSizeLabel" = "放大区尺寸";

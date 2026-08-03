@@ -635,10 +635,10 @@
 "magnifierLensPanelHex" = "HEX: %@";
 "magnifierLensPanelRgb" = "RGB: %@";
 "magnifierLensPanelRgbString" = "rgb(%d, %d, %d)";
-"magnifierLensPanelCopyHint" = "Nhấn C để sao chép màu";
-"magnifierLensPanelShiftHint" = "Nhấn Shift để chuyển RGB";
+"magnifierLensPanelCopyHint" = "Sao chép màu(C)";
+"magnifierLensPanelShiftHint" = "Định dạng(Shift)";
 "magnifierLensPanelAspectFree" = "Tự do";
-"magnifierLensPanelAspectHint" = "Nhấn R để đổi tỷ lệ: %@";
+"magnifierLensPanelAspectHint" = "Tỷ lệ ảnh(R)";
 "settingsMagnifierLensPanelTitle" = "Hiển thị kính lúp khi chọn";
 "settingsMagnifierLensPanelHint" = "Phóng to khu vực quanh con trỏ khi chọn điểm chụp hoặc điều chỉnh vùng chọn";
 "settingsMagnifierLensPanelMagnifiedSizeLabel" = "Kích thước vùng phóng to";
