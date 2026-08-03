@@ -670,6 +670,7 @@ class OverlayWindowController {
             }
         }
         magnifierLensPanelFlagsChangedLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            self?.editController?.handleSelectionMoveModifierFlagsChanged(event)
             self?.handleMagnifierLensPanelShiftFlagsChanged(event)
             return event
         }
@@ -678,6 +679,7 @@ class OverlayWindowController {
         // Shift and legacy ⌘+C handling with global monitors so they still fire
         // when the user has Gemini (or any other app) focused underneath.
         magnifierLensPanelFlagsChangedGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            self?.editController?.handleSelectionMoveModifierFlagsChanged(event)
             self?.handleMagnifierLensPanelShiftFlagsChanged(event)
         }
         magnifierLensPanelKeyDownGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
@@ -1305,6 +1307,7 @@ class OverlayWindowController {
 
 extension OverlayWindowController: SelectionViewDelegate {
     func selectionDidStart() {
+        editController?.prepareForSelectionGeometryChange()
         chipWindow?.dismiss()
         chipWindow = nil
         // If the lens was dismissed by a previous selection completion
