@@ -244,7 +244,13 @@ bash scripts/rebuild-and-open.sh
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=realskyrin/capcap&type=Date)](https://star-history.com/#realskyrin/capcap&Date)
+<a href="https://www.star-history.com/?repos=realskyrin%2Fcapcap&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=realskyrin/capcap&type=date&theme=dark&legend=top-left&sealed_token=NR4cln_vMF3LJ3MhD_EfRLmf9z27-RRt1RPDXmVvzVBBVNcg_ESPI4yF239fiEyHfaYPWJhKzAuzI4WCT7y5Q6LZ21yn7kj5ODbzzRlu5pxyddoSfnJPeWqrpFJ26A8X6JABxMd1nmIKldtEyPpt1FEkQhpo47E4JR_8LDOobTgK-Wr0Eovz9nhsNQfw" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=realskyrin/capcap&type=date&legend=top-left&sealed_token=NR4cln_vMF3LJ3MhD_EfRLmf9z27-RRt1RPDXmVvzVBBVNcg_ESPI4yF239fiEyHfaYPWJhKzAuzI4WCT7y5Q6LZ21yn7kj5ODbzzRlu5pxyddoSfnJPeWqrpFJ26A8X6JABxMd1nmIKldtEyPpt1FEkQhpo47E4JR_8LDOobTgK-Wr0Eovz9nhsNQfw" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=realskyrin/capcap&type=date&legend=top-left&sealed_token=NR4cln_vMF3LJ3MhD_EfRLmf9z27-RRt1RPDXmVvzVBBVNcg_ESPI4yF239fiEyHfaYPWJhKzAuzI4WCT7y5Q6LZ21yn7kj5ODbzzRlu5pxyddoSfnJPeWqrpFJ26A8X6JABxMd1nmIKldtEyPpt1FEkQhpo47E4JR_8LDOobTgK-Wr0Eovz9nhsNQfw" />
+ </picture>
+</a>
 
 ## License
 
