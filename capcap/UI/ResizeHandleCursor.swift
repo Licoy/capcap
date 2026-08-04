@@ -1,12 +1,16 @@
 import AppKit
 
 enum ResizeHandleCursor {
-    static func setFrameResizeCursor(for position: FramePosition) {
+    static func frameResizeCursor(for position: FramePosition) -> NSCursor {
         if #available(macOS 15.0, *) {
-            NSCursor.frameResize(position: position.systemPosition, directions: .all).set()
+            return NSCursor.frameResize(position: position.systemPosition, directions: .all)
         } else {
-            position.legacyCursor.set()
+            return position.legacyCursor
         }
+    }
+
+    static func setFrameResizeCursor(for position: FramePosition) {
+        frameResizeCursor(for: position).set()
     }
 
     enum FramePosition {

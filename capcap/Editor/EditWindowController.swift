@@ -5793,6 +5793,28 @@ final class SelectionChromeOverlay: NSView {
         isActiveAndVisible = active
         if changed {
             needsDisplay = true
+            window?.invalidateCursorRects(for: self)
+        }
+    }
+
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        guard isActiveAndVisible else { return }
+        let positions = SelectionView.handlePositions(for: selectionRectInView)
+        for (index, handle) in SelectionView.HandlePosition.allCases.enumerated() {
+            let position = positions[index]
+            let cursorRect = NSRect(
+                x: position.x - handleHitSize / 2,
+                y: position.y - handleHitSize / 2,
+                width: handleHitSize,
+                height: handleHitSize
+            ).intersection(bounds)
+            if !cursorRect.isNull {
+                addCursorRect(
+                    cursorRect,
+                    cursor: SelectionView.cursorForHandle(handle)
+                )
+            }
         }
     }
 
@@ -5824,6 +5846,7 @@ final class SelectionChromeOverlay: NSView {
 
     override func mouseDragged(with event: NSEvent) {
         guard let handle = dragHandle, let selectionView else { return }
+        SelectionView.setCursorForHandle(handle)
         let point = convert(event.locationInWindow, from: nil)
         selectionView.resizeByExternalDrag(
             handle: handle,
@@ -5833,14 +5856,22 @@ final class SelectionChromeOverlay: NSView {
     }
 
     override func mouseUp(with event: NSEvent) {
-        defer { dragHandle = nil }
+        let point = convert(event.locationInWindow, from: nil)
+        defer {
+            dragHandle = nil
+            updateCursor(at: point)
+        }
         guard dragHandle != nil, let selectionView else { return }
         selectionView.finalizeExternalResize()
     }
 
     override func mouseMoved(with event: NSEvent) {
         guard isActiveAndVisible else { return }
-        let point = convert(event.locationInWindow, from: nil)
+        updateCursor(at: convert(event.locationInWindow, from: nil))
+    }
+
+    private func updateCursor(at point: NSPoint) {
+        guard isActiveAndVisible else { return }
         if let handle = SelectionView.hitTestHandle(
             point: point,
             rect: selectionRectInView,

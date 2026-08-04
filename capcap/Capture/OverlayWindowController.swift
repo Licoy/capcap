@@ -1304,13 +1304,15 @@ class OverlayWindowController {
 // MARK: - SelectionViewDelegate
 
 extension OverlayWindowController: SelectionViewDelegate {
-    func selectionDidStart() {
+    func selectionDidStart(reason: SelectionStartReason) {
         chipWindow?.dismiss()
         chipWindow = nil
-        // If the lens was dismissed by a previous selection completion
-        // (e.g. the user is now resizing or moving an existing selection),
-        // bring it back so the drag endpoint can be magnified.
-        if magnifierLensPanel == nil, shouldShowMagnifierLensPanel {
+        // The magnifier belongs to the initial selection gesture only. Once a
+        // selection exists, resizing or moving it should preserve the frame's
+        // own cursor affordances instead of restoring the startup lens.
+        if reason == .newSelection,
+           magnifierLensPanel == nil,
+           shouldShowMagnifierLensPanel {
             setupMagnifierLensPanel()
         }
     }

@@ -198,6 +198,122 @@ final class OverlayPresentationTests: XCTestCase {
         XCTAssertEqual(NSCursor.current, NSCursor.crosshair)
     }
 
+    func testSelectedHandlesUseDirectionalResizeCursorsForHoverAndDrag() throws {
+        _ = NSApplication.shared
+        let originalCursor = NSCursor.current
+        let selectionView = SelectionView(frame: NSRect(x: 0, y: 0, width: 500, height: 400))
+        let window = NSWindow(
+            contentRect: selectionView.bounds,
+            styleMask: .borderless,
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = selectionView
+        window.orderFrontRegardless()
+        defer {
+            window.close()
+            originalCursor.set()
+        }
+
+        let selectionRect = NSRect(x: 100, y: 80, width: 240, height: 180)
+        selectionView.updateSelectionRect(selectionRect)
+        selectionView.selectionLocked = true
+        let positions = SelectionView.handlePositions(for: selectionRect)
+        let handles = SelectionView.HandlePosition.allCases
+        let windowNumber = window.windowNumber
+
+        for (index, handle) in handles.enumerated() {
+            let event = try XCTUnwrap(
+                NSEvent.mouseEvent(
+                    with: .mouseMoved,
+                    location: positions[index],
+                    modifierFlags: [],
+                    timestamp: ProcessInfo.processInfo.systemUptime,
+                    windowNumber: windowNumber,
+                    context: nil,
+                    eventNumber: index,
+                    clickCount: 0,
+                    pressure: 0
+                )
+            )
+            NSCursor.crosshair.set()
+            selectionView.mouseMoved(with: event)
+            XCTAssertEqual(
+                NSCursor.current,
+                SelectionView.cursorForHandle(handle),
+                "Handle \(handle) should use its directional resize cursor"
+            )
+        }
+
+        let draggedHandle = SelectionView.HandlePosition.topRight
+        let mouseDown = try XCTUnwrap(
+            NSEvent.mouseEvent(
+                with: .leftMouseDown,
+                location: positions[1],
+                modifierFlags: [],
+                timestamp: ProcessInfo.processInfo.systemUptime,
+                windowNumber: windowNumber,
+                context: nil,
+                eventNumber: 20,
+                clickCount: 1,
+                pressure: 1
+            )
+        )
+        let draggedPoint = NSPoint(x: positions[1].x + 30, y: positions[1].y + 20)
+        let mouseDragged = try XCTUnwrap(
+            NSEvent.mouseEvent(
+                with: .leftMouseDragged,
+                location: draggedPoint,
+                modifierFlags: [],
+                timestamp: ProcessInfo.processInfo.systemUptime,
+                windowNumber: windowNumber,
+                context: nil,
+                eventNumber: 21,
+                clickCount: 1,
+                pressure: 1
+            )
+        )
+
+        selectionView.mouseDown(with: mouseDown)
+        XCTAssertEqual(NSCursor.current, SelectionView.cursorForHandle(draggedHandle))
+        NSCursor.crosshair.set()
+        selectionView.mouseDragged(with: mouseDragged)
+        XCTAssertEqual(
+            NSCursor.current,
+            SelectionView.cursorForHandle(draggedHandle),
+            "Dragging an existing handle must not restore the initial crosshair"
+        )
+    }
+
+    func testExistingSelectionAdjustmentDoesNotRestoreMagnifier() throws {
+        _ = NSApplication.shared
+        let controller = OverlayWindowController(
+            snapshotProvider: ControlledScreenSnapshotProvider(delay: 2),
+            windowSnapshotLoader: { _ in .success([]) },
+            onComplete: { _ in }
+        )
+        controller.activate()
+        defer { controller.cancel() }
+
+        XCTAssertTrue(controller.isMagnifierLensPanelPresented)
+        let selectionView = try XCTUnwrap(
+            controller.activeSelectionViews.first(where: { $0.window?.isKeyWindow == true })
+        )
+        controller.selectionDidComplete(
+            rect: NSRect(x: 100, y: 100, width: 200, height: 150),
+            inView: selectionView,
+            isWindowSelection: false,
+            windowID: nil
+        )
+        XCTAssertFalse(controller.isMagnifierLensPanelPresented)
+
+        controller.selectionDidStart(reason: .existingSelectionAdjustment)
+        XCTAssertFalse(
+            controller.isMagnifierLensPanelPresented,
+            "Adjusting a completed selection must not restore the startup magnifier"
+        )
+    }
+
     func testCaptureReassertsCrosshairAfterTriggerModifierReleaseWithoutMouseMovement() {
         _ = NSApplication.shared
         let originalCursor = NSCursor.current
