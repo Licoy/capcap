@@ -132,10 +132,6 @@ bash scripts/rebuild-and-open.sh
 
 В настройках можно выбрать язык, значок строки меню, запуск при входе, демо-режим, шорткаты, размер истории, хостинг изображений и быстрые переходы к системным разрешениям. Интерфейс поддерживает 简体中文, 繁體中文, English, 日本語, 한국어, Français, Русский и Tiếng Việt.
 
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=realskyrin/capcap&type=Date)](https://star-history.com/#realskyrin/capcap&Date)
-
 ## Лицензия
 
 [MIT](LICENSE)

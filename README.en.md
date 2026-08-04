@@ -242,10 +242,6 @@ Thanks to the [Linux.do](https://linux.do) community for testing, feedback, and 
 
 - [PermissionFlow](https://github.com/jaywcjlove/PermissionFlow) is licensed under the MIT License. See [ThirdParty/PermissionFlow/LICENSE](ThirdParty/PermissionFlow/LICENSE).
 
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=realskyrin/capcap&type=Date)](https://star-history.com/#realskyrin/capcap&Date)
-
 ## License
 
 [MIT](LICENSE)

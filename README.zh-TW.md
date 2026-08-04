@@ -242,10 +242,6 @@ bash scripts/rebuild-and-open.sh
 
 - [PermissionFlow](https://github.com/jaywcjlove/PermissionFlow) 使用 MIT License。詳見 [ThirdParty/PermissionFlow/LICENSE](ThirdParty/PermissionFlow/LICENSE)。
 
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=realskyrin/capcap&type=Date)](https://star-history.com/#realskyrin/capcap&Date)
-
 ## License
 
 [MIT](LICENSE)

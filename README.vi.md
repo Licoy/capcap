@@ -132,10 +132,6 @@ bash scripts/rebuild-and-open.sh
 
 Bạn có thể đổi ngôn ngữ, biểu tượng thanh menu, khởi chạy khi đăng nhập, chế độ demo, phím tắt, kích thước lịch sử, dịch vụ tải ảnh và lối tắt quyền hệ thống. Giao diện hỗ trợ 简体中文, 繁體中文, English, 日本語, 한국어, Français, Русский và Tiếng Việt.
 
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=realskyrin/capcap&type=Date)](https://star-history.com/#realskyrin/capcap&Date)
-
 ## Giấy phép
 
 [MIT](LICENSE)
