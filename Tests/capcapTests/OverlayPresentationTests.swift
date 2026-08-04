@@ -202,25 +202,17 @@ final class OverlayPresentationTests: XCTestCase {
         _ = NSApplication.shared
         let originalCursor = NSCursor.current
         let selectionView = SelectionView(frame: NSRect(x: 0, y: 0, width: 500, height: 400))
-        let window = NSWindow(
-            contentRect: selectionView.bounds,
-            styleMask: .borderless,
-            backing: .buffered,
-            defer: false
-        )
-        window.contentView = selectionView
-        window.orderFrontRegardless()
-        defer {
-            window.close()
-            originalCursor.set()
-        }
+        defer { originalCursor.set() }
 
         let selectionRect = NSRect(x: 100, y: 80, width: 240, height: 180)
         selectionView.updateSelectionRect(selectionRect)
         selectionView.selectionLocked = true
         let positions = SelectionView.handlePositions(for: selectionRect)
         let handles = SelectionView.HandlePosition.allCases
-        let windowNumber = window.windowNumber
+        // These events are delivered directly to the view, so presenting a
+        // real window only adds WindowServer cursor-rect work. Keeping the
+        // test off-screen makes the AppKit unit test deterministic in CI.
+        let windowNumber = 0
 
         for (index, handle) in handles.enumerated() {
             let event = try XCTUnwrap(
