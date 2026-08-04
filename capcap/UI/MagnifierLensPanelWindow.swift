@@ -67,6 +67,7 @@ final class MagnifierLensPanelWindow: NSPanel {
         hasShadow = false
         ignoresMouseEvents = true
         sharingType = .none
+        animationBehavior = .none
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         contentView = lensView
     }

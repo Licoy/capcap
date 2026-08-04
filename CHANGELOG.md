@@ -7,14 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.8.0] - 2026-08-04
-
-### Fixed
-- Preserve resize-handle cursors while adjusting selections and annotations (fef9258, 4179a1d)
-
-### Changed
-- Remove outdated Star History sections from the README files (09d17f9, 670f949)
-
 ## [1.7.1] - 2026-08-03
 
 ### Fixed
