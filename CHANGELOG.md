@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.3] - 2026-08-04
+
+### Fixed
+- Stabilize overlay resize cursor testing on hosted CI (049b991)
+
 ## [1.7.2] - 2026-08-04
 
 ### Fixed
