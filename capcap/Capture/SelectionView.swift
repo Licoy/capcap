@@ -238,6 +238,25 @@ class SelectionView: NSView {
         window?.invalidateCursorRects(for: self)
     }
 
+    /// Gives an editor subview a single source of truth for the outer
+    /// selection frame's resize handles. Editor views can receive tracking
+    /// events while the pointer is still inside the selected canvas, so they
+    /// must preserve this cursor instead of replacing it with their own.
+    @discardableResult
+    func setResizeCursorIfNeeded(at point: NSPoint, from sourceView: NSView) -> Bool {
+        guard state == .selected,
+              selectionInteractionEnabled,
+              let rect = selectionRect
+        else { return false }
+
+        let localPoint = convert(point, from: sourceView)
+        guard let handle = hitTestHandle(point: localPoint, rect: rect) else {
+            return false
+        }
+        SelectionView.setCursorForHandle(handle)
+        return true
+    }
+
     // MARK: - Mouse Events
 
     override func mouseDown(with event: NSEvent) {
@@ -469,11 +488,10 @@ class SelectionView: NSView {
             return
         }
 
-        if state == .selected,
-           let rect = selectionRect,
-           let handle = hitTestHandle(point: point, rect: rect) {
-            SelectionView.setCursorForHandle(handle)
-        } else if state == .idle, !selectionLocked {
+        if setResizeCursorIfNeeded(at: point, from: self) {
+            return
+        }
+        if state == .idle, !selectionLocked {
             NSCursor.crosshair.set()
         } else if state == .drawing {
             NSCursor.crosshair.set()

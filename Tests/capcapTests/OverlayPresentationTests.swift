@@ -285,6 +285,101 @@ final class OverlayPresentationTests: XCTestCase {
         )
     }
 
+    func testAnnotationCanvasPreservesOuterSelectionResizeCursors() throws {
+        _ = NSApplication.shared
+        let originalCursor = NSCursor.current
+        let selectionView = SelectionView(frame: NSRect(x: 0, y: 0, width: 500, height: 400))
+        defer { originalCursor.set() }
+
+        let selectionRect = NSRect(x: 100, y: 80, width: 240, height: 180)
+        selectionView.updateSelectionRect(selectionRect)
+        selectionView.selectionLocked = true
+
+        let canvas = EditCanvasView(frame: selectionRect)
+        canvas.hostSelectionView = selectionView
+        selectionView.addSubview(canvas)
+        canvas.activeTool = .rectangle
+
+        func canvasEvent(
+            type: NSEvent.EventType,
+            point: NSPoint,
+            eventNumber: Int
+        ) throws -> NSEvent {
+            let locationInWindow = canvas.convert(point, to: selectionView)
+            return try XCTUnwrap(NSEvent.mouseEvent(
+                with: type,
+                location: locationInWindow,
+                modifierFlags: [],
+                timestamp: ProcessInfo.processInfo.systemUptime,
+                windowNumber: 0,
+                context: nil,
+                eventNumber: eventNumber,
+                clickCount: type == .mouseMoved ? 0 : 1,
+                pressure: type == .mouseMoved ? 0 : 1
+            ))
+        }
+
+        // Commit a real mark first so this follows the exact event-routing
+        // transition from the regression video.
+        let markStart = NSPoint(x: 70, y: 55)
+        let markEnd = NSPoint(x: 165, y: 125)
+        canvas.mouseDown(with: try canvasEvent(type: .leftMouseDown, point: markStart, eventNumber: 1))
+        canvas.mouseDragged(with: try canvasEvent(type: .leftMouseDragged, point: markEnd, eventNumber: 2))
+        canvas.mouseUp(with: try canvasEvent(type: .leftMouseUp, point: markEnd, eventNumber: 3))
+        XCTAssertTrue(canvas.canUndo, "The test must reach the post-annotation state")
+
+        let inwardOffsets: [SelectionView.HandlePosition: NSPoint] = [
+            .topLeft: NSPoint(x: 2, y: -2),
+            .topRight: NSPoint(x: -2, y: -2),
+            .bottomLeft: NSPoint(x: 2, y: 2),
+            .bottomRight: NSPoint(x: -2, y: 2),
+            .topCenter: NSPoint(x: 0, y: -2),
+            .bottomCenter: NSPoint(x: 0, y: 2),
+            .leftCenter: NSPoint(x: 2, y: 0),
+            .rightCenter: NSPoint(x: -2, y: 0),
+        ]
+        let positions = SelectionView.handlePositions(for: selectionRect)
+
+        for (index, handle) in SelectionView.HandlePosition.allCases.enumerated() {
+            let offset = try XCTUnwrap(inwardOffsets[handle])
+            let hostPoint = NSPoint(
+                x: positions[index].x + offset.x,
+                y: positions[index].y + offset.y
+            )
+            let canvasPoint = canvas.convert(hostPoint, from: selectionView)
+            NSCursor.arrow.set()
+            canvas.mouseMoved(with: try canvasEvent(
+                type: .mouseMoved,
+                point: canvasPoint,
+                eventNumber: 10 + index
+            ))
+            XCTAssertEqual(
+                NSCursor.current,
+                SelectionView.cursorForHandle(handle),
+                "Canvas tracking must preserve the outer cursor for \(handle)"
+            )
+        }
+
+        // Crossing out of the canvas at a frame handle also emits
+        // mouseExited; that event must not flash the arrow cursor.
+        let topCenter = positions[4]
+        let outsideCanvasPoint = canvas.convert(
+            NSPoint(x: topCenter.x, y: topCenter.y + 2),
+            from: selectionView
+        )
+        NSCursor.arrow.set()
+        canvas.mouseExited(with: try canvasEvent(
+            type: .mouseMoved,
+            point: outsideCanvasPoint,
+            eventNumber: 30
+        ))
+        XCTAssertEqual(
+            NSCursor.current,
+            SelectionView.cursorForHandle(.topCenter),
+            "Leaving the canvas through a frame handle must preserve its resize cursor"
+        )
+    }
+
     func testExistingSelectionAdjustmentDoesNotRestoreMagnifier() throws {
         _ = NSApplication.shared
         let controller = OverlayWindowController(

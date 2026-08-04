@@ -207,6 +207,7 @@ class EditWindowController {
         scrollView.automaticallyAdjustsContentInsets = false
 
         let canvas = EditCanvasView(frame: NSRect(origin: .zero, size: canvasSize))
+        canvas.hostSelectionView = hostSelectionView
         canvas.captureRect = captureRect
         canvas.captureScreen = screen
         canvas.preSnapshot = preSnapshot
