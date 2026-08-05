@@ -17,7 +17,7 @@ enum EditorToolbarPlacement {
         let margin = edgeMargin
         let minimumX = bounds.minX + margin
         let maximumX = bounds.maxX - width - margin
-        let x = max(minimumX, min(maximumX, referenceRect.midX - width / 2))
+        let x = max(minimumX, min(maximumX, referenceRect.maxX - width))
 
         let minimumY = bounds.minY + margin
         let maximumY = bounds.maxY - max(0, topSafeInset) - height - margin
@@ -28,6 +28,45 @@ enum EditorToolbarPlacement {
         y = max(minimumY, min(maximumY, y))
 
         return NSRect(x: x, y: y, width: width, height: height)
+    }
+
+    static func sideToolbarRect(
+        referenceRect: NSRect,
+        in bounds: NSRect,
+        size: NSSize,
+        avoiding primaryFrame: NSRect? = nil
+    ) -> NSRect {
+        let width = size.width
+        let height = size.height
+        let margin = edgeMargin
+
+        let minimumX = bounds.minX + margin
+        let maximumX = bounds.maxX - width - margin
+        var x = referenceRect.maxX + margin
+        if x + width > bounds.maxX - margin {
+            x = referenceRect.minX - width - margin
+        }
+        x = max(minimumX, min(maximumX, x))
+
+        let minimumY = bounds.minY + margin
+        let maximumY = bounds.maxY - height - margin
+        var y = max(minimumY, min(maximumY, referenceRect.minY))
+
+        var rect = NSRect(x: x, y: y, width: width, height: height)
+
+        if let primary = primaryFrame, rect.intersects(primary) {
+            // Try to sit fully above the primary toolbar's band; fall back
+            // to below it when there isn't enough headroom.
+            let above = primary.maxY + margin
+            if above + height <= bounds.maxY - margin {
+                y = above
+            } else {
+                y = max(minimumY, primary.minY - margin - height)
+            }
+            rect.origin.y = y
+        }
+
+        return rect
     }
 }
 
@@ -2563,8 +2602,8 @@ class EditWindowController {
     }
 
     /// Frame for the vertical side toolbar. Prefers the right of the
-    /// selection, flips to the left when there's no room, and stays
-    /// vertically centered on the selection.
+    /// selection, flips to the left when there's no room, and aligns its
+    /// bottom edge with the selection.
     ///
     /// `avoiding` is the primary toolbar's frame, when it exists. The two
     /// bars are positioned independently against their own preferred
@@ -2576,34 +2615,12 @@ class EditWindowController {
         size: NSSize,
         avoiding primaryFrame: NSRect? = nil
     ) -> NSRect {
-        let width = size.width
-        let height = size.height
-        let margin: CGFloat = 8
-
-        let referenceRect = outerVisualRect(in: bounds)
-        var x = referenceRect.maxX + margin
-        if x + width > bounds.maxX - margin {
-            x = referenceRect.minX - width - margin
-        }
-        x = max(margin, min(bounds.maxX - width - margin, x))
-
-        var y = referenceRect.midY - height / 2
-        y = max(margin, min(bounds.maxY - height - margin, y))
-
-        var rect = NSRect(x: x, y: y, width: width, height: height)
-
-        if let primary = primaryFrame, rect.intersects(primary) {
-            // Try to sit fully above the primary toolbar's band; fall back
-            // to below it when there isn't enough headroom.
-            let above = primary.maxY + margin
-            if above + height <= bounds.maxY - margin {
-                rect.origin.y = above
-            } else {
-                rect.origin.y = max(margin, primary.minY - margin - height)
-            }
-        }
-
-        return rect
+        EditorToolbarPlacement.sideToolbarRect(
+            referenceRect: outerVisualRect(in: bounds),
+            in: bounds,
+            size: size,
+            avoiding: primaryFrame
+        )
     }
 
     private func subToolbarRect(
