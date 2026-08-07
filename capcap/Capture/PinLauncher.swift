@@ -1526,6 +1526,12 @@ final class PinContentView: NSView {
         return super.performKeyEquivalent(with: event)
     }
 
+    /// Let the activation click reach `mouseDown` so a PIN window can be
+    /// dragged immediately after the pointer returns from another app.
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
+    }
+
     override func mouseDown(with event: NSEvent) {
         window?.makeFirstResponder(self)
         guard !usesLowResolutionPreview else { return }
