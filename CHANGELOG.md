@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.4] - 2026-08-07
+
+### Fixed
+- Allow pinned windows to be dragged immediately after app activation (39ccbaa)
+
+### Changed
+- Align editor toolbars with selection edges (a774146)
+
 ## [1.7.3] - 2026-08-04
 
 ### Fixed
