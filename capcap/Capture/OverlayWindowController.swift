@@ -546,7 +546,7 @@ class OverlayWindowController {
             window.backgroundColor = .clear
             window.ignoresMouseEvents = false
             window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-            window.sharingType = Defaults.demoMode ? .readOnly : .none
+            window.sharingType = OverlayPanelPool.overlaySharingType
             window.acceptsMouseMovedEvents = true
             window.animationBehavior = .none
 

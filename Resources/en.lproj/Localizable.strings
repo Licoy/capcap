@@ -12,8 +12,6 @@
 "microphoneDescription" = "Optional; needed to record your voice with screen recordings";
 "launchApp" = "Launch App";
 "launchAtLogin" = "Launch at Login";
-"demoMode" = "Demo Mode";
-"demoModeHint" = "Allow screen recorders to capture the selection overlay and editor";
 "pinAcrossSpaces" = "Show Pins Across Desktops";
 "pinAcrossSpacesHint" = "New pinned images appear on every desktop and full-screen Space";
 "historyCacheToggleLabel" = "Cache Screenshots";

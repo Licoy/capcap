@@ -103,7 +103,8 @@
 - **Recent history** — menu bar history with thumbnails and picked colors for quick re-copy, with a configurable cache size.
 - **Image-host upload** — optional one-click upload to Tencent COS, Qiniu Kodo, or Aliyun OSS; the public URL is copied to the clipboard and stored alongside the thumbnail in History. Credentials live only in your local UserDefaults; pick one provider as the default and the editor's upload button lights up.
 - **Custom trigger** — use the default double-tap `⌘`, or record a custom global shortcut in Settings.
-- **Settings and localization** — UI in Simplified Chinese, Traditional Chinese, English, Japanese, Korean, French, Russian, and Vietnamese, plus menu bar icon toggle, launch at login, demo mode, permission status, shortcut recording, and history cache size.
+- **External recording compatibility** — selection overlays and the editor are visible to external screen recorders by default, with no extra setting.
+- **Settings and localization** — UI in Simplified Chinese, Traditional Chinese, English, Japanese, Korean, French, Russian, and Vietnamese, plus menu bar icon toggle, launch at login, permission status, shortcut recording, and history cache size.
 - **Menu bar app** — runs as an agent app without a Dock icon.
 
 ## Requirements
@@ -202,7 +203,6 @@ Open Settings from the menu bar to configure:
 - Language: Simplified Chinese, Traditional Chinese, English, Japanese, Korean, French, Russian, or Vietnamese
 - Menu bar icon visibility
 - Launch at login
-- Demo Mode, which allows external screen recorders to capture capcap's overlay and editor
 - Screenshot shortcut: keep double-tap `⌘`, record a custom shortcut, or restore the default
 - History cache size, from 5 to 20 recent screenshots/colors
 - Image-host upload: enable Tencent COS, Qiniu Kodo, or Aliyun OSS, fill in their credentials, and pick which one is the default for the editor's upload button

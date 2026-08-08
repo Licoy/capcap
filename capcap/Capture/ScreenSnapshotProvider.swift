@@ -137,10 +137,12 @@ final class ScreenSnapshotProvider: ScreenSnapshotProviding {
             )
         }
 
-        // The selection overlay and capture-only chrome opt out through
-        // NSWindow.sharingType = .none. Do not exclude the whole capcap
-        // process here: Settings, pinned images, menus and popovers are valid
-        // screenshot targets and must remain in the frozen desktop image.
+        // Capture-only chrome opts out through NSWindow.sharingType = .none.
+        // The selection overlay stays shareable so external recorders can see
+        // it; its backdrop capture starts before the overlay is presented.
+        // Do not exclude the whole capcap process here: Settings, pinned
+        // images, menus and popovers are valid screenshot targets and must
+        // remain in the frozen desktop image.
         let filter = SCContentFilter(display: display, excludingWindows: [])
 
         let configuration = SCStreamConfiguration()

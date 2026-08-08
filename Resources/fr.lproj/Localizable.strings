@@ -12,8 +12,6 @@
 "microphoneDescription" = "Optionnel;nécessaire pour enregistrer votre voix pendant les captures vidéo";
 "launchApp" = "Lancer l'application";
 "launchAtLogin" = "Lancer à la connexion";
-"demoMode" = "Mode démo";
-"demoModeHint" = "Permet aux logiciels d'enregistrement de capturer la sélection et l'éditeur";
 "pinAcrossSpaces" = "Afficher les épingles sur tous les bureaux";
 "pinAcrossSpacesHint" = "Les nouvelles images épinglées apparaissent sur chaque bureau et espace plein écran";
 "historyCacheToggleLabel" = "Mettre les captures en cache";

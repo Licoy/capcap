@@ -70,6 +70,45 @@ final class OverlayPresentationTests: XCTestCase {
         XCTAssertTrue(controller.isMagnifierLensPanelPresented)
     }
 
+    func testLegacyDisabledDemoModePreferenceIsIgnoredForPooledOverlays() {
+        _ = NSApplication.shared
+        let key = "demoMode"
+        let previousValue = UserDefaults.standard.object(forKey: key)
+        UserDefaults.standard.set(false, forKey: key)
+        defer {
+            if let previousValue {
+                UserDefaults.standard.set(previousValue, forKey: key)
+            } else {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+        }
+
+        let controller = OverlayWindowController(
+            snapshotProvider: ControlledScreenSnapshotProvider(),
+            onComplete: { _ in }
+        )
+        controller.activate()
+        let panels = controller.activeSelectionViews.compactMap(\.window)
+        XCTAssertFalse(panels.isEmpty)
+        XCTAssertTrue(panels.allSatisfy { $0.sharingType == .readOnly })
+        controller.cancel()
+
+        XCTAssertTrue(
+            panels.allSatisfy { $0.sharingType == .readOnly },
+            "Recycled overlay surfaces must stay visible to running recorders"
+        )
+
+        let reusedController = OverlayWindowController(
+            snapshotProvider: ControlledScreenSnapshotProvider(),
+            onComplete: { _ in }
+        )
+        reusedController.activate()
+        XCTAssertTrue(reusedController.activeSelectionViews.allSatisfy {
+            $0.window?.sharingType == .readOnly
+        })
+        reusedController.cancel()
+    }
+
     func testRShortcutIsHandledWhileSnapshotPreparationIsPending() throws {
         _ = NSApplication.shared
         let previousAspectRatio = Defaults.hasSelectionAspectRatio

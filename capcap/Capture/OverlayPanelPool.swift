@@ -10,6 +10,7 @@ final class OverlayPanelPool {
     }
 
     static let shared = OverlayPanelPool()
+    static let overlaySharingType: NSWindow.SharingType = .readOnly
 
     private var panelsByDisplayID: [CGDirectDisplayID: OverlayPanel] = [:]
     private var warmingPanelsByDisplayID: [CGDirectDisplayID: OverlayPanel] = [:]
@@ -153,6 +154,7 @@ final class OverlayPanelPool {
         )
         panel.isReleasedWhenClosed = false
         panel.isExcludedFromWindowsMenu = true
+        panel.sharingType = Self.overlaySharingType
         return panel
     }
 
@@ -171,7 +173,7 @@ final class OverlayPanelPool {
         panel.backgroundColor = .clear
         panel.ignoresMouseEvents = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        panel.sharingType = .none
+        panel.sharingType = Self.overlaySharingType
         panel.acceptsMouseMovedEvents = false
         panel.animationBehavior = .none
 
@@ -239,7 +241,7 @@ final class OverlayPanelPool {
         panel.ignoresMouseEvents = true
         panel.acceptsMouseMovedEvents = false
         panel.collectionBehavior = []
-        panel.sharingType = .none
+        panel.sharingType = Self.overlaySharingType
     }
 
     private func dispose(_ panel: OverlayPanel) {

@@ -12,8 +12,6 @@
 "microphoneDescription" = "可选；用于在录屏时录制你的声音";
 "launchApp" = "启动应用";
 "launchAtLogin" = "开机自动启动";
-"demoMode" = "演示模式";
-"demoModeHint" = "录屏软件可以录到选区遮罩与编辑器，仅影响外部录制";
 "pinAcrossSpaces" = "贴图跨桌面显示";
 "pinAcrossSpacesHint" = "开启后新贴图会出现在所有桌面与全屏空间";
 "historyCacheToggleLabel" = "缓存截图";

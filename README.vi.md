@@ -130,7 +130,7 @@ bash scripts/rebuild-and-open.sh
 
 ## Cài đặt
 
-Bạn có thể đổi ngôn ngữ, biểu tượng thanh menu, khởi chạy khi đăng nhập, chế độ demo, phím tắt, kích thước lịch sử, dịch vụ tải ảnh và lối tắt quyền hệ thống. Giao diện hỗ trợ 简体中文, 繁體中文, English, 日本語, 한국어, Français, Русский và Tiếng Việt.
+Bạn có thể đổi ngôn ngữ, biểu tượng thanh menu, khởi chạy khi đăng nhập, phím tắt, kích thước lịch sử, dịch vụ tải ảnh và lối tắt quyền hệ thống. Lớp phủ vùng chọn và trình chỉnh sửa mặc định hiển thị trong bản ghi màn hình bên ngoài mà không cần thiết lập thêm. Giao diện hỗ trợ 简体中文, 繁體中文, English, 日本語, 한국어, Français, Русский và Tiếng Việt.
 
 ## Giấy phép
 
