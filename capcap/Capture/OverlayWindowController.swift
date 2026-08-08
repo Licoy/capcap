@@ -88,6 +88,8 @@ class OverlayWindowController {
     private let snapshotProvider: ScreenSnapshotProviding
     private let eventTrackingStateProvider: () -> Bool
     private let eventTrackingDismissal: () -> Void
+    private let modalWindowProvider: () -> NSWindow?
+    private let modalWindowDismissal: (NSWindow) -> Void
     private let triggerContext: CaptureTriggerContext?
     private let onFirstFramePresented: (() -> Void)?
     private var screenSnapshots: [CGDirectDisplayID: CGImage] = [:]
@@ -118,9 +120,14 @@ class OverlayWindowController {
     /// snapshot/window-list callbacks cannot mutate a newer overlay session.
     private var presentationGeneration = 0
     private var sessionEnded = false
-    private var waitsForEventTrackingSnapshot = false
+    private var deferredPresentationBlocker: PresentationBlocker?
     private var firstFrameReported = false
     private var firstFrameTargetDisplayID: CGDirectDisplayID?
+
+    private enum PresentationBlocker {
+        case eventTracking
+        case applicationModal(NSWindow)
+    }
 
     private struct ActiveEditorContext {
         let captureRect: CGRect
@@ -235,6 +242,12 @@ class OverlayWindowController {
         eventTrackingDismissal: @escaping () -> Void = {
             OverlayWindowController.dismissActiveEventTrackingSurface()
         },
+        modalWindowProvider: @escaping () -> NSWindow? = {
+            OverlayWindowController.currentApplicationModalWindow()
+        },
+        modalWindowDismissal: @escaping (NSWindow) -> Void = { window in
+            OverlayWindowController.abortApplicationModalSession(for: window)
+        },
         onFirstFramePresented: (() -> Void)? = nil,
         onRecordingSelection: ((NSRect, NSScreen) -> Void)? = nil,
         onRequestFocusReturn: (() -> Void)? = nil,
@@ -252,6 +265,8 @@ class OverlayWindowController {
         self.windowImageLoader = windowImageLoader
         self.eventTrackingStateProvider = eventTrackingStateProvider
         self.eventTrackingDismissal = eventTrackingDismissal
+        self.modalWindowProvider = modalWindowProvider
+        self.modalWindowDismissal = modalWindowDismissal
         self.onFirstFramePresented = onFirstFramePresented
         self.onRecordingSelection = onRecordingSelection
         self.onRequestFocusReturn = onRequestFocusReturn
@@ -287,6 +302,12 @@ class OverlayWindowController {
         self.eventTrackingDismissal = {
             OverlayWindowController.dismissActiveEventTrackingSurface()
         }
+        self.modalWindowProvider = {
+            OverlayWindowController.currentApplicationModalWindow()
+        }
+        self.modalWindowDismissal = { window in
+            OverlayWindowController.abortApplicationModalSession(for: window)
+        }
         self.onFirstFramePresented = nil
         self.onRecordingSelection = nil
         self.onRequestFocusReturn = onRequestFocusReturn
@@ -320,6 +341,12 @@ class OverlayWindowController {
         }
         self.eventTrackingDismissal = {
             OverlayWindowController.dismissActiveEventTrackingSurface()
+        }
+        self.modalWindowProvider = {
+            OverlayWindowController.currentApplicationModalWindow()
+        }
+        self.modalWindowDismissal = { window in
+            OverlayWindowController.abortApplicationModalSession(for: window)
         }
         self.onFirstFramePresented = nil
         self.onRecordingSelection = onRecordingSelection
@@ -378,13 +405,20 @@ class OverlayWindowController {
         expectedSnapshotDisplayIDs = Set(targets.map(\.displayID))
         firstFrameTargetDisplayID = Self.displayIDUnderPointer()
             ?? targets.first?.displayID
-        waitsForEventTrackingSnapshot = shouldCaptureSnapshots
-            && eventTrackingStateProvider()
+        let presentationBlocker = activePresentationBlocker()
+        deferredPresentationBlocker = shouldCaptureSnapshots
+            ? presentationBlocker
+            : nil
         triggerContext?.mark(.backgroundPreparationStarted)
 
         startWindowEnumeration(generation: generation)
         startSnapshotCapture(targets: targets, generation: generation)
-        if !waitsForEventTrackingSnapshot {
+        if let presentationBlocker {
+            if !shouldCaptureSnapshots {
+                dismissPresentationBlockerIfActive(presentationBlocker)
+                scheduleOverlayPresentation(generation: generation)
+            }
+        } else {
             presentOverlay(generation: generation)
         }
     }
@@ -471,7 +505,7 @@ class OverlayWindowController {
                 )
             }
             resumePendingSelectionIfReady(displayID: displayID)
-            finishEventTrackingPresentationIfReady(
+            finishDeferredPresentationIfReady(
                 displayID: displayID,
                 generation: generation
             )
@@ -480,7 +514,7 @@ class OverlayWindowController {
             if pendingSelection?.displayID == displayID {
                 finishSelectionCaptureFailure()
             }
-            finishEventTrackingPresentationIfReady(
+            finishDeferredPresentationIfReady(
                 displayID: displayID,
                 generation: generation
             )
@@ -490,19 +524,19 @@ class OverlayWindowController {
                screenSnapshots[pendingSelection.displayID] == nil {
                 finishSelectionCaptureFailure()
             }
-            finishEventTrackingPresentationIfReady(
+            finishDeferredPresentationIfReady(
                 generation: generation,
                 force: true
             )
         }
     }
 
-    private func finishEventTrackingPresentationIfReady(
+    private func finishDeferredPresentationIfReady(
         displayID: CGDirectDisplayID? = nil,
         generation: Int,
         force: Bool = false
     ) {
-        guard waitsForEventTrackingSnapshot,
+        guard let presentationBlocker = deferredPresentationBlocker,
               generation == presentationGeneration,
               !sessionEnded else { return }
         if !force,
@@ -511,16 +545,50 @@ class OverlayWindowController {
             return
         }
 
-        waitsForEventTrackingSnapshot = false
-        if eventTrackingStateProvider() {
-            eventTrackingDismissal()
+        deferredPresentationBlocker = nil
+        dismissPresentationBlockerIfActive(presentationBlocker)
+        scheduleOverlayPresentation(generation: generation)
+    }
+
+    private func activePresentationBlocker() -> PresentationBlocker? {
+        if let modalWindow = modalWindowProvider() {
+            return .applicationModal(modalWindow)
         }
+        if eventTrackingStateProvider() {
+            return .eventTracking
+        }
+        return nil
+    }
+
+    private func dismissPresentationBlockerIfActive(_ blocker: PresentationBlocker) {
+        switch blocker {
+        case .eventTracking:
+            if eventTrackingStateProvider() {
+                eventTrackingDismissal()
+            }
+        case .applicationModal(let modalWindow):
+            if modalWindowProvider() === modalWindow {
+                modalWindowDismissal(modalWindow)
+            }
+        }
+    }
+
+    private func scheduleOverlayPresentation(generation: Int) {
         MainRunLoopScheduler.performInDefaultMode { [weak self] in
             guard let self,
                   generation == self.presentationGeneration,
                   !self.sessionEnded else { return }
             self.presentOverlay(generation: generation)
         }
+    }
+
+    private static func currentApplicationModalWindow() -> NSWindow? {
+        NSApp.modalWindow
+    }
+
+    private static func abortApplicationModalSession(for window: NSWindow) {
+        guard NSApp.modalWindow === window else { return }
+        NSApp.abortModal()
     }
 
     private func presentOverlay(generation: Int) {
@@ -1158,7 +1226,7 @@ class OverlayWindowController {
         expectedSnapshotDisplayIDs.removeAll()
         failedSnapshotDisplayIDs.removeAll()
         snapshotCaptureFinished = false
-        waitsForEventTrackingSnapshot = false
+        deferredPresentationBlocker = nil
         firstFrameTargetDisplayID = nil
         activeSelectionView = nil
         activeScreen = nil

@@ -541,6 +541,89 @@ final class OverlayPresentationTests: XCTestCase {
         controller.cancel()
     }
 
+    func testApplicationModalCaptureWaitsForSnapshotBeforeAbortingModal() throws {
+        _ = NSApplication.shared
+        let provider = ControlledScreenSnapshotProvider()
+        let modalWindow = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 320, height: 180),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        modalWindow.isReleasedWhenClosed = false
+        var activeModalWindow: NSWindow? = modalWindow
+        var dismissedModalWindow: NSWindow?
+        let controller = OverlayWindowController(
+            snapshotProvider: provider,
+            windowSnapshotLoader: { _ in .success([]) },
+            modalWindowProvider: { activeModalWindow },
+            modalWindowDismissal: { window in
+                dismissedModalWindow = window
+                if activeModalWindow === window {
+                    activeModalWindow = nil
+                }
+            },
+            onComplete: { _ in }
+        )
+        defer {
+            controller.cancel()
+            modalWindow.close()
+        }
+
+        controller.activate()
+
+        XCTAssertFalse(controller.isOverlayPresented)
+        XCTAssertNil(dismissedModalWindow)
+
+        let displayID = try XCTUnwrap(provider.targets.first?.displayID)
+        provider.emit(.image(displayID: displayID, image: makeImage()))
+        drainMainRunLoop()
+
+        XCTAssertTrue(dismissedModalWindow === modalWindow)
+        XCTAssertNil(activeModalWindow)
+        XCTAssertTrue(controller.isOverlayPresented)
+        XCTAssertEqual(controller.appliedSnapshotCount, 1)
+    }
+
+    func testApplicationModalWithoutSnapshotAbortsBeforePresentingOverlay() {
+        _ = NSApplication.shared
+        let provider = ControlledScreenSnapshotProvider()
+        let modalWindow = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 320, height: 180),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        modalWindow.isReleasedWhenClosed = false
+        var activeModalWindow: NSWindow? = modalWindow
+        var dismissalCount = 0
+        let controller = OverlayWindowController(
+            postCaptureAction: .record,
+            snapshotProvider: provider,
+            windowSnapshotLoader: { _ in .success([]) },
+            modalWindowProvider: { activeModalWindow },
+            modalWindowDismissal: { window in
+                dismissalCount += 1
+                if activeModalWindow === window {
+                    activeModalWindow = nil
+                }
+            },
+            onComplete: { _ in }
+        )
+        defer {
+            controller.cancel()
+            modalWindow.close()
+        }
+
+        controller.activate()
+        drainMainRunLoop()
+
+        XCTAssertEqual(provider.captureCount, 0)
+        XCTAssertEqual(dismissalCount, 1)
+        XCTAssertNil(activeModalWindow)
+        XCTAssertTrue(controller.isOverlayPresented)
+    }
+
     func testSelectionWaitsWithoutBlockingAndResumesWhenItsSnapshotArrives() throws {
         _ = NSApplication.shared
         let provider = ControlledScreenSnapshotProvider()
