@@ -6,8 +6,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        Please search [existing issues](https://github.com/realskyrin/capcap/issues) first to avoid duplicates.
-        提交前请先搜索[已有 issue](https://github.com/realskyrin/capcap/issues)，避免重复。
+        Please search [existing issues](https://github.com/Licoy/capcap/issues) first to avoid duplicates.
+        提交前请先搜索[已有 issue](https://github.com/Licoy/capcap/issues)，避免重复。
 
   - type: textarea
     id: description

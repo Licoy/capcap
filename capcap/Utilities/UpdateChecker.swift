@@ -37,7 +37,9 @@ extension Notification.Name {
 final class UpdateChecker {
     static let shared = UpdateChecker()
 
-    private let repo = "realskyrin/capcap"
+    /// GitHub repository used for release checks and download URLs.
+    static let githubRepository = "Licoy/capcap"
+    private let repo = UpdateChecker.githubRepository
     private let throttleKey = "lastUpdateCheckAt"
     private let skippedVersionKey = "skippedUpdateVersion"
     private let shortcutTriggerDayKey = "automaticUpdateCheckShortcutTriggerDay"
@@ -301,8 +303,8 @@ final class UpdateChecker {
         return nil
     }
 
-    /// Strips a leading `release-v` / `v` from a tag — capcap tags releases as
-    /// `release-v1.1.2`, so "release-v1.1.2" becomes "1.1.2".
+    /// Strips a leading `v` / `V` (and legacy `release-v` / `release-`) from a
+    /// tag — this fork tags releases as `v1.0.0`, so "v1.0.0" becomes "1.0.0".
     static func normalizeVersion(_ raw: String) -> String {
         var v = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         if v.hasPrefix("release-v") {

@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/realskyrin/capcap/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/realskyrin/capcap?style=flat-square"></a>
+  <a href="https://github.com/Licoy/capcap/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/Licoy/capcap?style=flat-square"></a>
   <img alt="macOS 14+" src="https://img.shields.io/badge/macOS-14%2B-black?style=flat-square&logo=apple">
   <img alt="Swift 5.9" src="https://img.shields.io/badge/Swift-5.9-orange?style=flat-square&logo=swift">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-lightgrey?style=flat-square"></a>
@@ -17,20 +17,17 @@
 
 <p align="center">
   <a href="README.md">简体中文</a> ·
-  <a href="README.zh-TW.md">繁體中文</a> ·
-  <a href="README.en.md">English</a> ·
-  <a href="README.ja.md">日本語</a> ·
-  <a href="README.ko.md">한국어</a> ·
-  <a href="README.fr.md">Français</a> ·
-  <a href="README.ru.md">Русский</a> ·
-  <a href="README.vi.md">Tiếng Việt</a>
+  <a href="README.en.md">English</a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/realskyrin/capcap/releases/latest">Download</a> ·
-  <a href="#install-with-homebrew">Homebrew</a> ·
+  <a href="https://github.com/Licoy/capcap/releases/latest">Download</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
-  <a href="https://github.com/realskyrin/capcap/issues">Issues</a>
+  <a href="https://github.com/Licoy/capcap/issues">Issues</a>
+</p>
+
+<p align="center">
+  <sub>Fork maintained from <a href="https://github.com/realskyrin/capcap">realskyrin/capcap</a> (Licoy/capcap)</sub>
 </p>
 
 **The fastest way to grab, mark up, and share screenshots on macOS.** Double-tap `⌘` from anywhere — snap to a window, drag a region, scroll-stitch a long page, then annotate and beautify in one tight floating window. Lives in your menu bar. No Dock icon, no telemetry, no subscription, no third-party dependencies. Bring your own object storage if you want a one-click cloud URL.
@@ -40,10 +37,23 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/realskyrin/capcap/releases/latest"><b>Download Latest Release</b></a> &nbsp;·&nbsp;
-  <a href="#install-with-homebrew">Install with Homebrew</a> &nbsp;·&nbsp;
+  <a href="https://github.com/Licoy/capcap/releases/latest"><b>Download Latest Release</b></a> &nbsp;·&nbsp;
   macOS 14+ &nbsp;·&nbsp; Universal (Apple Silicon + Intel)
 </p>
+
+## Differences from upstream
+
+This fork is maintained from [realskyrin/capcap](https://github.com/realskyrin/capcap). Key differences:
+
+| Item | This repo (Licoy/capcap) | Upstream (realskyrin/capcap) |
+|------|--------------------------|------------------------------|
+| Bundle ID | `com.github.licoy.capcap.desktop` | `cn.skyrin.capcap` |
+| Update / release source | [Licoy/capcap Releases](https://github.com/Licoy/capcap/releases) | Upstream GitHub Releases |
+| Documentation | Chinese + English README only | Multi-language READMEs |
+| Release signing | CI self-signed cert via GitHub Actions secrets | Upstream self-signed flow |
+| Version baseline | Independent line starting at `v1.0.0` | Upstream independent line |
+
+Note: a new Bundle ID means a separate app from upstream installs (fresh permissions and preferences). Both can be installed side by side.
 
 ## Why capcap
 
@@ -57,40 +67,9 @@
 - **One-click upload to your own image host.** Optional: configure Tencent COS, Qiniu Kodo, or Aliyun OSS once and the editor's upload button copies a public URL straight to your clipboard. Credentials stay on your Mac.
 - **Built with pure AppKit.** No SwiftUI, no Electron, no telemetry. Small, fast, and respectful of macOS.
 
-## Showcase
-
-<table>
-<tr>
-  <td width="50%" align="center">
-    <img src="images/window-snap.png" alt="Smart window detection — green dashed bounds snap to an app window" /><br/>
-    <sub><b>Snap to any window in one click</b><br/>No precise dragging — capcap detects window bounds for you.</sub>
-  </td>
-  <td width="50%" align="center">
-    <img src="images/history.png" alt="Menu bar history with screenshot thumbnails and picked color hex codes" /><br/>
-    <sub><b>History at the menu bar</b><br/>Re-copy any recent screenshot or picked hex color in a click.</sub>
-  </td>
-</tr>
-<tr>
-  <td width="50%" align="center">
-    <img src="images/scroll-stitch.png" alt="Scroll capture stitching a long page into a single tall screenshot with live preview" /><br/>
-    <sub><b>Scroll-stitch long pages</b><br/>Scroll inside the selection, watch frames merge live, and keep editing the result.</sub>
-  </td>
-  <td width="50%" align="center">
-    <img src="images/beautify.png" alt="Beautify mode wrapping a screenshot in a gradient background with rounded corners and shadow" /><br/>
-    <sub><b>Beautify in one click</b><br/>Gradient or wallpaper backgrounds, rounded corners, shadow and padding — all adjustable.</sub>
-  </td>
-</tr>
-<tr>
-  <td colspan="2" align="center">
-    <img src="images/image-hosting.png" alt="Settings panel showing Tencent COS, Qiniu Kodo, and Aliyun OSS image-host providers, with Aliyun OSS marked as default" width="520" /><br/>
-    <sub><b>Bring-your-own image host</b><br/>Configure Tencent COS, Qiniu Kodo, or Aliyun OSS once — upload the current screenshot and copy its public URL with a single click.</sub>
-  </td>
-</tr>
-</table>
-
 ## Features
 
-- **Edit any image directly** — select a single image file in Finder (Desktop or any window) and trigger the screenshot shortcut to open that image in the annotation editor instead of taking a screenshot. The original file is never modified; the edited result goes to the clipboard and history like a normal capture.
+- **Edit any image directly** — select a single image file in Finder and trigger the screenshot shortcut to open that image in the annotation editor instead of taking a screenshot.
 - **Fast region and window capture** — drag any area, or hover and click a detected window to snap to its bounds.
 - **Multi-display support** — creates overlays on every connected screen and captures at full Retina resolution.
 - **Full annotation editor** — rectangle, ellipse, arrow, pen, highlighter, mosaic, numbered callouts, and text.
@@ -101,10 +80,8 @@
 - **Pin to screen** — float the current screenshot above other windows as a draggable reference image.
 - **Save or copy** — save as PNG, confirm to copy PNG/TIFF data to the clipboard, or cancel without output.
 - **Recent history** — menu bar history with thumbnails and picked colors for quick re-copy, with a configurable cache size.
-- **Image-host upload** — optional one-click upload to Tencent COS, Qiniu Kodo, or Aliyun OSS; the public URL is copied to the clipboard and stored alongside the thumbnail in History. Credentials live only in your local UserDefaults; pick one provider as the default and the editor's upload button lights up.
+- **Image-host upload** — optional one-click upload to Tencent COS, Qiniu Kodo, or Aliyun OSS; the public URL is copied to the clipboard.
 - **Custom trigger** — use the default double-tap `⌘`, or record a custom global shortcut in Settings.
-- **External recording compatibility** — selection overlays and the editor are visible to external screen recorders by default, with no extra setting.
-- **Settings and localization** — UI in Simplified Chinese, Traditional Chinese, English, Japanese, Korean, French, Russian, and Vietnamese, plus menu bar icon toggle, launch at login, permission status, shortcut recording, and history cache size.
 - **Menu bar app** — runs as an agent app without a Dock icon.
 
 ## Requirements
@@ -114,28 +91,21 @@
 - Screen Recording permission, used by ScreenCaptureKit and screenshot capture
 - Automation permission for Finder, requested on first use of the "edit selected image" shortcut
 
-On first launch, capcap opens a setup window that shows both permission states. The app can launch once both required permissions are granted.
+On first launch, capcap opens a setup window that shows permission states. The app can launch once both required permissions are granted.
 
-## Install with Homebrew
+## Install
 
-The Homebrew cask lives in the shared `realskyrin/tap` Homebrew tap:
+Download the `.dmg` or `.zip` from [Releases](https://github.com/Licoy/capcap/releases/latest) and drag `capcap.app` into Applications.
 
-```bash
-brew tap realskyrin/tap
-brew install --cask realskyrin/tap/capcap
-```
+### macOS Verification Warning
 
-See the [homebrew-tap README](https://github.com/realskyrin/homebrew-tap) for tap maintenance.
-
-## macOS Verification Warning
-
-If macOS shows a warning like `Apple cannot verify "capcap" is free of malware`, remove the quarantine flag from the app bundle you trust, then open it again:
+This fork packages releases with a **self-signed certificate** (not Apple Developer ID). If macOS shows a warning like `Apple cannot verify "capcap" is free of malware`, remove the quarantine flag from the app bundle you trust, then open it again:
 
 ```bash
 xattr -dr com.apple.quarantine /Applications/capcap.app
 ```
 
-If you are running a locally built copy instead of the app in `/Applications`, replace the path with your actual app location, for example:
+If you are running a locally built copy, replace the path with your actual app location, for example:
 
 ```bash
 xattr -dr com.apple.quarantine ./build/capcap.app
@@ -171,7 +141,7 @@ The app bundle is output to `build/capcap.app`; DMGs are output to `dist/`.
 3. Use the floating toolbar to annotate, pick a color, start scroll capture, beautify, save, pin, cancel, or confirm.
 4. Click the green checkmark or press `Enter` to copy the final image to the clipboard. Press `Esc` or click `x` to cancel.
 
-To edit an existing image instead of taking a screenshot, click a single image file in Finder (so it's the current Finder selection), then trigger the same shortcut. capcap copies the file into a temporary working location and opens it in the editor with the toolbar already up. If anything other than exactly one image is selected, the shortcut behaves as a normal screenshot trigger.
+To edit an existing image instead of taking a screenshot, click a single image file in Finder, then trigger the same shortcut.
 
 ## Editor Tools
 
@@ -194,23 +164,37 @@ To edit an existing image instead of taking a screenshot, click a single image f
 | Upload | Upload the current result to the configured image host and copy the public URL |
 | Confirm | Copy the final result to the clipboard |
 
-When an annotation is selected, capcap shows adjustment handles where supported: rotation for shapes, strokes, and text; curve handles for arrows and numbered callouts; endpoint handles for arrows; and edit/delete actions for text and selected annotations.
+## Release notes (maintainers)
 
-## Settings
+Pushing a `v*` tag triggers GitHub Actions to build and publish a release:
 
-Open Settings from the menu bar to configure:
+1. **Generate a self-signed certificate** (once):
 
-- Language: Simplified Chinese, Traditional Chinese, English, Japanese, Korean, French, Russian, or Vietnamese
-- Menu bar icon visibility
-- Launch at login
-- Screenshot shortcut: keep double-tap `⌘`, record a custom shortcut, or restore the default
-- History cache size, from 5 to 20 recent screenshots/colors
-- Image-host upload: enable Tencent COS, Qiniu Kodo, or Aliyun OSS, fill in their credentials, and pick which one is the default for the editor's upload button
-- Accessibility and Screen Recording permission shortcuts
+   ```bash
+   scripts/generate-signing-cert.sh
+   ```
 
-## History
+2. **Configure GitHub Actions secrets** (repo Settings → Secrets → Actions):
 
-The menu bar **History** submenu stores recent screenshots and picked colors in `~/Library/Application Support/capcap/History`. Click an image entry to copy it back to the clipboard, click a color entry to copy its hex value, or clear the full history from the submenu.
+   | Secret | Value |
+   |--------|-------|
+   | `MACOS_CERTIFICATE` | Contents of `capcap-signing.p12.base64` |
+   | `MACOS_CERTIFICATE_PWD` | `.p12` export password |
+   | `MACOS_SIGNING_IDENTITY` | Certificate CN, default `capcap Self-Signed` |
+   | `KEYCHAIN_PASSWORD` | Any throwaway string |
+
+   See [scripts/signing/README.md](scripts/signing/README.md). **Do not** commit the `.p12` file.
+
+3. **Bump version and trigger the build**:
+
+   ```bash
+   # Writes Info.plist versions, commits, creates annotated tag vX.Y.Z
+   ./bump.sh -v 1.0.0
+
+   # Push branch + tag (or pass -p to push in one step)
+   git push origin HEAD && git push origin v1.0.0
+   # equivalent: ./bump.sh -v 1.0.1 -p
+   ```
 
 ## Project Structure
 
@@ -220,9 +204,9 @@ The menu bar **History** submenu stores recent screenshots and picked colors in 
 - `capcap/Trigger/` — double-tap `⌘` monitor and custom Carbon hotkey registration
 - `capcap/UI/` — menu bar controller, toast, cursor chip, and tooltips
 - `capcap/Settings/` — startup/settings window and preferences UI
-- `capcap/Upload/` — image-host providers (Tencent COS, Qiniu Kodo, Aliyun OSS), HMAC signing, progress-tracking HTTP wrapper, and the floating upload chip
-- `capcap/Utilities/` — defaults, localization, and launch-at-login support
-- `scripts/` — compile check, bundle, rebuild/open, icon, and DMG helpers
+- `capcap/Upload/` — image-host providers and the floating upload chip
+- `capcap/Utilities/` — defaults, localization, update checks, and launch-at-login support
+- `scripts/` — compile check, bundle, rebuild/open, icon, signing, and DMG helpers
 
 ## Development
 
@@ -236,7 +220,8 @@ bash scripts/rebuild-and-open.sh
 
 ## Acknowledgments
 
-Thanks to the [Linux.do](https://linux.do) community for testing, feedback, and discussion.
+- Upstream project: [realskyrin/capcap](https://github.com/realskyrin/capcap)
+- Thanks to the [Linux.do](https://linux.do) community for testing, feedback, and discussion
 
 ## Third-Party Licenses
 

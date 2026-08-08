@@ -2,7 +2,7 @@ import AppKit
 import UniformTypeIdentifiers
 
 final class ShareViewController: NSViewController {
-    private static let handoffNotificationName = Notification.Name("cn.skyrin.capcap.share-handoff")
+    private static let handoffNotificationName = Notification.Name("com.github.licoy.capcap.desktop.share-handoff")
 
     private let progressIndicator = NSProgressIndicator()
     private let statusLabel = NSTextField(labelWithString: "Opening capcap")
@@ -325,7 +325,7 @@ final class ShareViewController: NSViewController {
             self.statusLabel.stringValue = message
 
             let error = NSError(
-                domain: "cn.skyrin.capcap.share-extension",
+                domain: "com.github.licoy.capcap.desktop.share-extension",
                 code: 1,
                 userInfo: [NSLocalizedDescriptionKey: message]
             )

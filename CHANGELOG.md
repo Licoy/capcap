@@ -1,11 +1,24 @@
 # Changelog
 
-All notable changes to **capcap** will be documented in this file.
+All notable changes to **capcap** (Licoy/capcap fork) will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+This repository is a maintained fork of [realskyrin/capcap](https://github.com/realskyrin/capcap).
+Fork versioning is independent and starts at `1.0.0`. Entries below `1.0.0` are
+preserved from upstream history for reference.
+
 ## [Unreleased]
+
+## [1.0.0] - 2026-08-08
+
+### Changed
+- Rebrand as Licoy/capcap fork with Bundle ID `com.github.licoy.capcap.desktop`
+- Point in-app update checks and GitHub links to `Licoy/capcap`
+- Keep Chinese and English READMEs only; slim gallery screenshots
+- Align release CI with `v*` tags from `bump.sh` and self-signed Actions secrets
+- Remove upstream Homebrew tap dispatch from the release workflow
 
 ## [1.7.4] - 2026-08-07
 

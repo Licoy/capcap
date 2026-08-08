@@ -66,7 +66,7 @@ CAPCAP="/Applications/capcap.app/Contents/MacOS/capcap"
 如果 capcap 安装在其他位置，可以用 bundle identifier 查找
 
 ```bash
-CAPCAP="$(mdfind 'kMDItemCFBundleIdentifier == "cn.skyrin.capcap"' | head -n 1)/Contents/MacOS/capcap"
+CAPCAP="$(mdfind 'kMDItemCFBundleIdentifier == "com.github.licoy.capcap.desktop"' | head -n 1)/Contents/MacOS/capcap"
 ```
 
 在开发仓库里测试本地构建时，先编译再使用 debug binary

@@ -2,7 +2,7 @@ import AppKit
 import UniformTypeIdentifiers
 
 class AppDelegate: NSObject, NSApplicationDelegate {
-    private static let shareHandoffNotificationName = Notification.Name("cn.skyrin.capcap.share-handoff")
+    private static let shareHandoffNotificationName = Notification.Name("com.github.licoy.capcap.desktop.share-handoff")
 
     private var statusBarController: StatusBarController!
     private var keyMonitor: KeyMonitor!

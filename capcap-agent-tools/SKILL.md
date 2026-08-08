@@ -18,7 +18,7 @@ CAPCAP="/Applications/capcap.app/Contents/MacOS/capcap"
 If the app is installed somewhere else, locate it first:
 
 ```bash
-CAPCAP="$(mdfind 'kMDItemCFBundleIdentifier == "cn.skyrin.capcap"' | head -n 1)/Contents/MacOS/capcap"
+CAPCAP="$(mdfind 'kMDItemCFBundleIdentifier == "com.github.licoy.capcap.desktop"' | head -n 1)/Contents/MacOS/capcap"
 ```
 
 In a development checkout, use the debug binary after a Swift build:
