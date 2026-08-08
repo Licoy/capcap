@@ -636,7 +636,7 @@
 "magnifierLensPanelRgb" = "RGB: %@";
 "magnifierLensPanelRgbString" = "rgb(%d, %d, %d)";
 "magnifierLensPanelCopyHint" = "색상 복사(C)";
-"magnifierLensPanelShiftHint" = "색상 형식(Shift)";
+"magnifierLensPanelFormatHint" = "색상 형식(F)";
 "magnifierLensPanelAspectFree" = "자유";
 "magnifierLensPanelAspectHint" = "캡처 비율(R)";
 /* 파일 업로드 */

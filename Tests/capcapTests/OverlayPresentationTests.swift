@@ -126,6 +126,48 @@ final class OverlayPresentationTests: XCTestCase {
         )
     }
 
+    func testFShortcutTogglesMagnifierColorFormat() throws {
+        _ = NSApplication.shared
+        let controller = OverlayWindowController(
+            snapshotProvider: ControlledScreenSnapshotProvider(delay: 2),
+            onComplete: { _ in }
+        )
+        controller.activate()
+        defer { controller.cancel() }
+
+        let selectionView = try XCTUnwrap(
+            controller.activeSelectionViews.first(where: { $0.window?.isKeyWindow == true })
+        )
+        let windowNumber = try XCTUnwrap(selectionView.window?.windowNumber)
+
+        func sendF(isARepeat: Bool = false) throws {
+            let event = try XCTUnwrap(
+                NSEvent.keyEvent(
+                    with: .keyDown,
+                    location: .zero,
+                    modifierFlags: [],
+                    timestamp: ProcessInfo.processInfo.systemUptime,
+                    windowNumber: windowNumber,
+                    context: nil,
+                    characters: "f",
+                    charactersIgnoringModifiers: "f",
+                    isARepeat: isARepeat,
+                    keyCode: 3
+                )
+            )
+            NSApp.sendEvent(event)
+            drainMainRunLoop()
+        }
+
+        XCTAssertEqual(controller.currentMagnifierLensPanelFormat, .hex)
+        try sendF()
+        XCTAssertEqual(controller.currentMagnifierLensPanelFormat, .rgb)
+        try sendF(isARepeat: true)
+        XCTAssertEqual(controller.currentMagnifierLensPanelFormat, .rgb)
+        try sendF()
+        XCTAssertEqual(controller.currentMagnifierLensPanelFormat, .hex)
+    }
+
     func testCaptureStartsWithCrosshairAndPointerEventsKeepIt() throws {
         _ = NSApplication.shared
         let originalCursor = NSCursor.current

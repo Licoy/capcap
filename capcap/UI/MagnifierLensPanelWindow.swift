@@ -38,7 +38,7 @@ final class MagnifierLensPanelWindow: NSPanel {
     private static func computePanelSize() -> NSSize {
         let infoRows = 3
             + (Defaults.magnifierLensPanelShowCopyHint ? 1 : 0)
-            + (Defaults.magnifierLensPanelShowShiftHint ? 1 : 0)
+            + (Defaults.magnifierLensPanelShowFormatHint ? 1 : 0)
         let infoHeight = CGFloat(infoRows) * MagnifierLensPanelLayout.infoRowHeight
             + MagnifierLensPanelLayout.infoGroupSpacing
             + MagnifierLensPanelLayout.infoVerticalInset * 2
@@ -441,10 +441,10 @@ final class MagnifierLensPanelView: NSView {
         // We always render coords + color (rows 3 and 2 in old layout).
         // Tip rows occupy 1 and 0 conditionally.
         var rowFromBottom = 0
-        // totalRows in info area (coords + color + ratio + maybe copy + maybe shift)
+        // totalRows in info area (coords + color + ratio + optional shortcut hints)
         let totalRows = 3
             + (Defaults.magnifierLensPanelShowCopyHint ? 1 : 0)
-            + (Defaults.magnifierLensPanelShowShiftHint ? 1 : 0)
+            + (Defaults.magnifierLensPanelShowFormatHint ? 1 : 0)
 
         func rowY(forIndex i: Int) -> CGFloat {
             // i is 0-based from bottom
@@ -515,14 +515,14 @@ final class MagnifierLensPanelView: NSView {
             )
             rowFromBottom += 1
         }
-        if Defaults.magnifierLensPanelShowShiftHint {
+        if Defaults.magnifierLensPanelShowFormatHint {
             let colorFormat: String
             switch format {
             case .hex: colorFormat = "HEX"
             case .rgb: colorFormat = "RGB"
             }
             drawHintRow(
-                label: L10n.magnifierLensPanelShiftHint,
+                label: L10n.magnifierLensPanelFormatHint,
                 value: colorFormat,
                 attrs: tipAttrs,
                 at: rowY(forIndex: rowFromBottom)

@@ -636,7 +636,7 @@
 "magnifierLensPanelRgb" = "RGB: %@";
 "magnifierLensPanelRgbString" = "rgb(%d, %d, %d)";
 "magnifierLensPanelCopyHint" = "色をコピー(C)";
-"magnifierLensPanelShiftHint" = "カラー形式(Shift)";
+"magnifierLensPanelFormatHint" = "カラー形式(F)";
 "magnifierLensPanelAspectFree" = "自由";
 "magnifierLensPanelAspectHint" = "撮影比率(R)";
 /* ファイルのアップロード */

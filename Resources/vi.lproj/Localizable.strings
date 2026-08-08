@@ -636,7 +636,7 @@
 "magnifierLensPanelRgb" = "RGB: %@";
 "magnifierLensPanelRgbString" = "rgb(%d, %d, %d)";
 "magnifierLensPanelCopyHint" = "Sao chép màu(C)";
-"magnifierLensPanelShiftHint" = "Định dạng(Shift)";
+"magnifierLensPanelFormatHint" = "Định dạng(F)";
 "magnifierLensPanelAspectFree" = "Tự do";
 "magnifierLensPanelAspectHint" = "Tỷ lệ ảnh(R)";
 /* Tải tệp lên */

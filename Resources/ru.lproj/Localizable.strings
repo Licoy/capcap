@@ -636,7 +636,7 @@
 "magnifierLensPanelRgb" = "RGB: %@";
 "magnifierLensPanelRgbString" = "rgb(%d, %d, %d)";
 "magnifierLensPanelCopyHint" = "Копировать цвет(C)";
-"magnifierLensPanelShiftHint" = "Формат(Shift)";
+"magnifierLensPanelFormatHint" = "Формат(F)";
 "magnifierLensPanelAspectFree" = "Свободно";
 "magnifierLensPanelAspectHint" = "Пропорц.(R)";
 /* Загрузка файлов */

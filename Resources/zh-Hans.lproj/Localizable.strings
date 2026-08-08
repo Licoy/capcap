@@ -636,7 +636,7 @@
 "magnifierLensPanelRgb" = "RGB: %@";
 "magnifierLensPanelRgbString" = "rgb(%d, %d, %d)";
 "magnifierLensPanelCopyHint" = "复制颜色(C)";
-"magnifierLensPanelShiftHint" = "色值格式(Shift)";
+"magnifierLensPanelFormatHint" = "色值格式(F)";
 "magnifierLensPanelAspectFree" = "自由";
 "magnifierLensPanelAspectHint" = "截图比例(R)";
 /* 文件上传 */

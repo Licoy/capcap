@@ -66,10 +66,7 @@ class OverlayWindowController {
     private var magnifierLensPanelFormat: MagnifierLensPanelWindow.Format = .hex
     private var mouseMovedLocalMonitor: Any?
     private var mouseMovedGlobalMonitor: Any?
-    private var magnifierLensPanelFlagsChangedLocalMonitor: Any?
-    private var magnifierLensPanelFlagsChangedGlobalMonitor: Any?
     private var magnifierLensPanelKeyDownGlobalMonitor: Any?
-    private var lastMagnifierLensPanelShiftDown: TimeInterval = 0
     private var magnifierLensPanelActive: Bool { magnifierLensPanel != nil }
     private var screenFramesByDisplayID: [CGDirectDisplayID: NSRect] = [:]
     private var escLocalMonitor: Any?
@@ -347,6 +344,10 @@ class OverlayWindowController {
         magnifierLensPanelActive
     }
 
+    var currentMagnifierLensPanelFormat: MagnifierLensPanelWindow.Format {
+        magnifierLensPanelFormat
+    }
+
     var isSelectionInteractive: Bool {
         windows.compactMap { $0.contentView as? SelectionView }
             .contains(where: \.selectionInteractionEnabled)
@@ -610,6 +611,9 @@ class OverlayWindowController {
             if self?.editController?.isTextEditing == true {
                 return event
             }
+            if self?.toggleMagnifierLensPanelFormatFromKeyboard(for: event) == true {
+                return nil
+            }
             if self?.handleMagnifierLensPanelCopyShortcut(for: event, allowsPlainC: true) == true {
                 return nil
             }
@@ -669,17 +673,10 @@ class OverlayWindowController {
                 self?.cancel()
             }
         }
-        magnifierLensPanelFlagsChangedLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
-            self?.handleMagnifierLensPanelShiftFlagsChanged(event)
-            return event
-        }
         // The overlay is a non-activating panel, so keyboard events routed
         // to the foreground app never reach our local monitor. Mirror the
-        // Shift and legacy ⌘+C handling with global monitors so they still fire
-        // when the user has Gemini (or any other app) focused underneath.
-        magnifierLensPanelFlagsChangedGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
-            self?.handleMagnifierLensPanelShiftFlagsChanged(event)
-        }
+        // legacy ⌘+C handling with a global monitor so it still fires when
+        // another app is focused underneath.
         magnifierLensPanelKeyDownGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
             self?.handleMagnifierLensPanelCopyShortcut(for: event, allowsPlainC: false)
         }
@@ -1141,12 +1138,9 @@ class OverlayWindowController {
         magnifierLensPanel?.dismiss()
         magnifierLensPanel = nil
         magnifierLensPanelFormat = .hex
-        lastMagnifierLensPanelShiftDown = 0
 
         if let m = escLocalMonitor { NSEvent.removeMonitor(m); escLocalMonitor = nil }
         if let m = escGlobalMonitor { NSEvent.removeMonitor(m); escGlobalMonitor = nil }
-        if let m = magnifierLensPanelFlagsChangedLocalMonitor { NSEvent.removeMonitor(m); magnifierLensPanelFlagsChangedLocalMonitor = nil }
-        if let m = magnifierLensPanelFlagsChangedGlobalMonitor { NSEvent.removeMonitor(m); magnifierLensPanelFlagsChangedGlobalMonitor = nil }
         if let m = magnifierLensPanelKeyDownGlobalMonitor { NSEvent.removeMonitor(m); magnifierLensPanelKeyDownGlobalMonitor = nil }
         if let m = mouseMovedLocalMonitor { NSEvent.removeMonitor(m); mouseMovedLocalMonitor = nil }
         if let m = mouseMovedGlobalMonitor { NSEvent.removeMonitor(m); mouseMovedGlobalMonitor = nil }
@@ -1235,24 +1229,15 @@ class OverlayWindowController {
         )
     }
 
-    private func handleMagnifierLensPanelShiftFlagsChanged(_ event: NSEvent) {
-        guard magnifierLensPanelActive else { return }
-        // Shift left/right keyCode is 56 / 60. We accept either.
-        guard event.keyCode == 56 || event.keyCode == 60 else { return }
-        let shiftIsDown = event.modifierFlags.contains(.shift)
-        let now = event.timestamp
-        if shiftIsDown {
-            lastMagnifierLensPanelShiftDown = now
-        } else if lastMagnifierLensPanelShiftDown > 0 {
-            let duration = now - lastMagnifierLensPanelShiftDown
-            lastMagnifierLensPanelShiftDown = 0
-            // Tap detection: quick press-and-release of Shift without other keys.
-            // 500 ms is generous enough for a deliberate tap but short enough to
-            // ignore Shift+letter holds where Shift stays down longer.
-            if duration < 0.5 {
-                toggleMagnifierLensPanelFormat()
-            }
+    private func toggleMagnifierLensPanelFormatFromKeyboard(for event: NSEvent) -> Bool {
+        guard magnifierLensPanelActive else { return false }
+        guard event.keyCode == 3 else { return false } // kVK_ANSI_F
+        let modifierMask: NSEvent.ModifierFlags = [.command, .option, .control, .shift]
+        guard event.modifierFlags.intersection(modifierMask).isEmpty else { return false }
+        if !event.isARepeat {
+            toggleMagnifierLensPanelFormat()
         }
+        return true
     }
 
     private func toggleMagnifierLensPanelFormat() {
