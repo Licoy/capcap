@@ -243,6 +243,20 @@ class SettingsView: NSView {
     private var historyPanelShortcutRestoreButton: NSButton!
     private var historyPanelShortcutRecordingMonitor: Any?
 
+    // Repeat last region shortcut card
+    private var repeatLastRegionShortcutTitleLabel: NSTextField!
+    private var repeatLastRegionShortcutField: NSTextField!
+    private var repeatLastRegionShortcutSetButton: NSButton!
+    private var repeatLastRegionShortcutRestoreButton: NSButton!
+    private var repeatLastRegionShortcutRecordingMonitor: Any?
+
+    // Pin click-through shortcut card
+    private var pinClickThroughShortcutTitleLabel: NSTextField!
+    private var pinClickThroughShortcutField: NSTextField!
+    private var pinClickThroughShortcutSetButton: NSButton!
+    private var pinClickThroughShortcutRestoreButton: NSButton!
+    private var pinClickThroughShortcutRecordingMonitor: Any?
+
     private var shortcutResetButton: NSButton?
 
     // Permission badges
@@ -495,6 +509,8 @@ class SettingsView: NSView {
         refreshPreviousHistoryImageShortcutDisplay()
         refreshNextHistoryImageShortcutDisplay()
         refreshHistoryPanelShortcutDisplay()
+        refreshRepeatLastRegionShortcutDisplay()
+        refreshPinClickThroughShortcutDisplay()
     }
 
     // MARK: - Sidebar
@@ -1238,6 +1254,32 @@ class SettingsView: NSView {
         fullScreenScreenshotShortcutRestoreButton = fullScreenScreenshotShortcut.restoreButton
         stack.addArrangedSubview(fullScreenScreenshotShortcut.card)
         fullScreenScreenshotShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
+        // Repeat last region shortcut card
+        let repeatLastRegionShortcut = buildShortcutCard(
+            title: L10n.repeatLastRegionShortcutHeader,
+            setAction: #selector(repeatLastRegionShortcutSetClicked),
+            restoreAction: #selector(repeatLastRegionShortcutRestoreClicked)
+        )
+        repeatLastRegionShortcutTitleLabel = repeatLastRegionShortcut.title
+        repeatLastRegionShortcutField = repeatLastRegionShortcut.field
+        repeatLastRegionShortcutSetButton = repeatLastRegionShortcut.setButton
+        repeatLastRegionShortcutRestoreButton = repeatLastRegionShortcut.restoreButton
+        stack.addArrangedSubview(repeatLastRegionShortcut.card)
+        repeatLastRegionShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
+        // Pin click-through shortcut card (default ⌥⌘P)
+        let pinClickThroughShortcut = buildShortcutCard(
+            title: L10n.pinClickThroughShortcutHeader,
+            setAction: #selector(pinClickThroughShortcutSetClicked),
+            restoreAction: #selector(pinClickThroughShortcutRestoreClicked)
+        )
+        pinClickThroughShortcutTitleLabel = pinClickThroughShortcut.title
+        pinClickThroughShortcutField = pinClickThroughShortcut.field
+        pinClickThroughShortcutSetButton = pinClickThroughShortcut.setButton
+        pinClickThroughShortcutRestoreButton = pinClickThroughShortcut.restoreButton
+        stack.addArrangedSubview(pinClickThroughShortcut.card)
+        pinClickThroughShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
         // Color picker shortcut card
         let colorPickerShortcut = buildShortcutCard(
@@ -3597,6 +3639,12 @@ class SettingsView: NSView {
         if slot != .historyPanel, historyPanelShortcutRecordingMonitor != nil {
             cancelHistoryPanelShortcutRecording()
         }
+        if slot != .repeatLastRegion, repeatLastRegionShortcutRecordingMonitor != nil {
+            cancelRepeatLastRegionShortcutRecording()
+        }
+        if slot != .pinClickThrough, pinClickThroughShortcutRecordingMonitor != nil {
+            cancelPinClickThroughShortcutRecording()
+        }
     }
 
     @objc private func shortcutSetClicked() {
@@ -5263,6 +5311,182 @@ class SettingsView: NSView {
         }
     }
 
+    @objc private func repeatLastRegionShortcutSetClicked() {
+        if repeatLastRegionShortcutRecordingMonitor != nil {
+            cancelRepeatLastRegionShortcutRecording()
+            return
+        }
+        cancelShortcutRecordings(except: .repeatLastRegion)
+        HotkeyManager.shared.beginRecording()
+        repeatLastRegionShortcutSetButton.title = L10n.shortcutCancel
+        repeatLastRegionShortcutField.stringValue = L10n.shortcutWaiting
+        repeatLastRegionShortcutRestoreButton.isHidden = true
+
+        repeatLastRegionShortcutRecordingMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self = self else { return event }
+            let modifiers = event.modifierFlags
+            let isEscape = event.keyCode == UInt16(kVK_Escape)
+            let activeModifierMask: NSEvent.ModifierFlags = [.command, .shift, .option, .control]
+            let pressedModifiers = modifiers.intersection(activeModifierMask)
+
+            if isEscape && pressedModifiers.isEmpty {
+                self.cancelRepeatLastRegionShortcutRecording()
+                return nil
+            }
+
+            var carbonMods: UInt32 = 0
+            if modifiers.contains(.command) { carbonMods |= UInt32(cmdKey) }
+            if modifiers.contains(.shift)   { carbonMods |= UInt32(shiftKey) }
+            if modifiers.contains(.option)  { carbonMods |= UInt32(optionKey) }
+            if modifiers.contains(.control) { carbonMods |= UInt32(controlKey) }
+            let keyCode = UInt32(event.keyCode)
+
+            if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) {
+                self.cancelRepeatLastRegionShortcutRecording()
+                self.presentShortcutNeedsModifierAlert()
+                return nil
+            }
+
+            if let conflict = HotkeyManager.shared.hotkeyConflictMessage(
+                forKeyCode: keyCode, modifiers: carbonMods, assigningTo: .repeatLastRegion) {
+                self.cancelRepeatLastRegionShortcutRecording()
+                self.presentHotkeyConflictAlert(conflict)
+                return nil
+            }
+
+            Defaults.repeatLastRegionHotkeyKeyCode = Int(keyCode)
+            Defaults.repeatLastRegionHotkeyModifiers = Int(carbonMods)
+            self.finishRepeatLastRegionShortcutRecording()
+            return nil
+        }
+    }
+
+    @objc private func repeatLastRegionShortcutRestoreClicked() {
+        if repeatLastRegionShortcutRecordingMonitor != nil {
+            cancelRepeatLastRegionShortcutRecording()
+        }
+        Defaults.clearRepeatLastRegionHotkey()
+        NotificationCenter.default.post(name: .hotkeyDidChange, object: nil)
+        refreshRepeatLastRegionShortcutDisplay()
+    }
+
+    private func finishRepeatLastRegionShortcutRecording() {
+        if let m = repeatLastRegionShortcutRecordingMonitor {
+            NSEvent.removeMonitor(m)
+            repeatLastRegionShortcutRecordingMonitor = nil
+        }
+        HotkeyManager.shared.endRecording()
+        NotificationCenter.default.post(name: .hotkeyDidChange, object: nil)
+        refreshRepeatLastRegionShortcutDisplay()
+    }
+
+    func cancelRepeatLastRegionShortcutRecording() {
+        guard repeatLastRegionShortcutRecordingMonitor != nil else { return }
+        if let m = repeatLastRegionShortcutRecordingMonitor {
+            NSEvent.removeMonitor(m)
+            repeatLastRegionShortcutRecordingMonitor = nil
+        }
+        HotkeyManager.shared.endRecording()
+        refreshRepeatLastRegionShortcutDisplay()
+    }
+
+    private func refreshRepeatLastRegionShortcutDisplay() {
+        repeatLastRegionShortcutSetButton?.title = L10n.shortcutSet
+        if let display = HotkeyManager.currentRepeatLastRegionDisplayString() {
+            repeatLastRegionShortcutField?.stringValue = display
+            repeatLastRegionShortcutRestoreButton?.isHidden = false
+        } else {
+            repeatLastRegionShortcutField?.stringValue = L10n.repeatLastRegionShortcutDefaultDisplay
+            repeatLastRegionShortcutRestoreButton?.isHidden = true
+        }
+    }
+
+    @objc private func pinClickThroughShortcutSetClicked() {
+        if pinClickThroughShortcutRecordingMonitor != nil {
+            cancelPinClickThroughShortcutRecording()
+            return
+        }
+        cancelShortcutRecordings(except: .pinClickThrough)
+        HotkeyManager.shared.beginRecording()
+        pinClickThroughShortcutSetButton.title = L10n.shortcutCancel
+        pinClickThroughShortcutField.stringValue = L10n.shortcutWaiting
+        pinClickThroughShortcutRestoreButton.isHidden = true
+
+        pinClickThroughShortcutRecordingMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self = self else { return event }
+            let modifiers = event.modifierFlags
+            let isEscape = event.keyCode == UInt16(kVK_Escape)
+            let activeModifierMask: NSEvent.ModifierFlags = [.command, .shift, .option, .control]
+            let pressedModifiers = modifiers.intersection(activeModifierMask)
+
+            if isEscape && pressedModifiers.isEmpty {
+                self.cancelPinClickThroughShortcutRecording()
+                return nil
+            }
+
+            var carbonMods: UInt32 = 0
+            if modifiers.contains(.command) { carbonMods |= UInt32(cmdKey) }
+            if modifiers.contains(.shift)   { carbonMods |= UInt32(shiftKey) }
+            if modifiers.contains(.option)  { carbonMods |= UInt32(optionKey) }
+            if modifiers.contains(.control) { carbonMods |= UInt32(controlKey) }
+            let keyCode = UInt32(event.keyCode)
+
+            if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) {
+                self.cancelPinClickThroughShortcutRecording()
+                self.presentShortcutNeedsModifierAlert()
+                return nil
+            }
+
+            if let conflict = HotkeyManager.shared.hotkeyConflictMessage(
+                forKeyCode: keyCode, modifiers: carbonMods, assigningTo: .pinClickThrough) {
+                self.cancelPinClickThroughShortcutRecording()
+                self.presentHotkeyConflictAlert(conflict)
+                return nil
+            }
+
+            Defaults.pinClickThroughHotkeyKeyCode = Int(keyCode)
+            Defaults.pinClickThroughHotkeyModifiers = Int(carbonMods)
+            self.finishPinClickThroughShortcutRecording()
+            return nil
+        }
+    }
+
+    @objc private func pinClickThroughShortcutRestoreClicked() {
+        if pinClickThroughShortcutRecordingMonitor != nil {
+            cancelPinClickThroughShortcutRecording()
+        }
+        Defaults.clearPinClickThroughHotkey()
+        NotificationCenter.default.post(name: .hotkeyDidChange, object: nil)
+        refreshPinClickThroughShortcutDisplay()
+    }
+
+    private func finishPinClickThroughShortcutRecording() {
+        if let m = pinClickThroughShortcutRecordingMonitor {
+            NSEvent.removeMonitor(m)
+            pinClickThroughShortcutRecordingMonitor = nil
+        }
+        HotkeyManager.shared.endRecording()
+        NotificationCenter.default.post(name: .hotkeyDidChange, object: nil)
+        refreshPinClickThroughShortcutDisplay()
+    }
+
+    func cancelPinClickThroughShortcutRecording() {
+        guard pinClickThroughShortcutRecordingMonitor != nil else { return }
+        if let m = pinClickThroughShortcutRecordingMonitor {
+            NSEvent.removeMonitor(m)
+            pinClickThroughShortcutRecordingMonitor = nil
+        }
+        HotkeyManager.shared.endRecording()
+        refreshPinClickThroughShortcutDisplay()
+    }
+
+    private func refreshPinClickThroughShortcutDisplay() {
+        pinClickThroughShortcutSetButton?.title = L10n.shortcutSet
+        pinClickThroughShortcutField?.stringValue = HotkeyManager.currentPinClickThroughDisplayString()
+        // Always show restore when user customized away from the built-in default.
+        pinClickThroughShortcutRestoreButton?.isHidden = !Defaults.hasCustomPinClickThroughHotkey
+    }
+
     @objc private func shortcutsResetClicked() {
         cancelShortcutRecording()
         cancelFullScreenScreenshotShortcutRecording()
@@ -5283,6 +5507,8 @@ class SettingsView: NSView {
         cancelPreviousHistoryImageShortcutRecording()
         cancelNextHistoryImageShortcutRecording()
         cancelHistoryPanelShortcutRecording()
+        cancelRepeatLastRegionShortcutRecording()
+        cancelPinClickThroughShortcutRecording()
 
         Defaults.resetShortcutHotkeysToDefaults()
         NotificationCenter.default.post(name: .hotkeyDidChange, object: nil)
@@ -5305,6 +5531,8 @@ class SettingsView: NSView {
         refreshPreviousHistoryImageShortcutDisplay()
         refreshNextHistoryImageShortcutDisplay()
         refreshHistoryPanelShortcutDisplay()
+        refreshRepeatLastRegionShortcutDisplay()
+        refreshPinClickThroughShortcutDisplay()
     }
 
     @objc private func updateLocalization() {
@@ -5430,6 +5658,10 @@ class SettingsView: NSView {
         nextHistoryImageShortcutRestoreButton?.toolTip = L10n.shortcutRestore
         historyPanelShortcutTitleLabel?.stringValue = L10n.historyPanelShortcutHeader
         historyPanelShortcutRestoreButton?.toolTip = L10n.shortcutRestore
+        repeatLastRegionShortcutTitleLabel?.stringValue = L10n.repeatLastRegionShortcutHeader
+        repeatLastRegionShortcutRestoreButton?.toolTip = L10n.shortcutRestore
+        pinClickThroughShortcutTitleLabel?.stringValue = L10n.pinClickThroughShortcutHeader
+        pinClickThroughShortcutRestoreButton?.toolTip = L10n.shortcutRestore
         shortcutResetButton?.title = L10n.toolbarSettingsReset
         aboutTaglineLabel?.stringValue = L10n.aboutTagline
         aboutLicenseTitleLabel?.stringValue = L10n.aboutLicense
@@ -5470,6 +5702,8 @@ class SettingsView: NSView {
         refreshPreviousHistoryImageShortcutDisplay()
         refreshNextHistoryImageShortcutDisplay()
         refreshHistoryPanelShortcutDisplay()
+        refreshRepeatLastRegionShortcutDisplay()
+        refreshPinClickThroughShortcutDisplay()
         refreshBottomAction()
         accessibilityBadge?.refreshTitle()
         screenRecordingBadge?.refreshTitle()

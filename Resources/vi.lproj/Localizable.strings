@@ -189,14 +189,14 @@
 
 /* Cursor chip */
 "dragToScreenshot" = "Nhấp vào cửa sổ hoặc kéo để chụp";
-"dragToScreenshotAspectFree" = "Nhấp vào cửa sổ hoặc kéo để chụp · Tỷ lệ kéo tự do (R)";
-"dragToScreenshotAspect" = "Nhấp vào cửa sổ hoặc kéo để chụp · Kéo %@ (R)";
+"dragToScreenshotAspectFree" = "Nhấp vào cửa sổ hoặc kéo để chụp · Tỷ lệ tự do (⇧R)";
+"dragToScreenshotAspect" = "Nhấp vào cửa sổ hoặc kéo để chụp · %@ (⇧R)";
 "dragToTextRecognition" = "Nhấp vào cửa sổ hoặc chọn vùng để nhận dạng văn bản";
 "dragToCopyImageText" = "Nhấp vào cửa sổ hoặc chọn vùng để sao chép văn bản";
 "dragToScreenshotTranslation" = "Nhấp vào cửa sổ hoặc chọn vùng để dịch nội dung";
 "dragToRecord" = "Nhấp vào cửa sổ hoặc kéo để ghi";
-"dragToRecordAspectFree" = "Nhấp vào cửa sổ hoặc kéo để ghi · Tỷ lệ kéo tự do (R)";
-"dragToRecordAspect" = "Nhấp vào cửa sổ hoặc kéo để ghi · Kéo %@ (R)";
+"dragToRecordAspectFree" = "Nhấp vào cửa sổ hoặc kéo để ghi · Tỷ lệ kéo tự do (⇧R)";
+"dragToRecordAspect" = "Nhấp vào cửa sổ hoặc kéo để ghi · Kéo %@ (⇧R)";
 
 /* Toast */
 "copiedToClipboard" = "Đã sao chép vào clipboard";
@@ -645,7 +645,7 @@
 "magnifierLensPanelCopyHint" = "Sao chép màu(C)";
 "magnifierLensPanelFormatHint" = "Định dạng(F)";
 "magnifierLensPanelAspectFree" = "Tự do";
-"magnifierLensPanelAspectHint" = "Tỷ lệ ảnh(R)";
+"magnifierLensPanelAspectHint" = "Tỷ lệ(⇧R)";
 /* Tải tệp lên */
 "fileUploadShortcutHeader" = "Tải tệp lên";
 "finderUploadShortcutDefaultDisplay" = "Chưa đặt";
@@ -664,3 +664,28 @@
 "finderUploadUnknownSize" = "Không rõ kích thước";
 "finderUploadReadFailed" = "Không thể đọc tệp %@";
 "finderUploadCompleted" = "Đã tải %d tệp và sao chép liên kết";
+
+"tipRefreshCapture" = "Làm mới ảnh chụp";
+"refreshCaptureSuccess" = "Đã làm mới ảnh chụp";
+"refreshCaptureFailed" = "Không thể làm mới ảnh chụp";
+"refreshCaptureUnavailable" = "Chỉ ảnh chụp màn hình mới làm mới được";
+"repeatLastRegionMenu" = "Lặp lại vùng trước";
+"repeatLastRegionNone" = "Chưa có vùng chụp trước";
+"repeatLastRegionRelocated" = "Vùng trước đã chuyển sang màn hình hiện tại";
+"repeatLastRegionShortcutHeader" = "Lặp lại vùng trước";
+"repeatLastRegionShortcutDefaultDisplay" = "Chưa đặt";
+"selectionSizeInputHint" = "Rộng × Cao";
+"selectionSizeInputInvalid" = "Nhập kích thước dạng 800x600";
+"selectionSizeLabelTip" = "Bấm hoặc Tab để nhập kích thước chính xác";
+"magnifierLensPanelSizeHint" = "Kích thước(Tab)";
+"pinClickThrough" = "Xuyên chuột";
+"pinClickThroughOn" = "Đã bật xuyên chuột";
+"pinClickThroughOff" = "Đã tắt xuyên chuột";
+"pinClickThroughMenu" = "Tắt xuyên chuột ghim";
+"pinClickThroughShortcutHeader" = "Xuyên chuột khi chụp";
+"pinClickThroughShortcutDefaultDisplay" = "⌥⌘P";
+"shortcutConflictRepeatLastRegion" = "Trùng với lặp lại vùng trước";
+"shortcutConflictPinClickThrough" = "Trùng với xuyên chuột ghim";
+"tipClickThrough" = "Xuyên chuột";
+"captureClickThroughOn" = "Đã bật xuyên chuột";
+"captureClickThroughOff" = "Đã tắt xuyên chuột";

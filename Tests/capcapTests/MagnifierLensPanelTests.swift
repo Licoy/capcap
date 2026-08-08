@@ -229,6 +229,11 @@ final class MagnifierLensPanelTests: XCTestCase {
 
     func testHintLabelsIncludeTheirShortcuts() {
         XCTAssertTrue(L10n.magnifierLensPanelAspectHint.contains("R"))
+        XCTAssertTrue(
+            L10n.magnifierLensPanelAspectHint.contains("⇧")
+                || L10n.magnifierLensPanelAspectHint.lowercased().contains("shift")
+        )
+        XCTAssertTrue(L10n.magnifierLensPanelSizeHint.contains("Tab"))
         XCTAssertTrue(L10n.magnifierLensPanelFormatHint.contains("F"))
         XCTAssertFalse(L10n.magnifierLensPanelFormatHint.contains("Shift"))
         XCTAssertTrue(L10n.magnifierLensPanelCopyHint.contains("C"))

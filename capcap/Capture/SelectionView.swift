@@ -80,6 +80,16 @@ class SelectionView: NSView {
     // Scroll capture mode: update border styling while the controller manages event routing.
     var scrollCaptureActive = false
 
+    /// When true, skip the frozen desktop snapshot so the cutout reveals the
+    /// live screen underneath (used by capture click-through).
+    var showsLiveBackground = false {
+        didSet {
+            if showsLiveBackground != oldValue {
+                needsDisplay = true
+            }
+        }
+    }
+
     // When false, the selection frame becomes a fixed viewport.
     var selectionInteractionEnabled = true {
         didSet {
@@ -162,6 +172,134 @@ class SelectionView: NSView {
         state = .selected
         needsDisplay = true
         refreshCursorRects()
+    }
+
+    /// Frame of the size label drawn above the selection (view coordinates).
+    func sizeLabelFrame() -> NSRect? {
+        guard let rect = selectionRect else { return nil }
+        return SelectionView.sizeLabelRect(
+            for: rect,
+            text: selectionSizeLabelOverride,
+            in: bounds
+        )
+    }
+
+    /// Applies an explicit point size, keeping the top-left corner fixed, then
+    /// clamps the rect into the view bounds.
+    ///
+    /// - Parameter respectAspectRatio: when `true` (default), a locked aspect
+    ///   ratio rewrites height from width. Exact size entry passes `false` so
+    ///   both typed dimensions are honored.
+    @discardableResult
+    func applyPixelSize(
+        width: CGFloat,
+        height: CGFloat,
+        respectAspectRatio: Bool = true
+    ) -> NSRect? {
+        guard width.isFinite, height.isFinite else { return nil }
+        var w = max(5, width)
+        var h = max(5, height)
+        if respectAspectRatio, let ratio = Self.normalizedAspectRatio(aspectRatio) {
+            h = w / ratio
+            if h < 5 {
+                h = 5
+                w = h * ratio
+            }
+        }
+        w = min(w, bounds.width)
+        h = min(h, bounds.height)
+
+        let origin: NSPoint
+        if let current = selectionRect {
+            origin = NSPoint(x: current.minX, y: current.maxY - h)
+        } else {
+            origin = NSPoint(
+                x: (bounds.width - w) / 2,
+                y: (bounds.height - h) / 2
+            )
+        }
+        var newRect = NSRect(x: origin.x, y: origin.y, width: w, height: h)
+        newRect.origin.x = max(0, min(bounds.width - newRect.width, newRect.origin.x))
+        newRect.origin.y = max(0, min(bounds.height - newRect.height, newRect.origin.y))
+        selectionRect = newRect
+        state = .selected
+        delegate?.selectionDidChange(rect: newRect, inView: self)
+        needsDisplay = true
+        refreshCursorRects()
+        return newRect
+    }
+
+    /// Reflows an existing selection to the current `aspectRatio`, keeping the
+    /// center fixed. No-op when free ratio or no selection.
+    @discardableResult
+    func reflowSelectionKeepingCenter() -> NSRect? {
+        guard let current = selectionRect,
+              let ratio = Self.normalizedAspectRatio(aspectRatio) else {
+            return selectionRect
+        }
+        let center = NSPoint(x: current.midX, y: current.midY)
+        var width = current.width
+        var height = width / ratio
+        if height > bounds.height {
+            height = bounds.height
+            width = height * ratio
+        }
+        if width > bounds.width {
+            width = bounds.width
+            height = width / ratio
+        }
+        width = max(5, width)
+        height = max(5, height)
+        var newRect = NSRect(
+            x: center.x - width / 2,
+            y: center.y - height / 2,
+            width: width,
+            height: height
+        )
+        newRect.origin.x = max(0, min(bounds.width - newRect.width, newRect.origin.x))
+        newRect.origin.y = max(0, min(bounds.height - newRect.height, newRect.origin.y))
+        selectionRect = newRect
+        state = .selected
+        delegate?.selectionDidChange(rect: newRect, inView: self)
+        needsDisplay = true
+        refreshCursorRects()
+        return newRect
+    }
+
+    static func sizeLabelRect(for selection: NSRect, text: String? = nil, in bounds: NSRect? = nil) -> NSRect {
+        let base = text ?? "\(Int(selection.width)) × \(Int(selection.height))"
+        // Match drawSizeLabel's "  ⇥" edit cue so hit-testing lines up.
+        let label = base.contains("⇥") ? base : "\(base)  ⇥"
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium)
+        ]
+        let size = label.size(withAttributes: attrs)
+        let width = size.width + 8
+        let height = size.height + 4
+        // Prefer above the selection; if that would leave the view, draw inside
+        // the top edge so the label stays clickable.
+        var labelX = selection.origin.x
+        var labelY = selection.origin.y + selection.height + 4
+        if let bounds {
+            if labelY + height > bounds.maxY {
+                labelY = selection.maxY - height - 4
+            }
+            if labelY < bounds.minY {
+                labelY = bounds.minY + 4
+            }
+            if labelX + width > bounds.maxX {
+                labelX = max(bounds.minX, bounds.maxX - width - 4)
+            }
+            if labelX < bounds.minX {
+                labelX = bounds.minX + 4
+            }
+        }
+        return NSRect(x: labelX, y: labelY, width: width, height: height)
+    }
+
+    func hitTestSizeLabel(at point: NSPoint) -> Bool {
+        guard state == .selected, let frame = sizeLabelFrame() else { return false }
+        return frame.insetBy(dx: -6, dy: -6).contains(point)
     }
 
     /// Translate the selection rect by `delta` from the supplied
@@ -296,6 +434,13 @@ class SelectionView: NSView {
     override func mouseDown(with event: NSEvent) {
         modifierMoveDragActive = false
         let point = convert(event.locationInWindow, from: nil)
+        // Size label stays clickable even after the selection is locked for
+        // editing so users can type an exact W×H without re-dragging.
+        if state == .selected,
+           hitTestSizeLabel(at: point) {
+            NotificationCenter.default.post(name: .selectionSizeLabelClicked, object: self)
+            return
+        }
         if let rect = selectionRect,
            state == .selected,
            shouldBeginModifierMove(event: event, point: point, rect: rect) {
@@ -526,8 +671,12 @@ class SelectionView: NSView {
     }
 
     override func mouseMoved(with event: NSEvent) {
-        guard selectionInteractionEnabled else { return }
         let point = convert(event.locationInWindow, from: nil)
+        // Size label remains interactive after the editor locks the selection.
+        if !selectionInteractionEnabled {
+            updateCursor(at: point)
+            return
+        }
 
         if state == .selected,
            refreshSelectionMoveModifierCursor(flags: event.modifierFlags) {
@@ -550,11 +699,16 @@ class SelectionView: NSView {
     }
 
     override func mouseEntered(with event: NSEvent) {
-        guard selectionInteractionEnabled else { return }
         updateCursor(at: convert(event.locationInWindow, from: nil))
     }
 
     private func updateCursor(at point: NSPoint) {
+        // Size label stays editable even when the selection is locked for the
+        // editor — point at it with a pointing hand so the affordance is clear.
+        if hitTestSizeLabel(at: point) {
+            NSCursor.pointingHand.set()
+            return
+        }
         guard selectionInteractionEnabled else {
             NSCursor.arrow.set()
             return
@@ -647,8 +801,8 @@ class SelectionView: NSView {
 
         // Draw pre-captured screen snapshot as background so transient
         // menus/popups remain visible even after they dismiss.
-        // Skip during scroll capture so live scrolling content shows through.
-        if let snapshot = backgroundSnapshot, !scrollCaptureActive {
+        // Skip during scroll capture / click-through so live content shows.
+        if let snapshot = backgroundSnapshot, !scrollCaptureActive, !showsLiveBackground {
             snapshot.draw(in: bounds)
         }
 
@@ -666,7 +820,7 @@ class SelectionView: NSView {
             context.setLineWidth(borderWidth + 1)
             context.stroke(hoverRect.insetBy(dx: -1.5, dy: -1.5))
             // Size label
-            SelectionView.drawSizeLabel(context: context, rect: hoverRect)
+            SelectionView.drawSizeLabel(context: context, rect: hoverRect, in: bounds)
             return
         }
 
@@ -709,13 +863,19 @@ class SelectionView: NSView {
             context.setLineDash(phase: 0, lengths: [])
         }
 
-        if state == .selected && selectionInteractionEnabled {
-            // Draw 8 control handles
-            drawHandles(context: context, rect: rect)
-            // Draw size label
-            SelectionView.drawSizeLabel(context: context, rect: rect)
-        } else if state == .selected, let selectionSizeLabelOverride {
-            SelectionView.drawSizeLabel(context: context, rect: rect, text: selectionSizeLabelOverride)
+        if state == .selected {
+            if selectionInteractionEnabled {
+                // Draw 8 control handles
+                drawHandles(context: context, rect: rect)
+            }
+            // Size label stays visible (and clickable) after the editor locks
+            // the selection so users can still type an exact W×H.
+            SelectionView.drawSizeLabel(
+                context: context,
+                rect: rect,
+                text: selectionSizeLabelOverride,
+                in: bounds
+            )
         }
     }
 
@@ -762,26 +922,34 @@ class SelectionView: NSView {
     }
 
     static func drawSizeLabel(context: CGContext, rect: NSRect, text: String? = nil) {
-        let text = text ?? "\(Int(rect.width)) x \(Int(rect.height))"
+        // Caller draws inside a SelectionView; use a generous bounds so the
+        // label stays on-screen when the selection is near an edge.
+        drawSizeLabel(context: context, rect: rect, text: text, in: nil)
+    }
+
+    static func drawSizeLabel(context: CGContext, rect: NSRect, text: String? = nil, in bounds: NSRect?) {
+        // Append a small "Tab" cue so the size chip reads as editable.
+        let base = text ?? "\(Int(rect.width)) × \(Int(rect.height))"
+        let display = "\(base)  ⇥"
         let attrs: [NSAttributedString.Key: Any] = [
             .foregroundColor: NSColor.white,
             .font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium)
         ]
-        let size = text.size(withAttributes: attrs)
-        // Position above the top-left corner of selection
-        let labelX = rect.origin.x
-        let labelY = rect.origin.y + rect.height + 4  // Above top edge (AppKit coords: y increases upward)
-        let labelRect = NSRect(x: labelX, y: labelY, width: size.width + 8, height: size.height + 4)
+        let labelRect = sizeLabelRect(for: rect, text: display, in: bounds)
 
-        // Draw background
-        context.setFillColor(NSColor.black.withAlphaComponent(0.6).cgColor)
-        let bgPath = CGPath(roundedRect: labelRect, cornerWidth: 3, cornerHeight: 3, transform: nil)
+        // Draw background with a light accent so it looks tappable
+        context.setFillColor(NSColor.black.withAlphaComponent(0.72).cgColor)
+        let bgPath = CGPath(roundedRect: labelRect, cornerWidth: 4, cornerHeight: 4, transform: nil)
         context.addPath(bgPath)
         context.fillPath()
+        context.setStrokeColor(NSColor.white.withAlphaComponent(0.22).cgColor)
+        context.setLineWidth(1)
+        context.addPath(bgPath)
+        context.strokePath()
 
         // Draw text
         let textOrigin = NSPoint(x: labelRect.origin.x + 4, y: labelRect.origin.y + 2)
-        text.draw(at: textOrigin, withAttributes: attrs)
+        display.draw(at: textOrigin, withAttributes: attrs)
     }
 
     // MARK: - Handle Positions

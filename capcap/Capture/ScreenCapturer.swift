@@ -137,7 +137,9 @@ struct ScreenCapturer {
         return true
     }
 
-    private static func captureAsync(
+    /// Async capture used by interactive paths that must not block the main
+    /// thread with a semaphore (e.g. editor refresh).
+    static func captureAsync(
         rect: CGRect,
         requestedDisplayID: CGDirectDisplayID?,
         screenScale: CGFloat,

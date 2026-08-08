@@ -34,9 +34,9 @@ final class MagnifierLensPanelWindow: NSPanel {
     private static let edgeMargin: CGFloat = 8
 
     /// Computes the panel size that fits the full-width square magnifier plus
-    /// 5 info rows, or 3 rows when optional hints are disabled.
+    /// info rows (coords, color, aspect, size, and optional tip rows).
     private static func computePanelSize() -> NSSize {
-        let infoRows = 3
+        let infoRows = 4
             + (Defaults.magnifierLensPanelShowCopyHint ? 1 : 0)
             + (Defaults.magnifierLensPanelShowFormatHint ? 1 : 0)
         let infoHeight = CGFloat(infoRows) * MagnifierLensPanelLayout.infoRowHeight
@@ -438,11 +438,9 @@ final class MagnifierLensPanelView: NSView {
         ]
 
         // Compute the row index (from the bottom) for each row that exists.
-        // We always render coords + color (rows 3 and 2 in old layout).
-        // Tip rows occupy 1 and 0 conditionally.
+        // Always: coords + color + aspect + size. Optional: copy / format tips.
         var rowFromBottom = 0
-        // totalRows in info area (coords + color + ratio + optional shortcut hints)
-        let totalRows = 3
+        let totalRows = 4
             + (Defaults.magnifierLensPanelShowCopyHint ? 1 : 0)
             + (Defaults.magnifierLensPanelShowFormatHint ? 1 : 0)
 
@@ -503,6 +501,12 @@ final class MagnifierLensPanelView: NSView {
             value: aspectHintValue(),
             attrs: tipAttrs,
             at: rowY(forIndex: totalRows - 3)
+        )
+        drawHintRow(
+            label: L10n.magnifierLensPanelSizeHint,
+            value: nil,
+            attrs: tipAttrs,
+            at: rowY(forIndex: totalRows - 4)
         )
 
         // Tip rows (conditional)

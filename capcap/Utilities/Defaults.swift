@@ -1,4 +1,5 @@
 import AppKit
+import Carbon
 
 /// A language the app's UI can be displayed in. Raw values double as the
 /// `appLanguage` UserDefaults value (kept stable for backward compatibility).
@@ -99,6 +100,7 @@ extension Notification.Name {
     static let historyPanelDisplayModesDidChange = Notification.Name("capcap.historyPanelDisplayModesDidChange")
     static let hotkeyDidChange = Notification.Name("capcap.hotkeyDidChange")
     static let translationConfigDidChange = Notification.Name("capcap.translationConfigDidChange")
+    static let selectionSizeLabelClicked = Notification.Name("capcap.selectionSizeLabelClicked")
 }
 
 /// Centralized accessor for every user-facing string. Each property resolves a
@@ -466,6 +468,29 @@ enum L10n {
     static var tipRedo: String { s("tipRedo") }
     static var tipMoveSelection: String { s("tipMoveSelection") }
     static var tipScrollCapture: String { s("tipScrollCapture") }
+    static var tipRefreshCapture: String { s("tipRefreshCapture") }
+    static var tipClickThrough: String { s("tipClickThrough") }
+    static var refreshCaptureSuccess: String { s("refreshCaptureSuccess") }
+    static var refreshCaptureFailed: String { s("refreshCaptureFailed") }
+    static var refreshCaptureUnavailable: String { s("refreshCaptureUnavailable") }
+    static var repeatLastRegionMenu: String { s("repeatLastRegionMenu") }
+    static var repeatLastRegionNone: String { s("repeatLastRegionNone") }
+    static var repeatLastRegionRelocated: String { s("repeatLastRegionRelocated") }
+    static var repeatLastRegionShortcutHeader: String { s("repeatLastRegionShortcutHeader") }
+    static var repeatLastRegionShortcutDefaultDisplay: String { s("repeatLastRegionShortcutDefaultDisplay") }
+    static var selectionSizeInputHint: String { s("selectionSizeInputHint") }
+    static var selectionSizeInputInvalid: String { s("selectionSizeInputInvalid") }
+    static var selectionSizeLabelTip: String { s("selectionSizeLabelTip") }
+    static var magnifierLensPanelSizeHint: String { s("magnifierLensPanelSizeHint") }
+    static var pinClickThrough: String { s("pinClickThrough") }
+    static var pinClickThroughOn: String { s("pinClickThroughOn") }
+    static var pinClickThroughOff: String { s("pinClickThroughOff") }
+    static var captureClickThroughOn: String { s("captureClickThroughOn") }
+    static var captureClickThroughOff: String { s("captureClickThroughOff") }
+    static var pinClickThroughShortcutHeader: String { s("pinClickThroughShortcutHeader") }
+    static var pinClickThroughShortcutDefaultDisplay: String { s("pinClickThroughShortcutDefaultDisplay") }
+    static var shortcutConflictRepeatLastRegion: String { s("shortcutConflictRepeatLastRegion") }
+    static var shortcutConflictPinClickThrough: String { s("shortcutConflictPinClickThrough") }
     static var tipBeautify: String { s("tipBeautify") }
     static var tipOCR: String { s("tipOCR") }
     static var tipScreenshotTranslate: String { s("tipScreenshotTranslate") }
@@ -934,6 +959,76 @@ struct Defaults {
         defaults.removeObject(forKey: "selectionAspectRatio")
     }
 
+    // MARK: - Last capture region
+
+    static var lastCaptureRegion: LastCaptureRegion? {
+        get {
+            guard let data = defaults.data(forKey: "lastCaptureRegion") else { return nil }
+            return try? JSONDecoder().decode(LastCaptureRegion.self, from: data)
+        }
+        set {
+            if let newValue, let data = try? JSONEncoder().encode(newValue) {
+                defaults.set(data, forKey: "lastCaptureRegion")
+            } else {
+                defaults.removeObject(forKey: "lastCaptureRegion")
+            }
+        }
+    }
+
+    // MARK: - Repeat last region hotkey (global, optional)
+
+    static var repeatLastRegionHotkeyKeyCode: Int {
+        get { defaults.integer(forKey: "repeatLastRegionHotkeyKeyCode") }
+        set { defaults.set(newValue, forKey: "repeatLastRegionHotkeyKeyCode") }
+    }
+
+    static var repeatLastRegionHotkeyModifiers: Int {
+        get { defaults.integer(forKey: "repeatLastRegionHotkeyModifiers") }
+        set { defaults.set(newValue, forKey: "repeatLastRegionHotkeyModifiers") }
+    }
+
+    static var hasCustomRepeatLastRegionHotkey: Bool {
+        defaults.object(forKey: "repeatLastRegionHotkeyKeyCode") != nil
+    }
+
+    static func clearRepeatLastRegionHotkey() {
+        defaults.removeObject(forKey: "repeatLastRegionHotkeyKeyCode")
+        defaults.removeObject(forKey: "repeatLastRegionHotkeyModifiers")
+    }
+
+    // MARK: - Pin click-through hotkey
+    // Default ⌥⌘P when no custom binding is stored. Matched by
+    // PinClickThroughCoordinator (local/global key monitors).
+
+    static var pinClickThroughHotkeyKeyCode: Int {
+        get {
+            if defaults.object(forKey: "pinClickThroughHotkeyKeyCode") == nil {
+                return Int(kVK_ANSI_P)
+            }
+            return defaults.integer(forKey: "pinClickThroughHotkeyKeyCode")
+        }
+        set { defaults.set(newValue, forKey: "pinClickThroughHotkeyKeyCode") }
+    }
+
+    static var pinClickThroughHotkeyModifiers: Int {
+        get {
+            if defaults.object(forKey: "pinClickThroughHotkeyModifiers") == nil {
+                return Int(cmdKey | optionKey)
+            }
+            return defaults.integer(forKey: "pinClickThroughHotkeyModifiers")
+        }
+        set { defaults.set(newValue, forKey: "pinClickThroughHotkeyModifiers") }
+    }
+
+    static var hasCustomPinClickThroughHotkey: Bool {
+        defaults.object(forKey: "pinClickThroughHotkeyKeyCode") != nil
+    }
+
+    static func clearPinClickThroughHotkey() {
+        defaults.removeObject(forKey: "pinClickThroughHotkeyKeyCode")
+        defaults.removeObject(forKey: "pinClickThroughHotkeyModifiers")
+    }
+
     static var selectionMoveModifierEnabled: Bool {
         get {
             if defaults.object(forKey: "selectionMoveModifierEnabled") == nil {
@@ -1051,6 +1146,8 @@ struct Defaults {
         clearPreviousHistoryImageHotkey()
         clearNextHistoryImageHotkey()
         clearHistoryPanelHotkey()
+        clearRepeatLastRegionHotkey()
+        clearPinClickThroughHotkey()
     }
 
     // Custom image-edit hotkeys. They are global Carbon hotkeys with no

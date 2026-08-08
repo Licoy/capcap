@@ -189,14 +189,14 @@
 
 /* Cursor chip */
 "dragToScreenshot" = "창을 클릭하거나 드래그하여 스크린샷";
-"dragToScreenshotAspectFree" = "창을 클릭하거나 드래그하여 스크린샷 · 드래그 자유 비율(R)";
-"dragToScreenshotAspect" = "창을 클릭하거나 드래그하여 스크린샷 · 드래그 %@ (R)";
+"dragToScreenshotAspectFree" = "창을 클릭하거나 드래그하여 스크린샷 · 자유 비율(⇧R)";
+"dragToScreenshotAspect" = "창을 클릭하거나 드래그하여 스크린샷 · %@ (⇧R)";
 "dragToTextRecognition" = "창을 클릭하거나 영역을 선택하여 문자 인식";
 "dragToCopyImageText" = "창을 클릭하거나 영역을 선택하여 텍스트 복사";
 "dragToScreenshotTranslation" = "창을 클릭하거나 영역을 선택하여 내용 번역";
 "dragToRecord" = "창을 클릭하거나 드래그하여 녹화";
-"dragToRecordAspectFree" = "창을 클릭하거나 드래그하여 녹화 · 드래그 자유 비율(R)";
-"dragToRecordAspect" = "창을 클릭하거나 드래그하여 녹화 · 드래그 %@ (R)";
+"dragToRecordAspectFree" = "창을 클릭하거나 드래그하여 녹화 · 드래그 자유 비율(⇧R)";
+"dragToRecordAspect" = "창을 클릭하거나 드래그하여 녹화 · 드래그 %@ (⇧R)";
 
 /* Toast */
 "copiedToClipboard" = "클립보드에 복사됨";
@@ -645,7 +645,7 @@
 "magnifierLensPanelCopyHint" = "색상 복사(C)";
 "magnifierLensPanelFormatHint" = "색상 형식(F)";
 "magnifierLensPanelAspectFree" = "자유";
-"magnifierLensPanelAspectHint" = "캡처 비율(R)";
+"magnifierLensPanelAspectHint" = "비율(⇧R)";
 /* 파일 업로드 */
 "fileUploadShortcutHeader" = "파일 업로드";
 "finderUploadShortcutDefaultDisplay" = "설정 안 함";
@@ -664,3 +664,28 @@
 "finderUploadUnknownSize" = "크기 알 수 없음";
 "finderUploadReadFailed" = "파일을 읽을 수 없음 %@";
 "finderUploadCompleted" = "%d개 파일을 업로드하고 링크를 복사함";
+
+"tipRefreshCapture" = "스크린샷 새로고침";
+"refreshCaptureSuccess" = "스크린샷을 새로고침했습니다";
+"refreshCaptureFailed" = "새로고침할 수 없습니다";
+"refreshCaptureUnavailable" = "화면 캡처만 새로고침할 수 있습니다";
+"repeatLastRegionMenu" = "이전 영역 다시 캡처";
+"repeatLastRegionNone" = "이전 캡처 영역이 없습니다";
+"repeatLastRegionRelocated" = "이전 영역을 현재 디스플레이로 옮겼습니다";
+"repeatLastRegionShortcutHeader" = "이전 영역 다시 캡처";
+"repeatLastRegionShortcutDefaultDisplay" = "설정 안 됨";
+"selectionSizeInputHint" = "너비 × 높이";
+"selectionSizeInputInvalid" = "800x600 형식으로 입력";
+"selectionSizeLabelTip" = "클릭하거나 Tab으로 정확한 크기 입력";
+"magnifierLensPanelSizeHint" = "크기(Tab)";
+"pinClickThrough" = "클릭 통과";
+"pinClickThroughOn" = "클릭 통과 켜짐";
+"pinClickThroughOff" = "클릭 통과 꺼짐";
+"pinClickThroughMenu" = "핀 클릭 통과 끄기";
+"pinClickThroughShortcutHeader" = "캡처 클릭 통과";
+"pinClickThroughShortcutDefaultDisplay" = "⌥⌘P";
+"shortcutConflictRepeatLastRegion" = "이전 영역과 충돌";
+"shortcutConflictPinClickThrough" = "핀 클릭 통과와 충돌";
+"tipClickThrough" = "클릭 통과";
+"captureClickThroughOn" = "클릭 통과 켜짐";
+"captureClickThroughOff" = "클릭 통과 꺼짐";

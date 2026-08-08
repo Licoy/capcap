@@ -189,14 +189,14 @@
 
 /* Cursor chip */
 "dragToScreenshot" = "ウィンドウをクリックまたはドラッグして撮影";
-"dragToScreenshotAspectFree" = "ウィンドウをクリックまたはドラッグして撮影 · ドラッグ自由比率（R）";
-"dragToScreenshotAspect" = "ウィンドウをクリックまたはドラッグして撮影 · ドラッグ %@（R）";
+"dragToScreenshotAspectFree" = "ウィンドウをクリックまたはドラッグして撮影 · 自由比率（⇧R）";
+"dragToScreenshotAspect" = "ウィンドウをクリックまたはドラッグして撮影 · %@（⇧R）";
 "dragToTextRecognition" = "ウィンドウをクリックまたは範囲選択して文字認識";
 "dragToCopyImageText" = "ウィンドウをクリックまたは範囲選択してテキストをコピー";
 "dragToScreenshotTranslation" = "ウィンドウをクリックまたは範囲選択して内容を翻訳";
 "dragToRecord" = "ウィンドウをクリックまたはドラッグして録画";
-"dragToRecordAspectFree" = "ウィンドウをクリックまたはドラッグして録画 · ドラッグ自由比率（R）";
-"dragToRecordAspect" = "ウィンドウをクリックまたはドラッグして録画 · ドラッグ %@（R）";
+"dragToRecordAspectFree" = "ウィンドウをクリックまたはドラッグして録画 · ドラッグ自由比率（⇧R）";
+"dragToRecordAspect" = "ウィンドウをクリックまたはドラッグして録画 · ドラッグ %@（⇧R）";
 
 /* Toast */
 "copiedToClipboard" = "クリップボードにコピーしました";
@@ -645,7 +645,7 @@
 "magnifierLensPanelCopyHint" = "色をコピー(C)";
 "magnifierLensPanelFormatHint" = "カラー形式(F)";
 "magnifierLensPanelAspectFree" = "自由";
-"magnifierLensPanelAspectHint" = "撮影比率(R)";
+"magnifierLensPanelAspectHint" = "比率(⇧R)";
 /* ファイルのアップロード */
 "fileUploadShortcutHeader" = "ファイルをアップロード";
 "finderUploadShortcutDefaultDisplay" = "未設定";
@@ -664,3 +664,28 @@
 "finderUploadUnknownSize" = "サイズ不明";
 "finderUploadReadFailed" = "ファイルを読み込めません %@";
 "finderUploadCompleted" = "%d 個のファイルをアップロードしてリンクをコピーしました";
+
+"tipRefreshCapture" = "スクリーンショットを更新";
+"refreshCaptureSuccess" = "スクリーンショットを更新しました";
+"refreshCaptureFailed" = "更新できませんでした";
+"refreshCaptureUnavailable" = "画面キャプチャのみ更新できます";
+"repeatLastRegionMenu" = "前回の範囲を再キャプチャ";
+"repeatLastRegionNone" = "前回の範囲がありません";
+"repeatLastRegionRelocated" = "前回の範囲を現在のディスプレイに移動しました";
+"repeatLastRegionShortcutHeader" = "前回の範囲を再キャプチャ";
+"repeatLastRegionShortcutDefaultDisplay" = "未設定";
+"selectionSizeInputHint" = "幅 × 高さ";
+"selectionSizeInputInvalid" = "800x600 の形式で入力";
+"selectionSizeLabelTip" = "クリックまたは Tab でサイズを指定";
+"magnifierLensPanelSizeHint" = "サイズ(Tab)";
+"pinClickThrough" = "クリック透過";
+"pinClickThroughOn" = "クリック透過をオン";
+"pinClickThroughOff" = "クリック透過をオフ";
+"pinClickThroughMenu" = "ピンのクリック透過をオフ";
+"pinClickThroughShortcutHeader" = "キャプチャのクリック透過";
+"pinClickThroughShortcutDefaultDisplay" = "⌥⌘P";
+"shortcutConflictRepeatLastRegion" = "前回の範囲と競合";
+"shortcutConflictPinClickThrough" = "ピンのクリック透過と競合";
+"tipClickThrough" = "クリック透過";
+"captureClickThroughOn" = "クリック透過をオン";
+"captureClickThroughOff" = "クリック透過をオフ";

@@ -39,6 +39,9 @@ class EditCanvasView: NSView {
     var overrideBaseImage: NSImage?
     /// Exact clicked-window image, including the WindowServer alpha mask.
     var windowBaseImage: NSImage?
+    /// Live re-capture of the selection region. Takes priority over
+    /// `preSnapshot` / `windowBaseImage` so refresh keeps annotations stable.
+    private(set) var refreshedBaseImage: NSImage?
     /// True while the host selection's configured move modifier is held and
     /// the pointer is eligible to move the whole selection.
     var shouldUseSelectionMoveCursor: (() -> Bool)?
@@ -1546,7 +1549,11 @@ class EditCanvasView: NSView {
             didClip = false
         }
 
-        if let image = previewImage ?? externalBaseImage ?? overrideBaseImage ?? windowBaseImage {
+        if let image = previewImage
+            ?? refreshedBaseImage
+            ?? externalBaseImage
+            ?? overrideBaseImage
+            ?? windowBaseImage {
             image.draw(in: NSRect(origin: .zero, size: bounds.size))
         }
 
@@ -1812,7 +1819,10 @@ class EditCanvasView: NSView {
         beautifyInnerShadowCornerRadius: CGFloat = BeautifyRenderer.innerCornerRadius,
         beautifyInnerShadowInset: CGFloat = 0
     ) -> NSImage? {
-        guard let baseImage = previewImage ?? fallbackBaseImage else { return nil }
+        guard let baseImage = previewImage
+            ?? refreshedBaseImage
+            ?? externalBaseImage
+            ?? fallbackBaseImage else { return nil }
 
         let innerImage: NSImage
         if annotations.isEmpty {
@@ -1961,6 +1971,10 @@ class EditCanvasView: NSView {
             return previewImage
         }
 
+        if let refreshedBaseImage {
+            return refreshedBaseImage
+        }
+
         if let overrideBaseImage {
             return overrideBaseImage
         }
@@ -1977,6 +1991,18 @@ class EditCanvasView: NSView {
 
         guard let rect = captureRect, let screen = captureScreen else { return nil }
         return ScreenCapturer.capture(rect: rect, screen: screen)
+    }
+
+    /// Replaces the capture base while leaving annotations, selection, and
+    /// undo history untouched. Also invalidates magnifier sampling cache.
+    func setRefreshedBaseImage(_ image: NSImage) {
+        refreshedBaseImage = image
+        // `draw` and beautify both prefer `externalBaseImage` over live
+        // snapshot crops, so keep them in sync for a visible refresh.
+        externalBaseImage = image
+        windowBaseImage = nil
+        magnifierBaseImage = nil
+        needsDisplay = true
     }
 
     private func cancelInFlightInteraction() {

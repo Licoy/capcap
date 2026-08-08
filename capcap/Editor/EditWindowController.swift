@@ -121,6 +121,7 @@ class EditWindowController {
     private var scrollCapturer: ScrollCapturer?
     private var isScrollCapturing = false
     private var isScrollCaptureFinalizing = false
+    private var isRefreshingCapture = false
     private var scrollCaptureControlWindow: ScrollCaptureControlWindow?
     private var scrollPreviewWindow: ScrollPreviewWindow?
     /// Persistent finish hint shown inside the selection during scroll
@@ -228,6 +229,67 @@ class EditWindowController {
         self.pickedColorSwatch = Self.color(fromHex: Defaults.lastPickedColorHex)
     }
 
+    /// Wired by OverlayWindowController after construction so the toolbar
+    /// click-through button can toggle the capture overlay's mouse pass-through.
+    var onToggleCaptureClickThrough: (() -> Void)?
+
+    private var isCaptureClickThroughActive = false
+    /// True while the frozen canvas is hidden so the selection cutout shows
+    /// live desktop content during capture click-through.
+    private var isCaptureClickThroughContentHidden = false
+    /// True while an NSSavePanel / NSOpenPanel is up over the capture chrome.
+    /// Overlay Escape / right-click cancel must not tear down the session.
+    private(set) var isFilePanelActive = false
+
+    func setCaptureClickThroughActive(_ active: Bool) {
+        isCaptureClickThroughActive = active
+        toolbars.forEach { $0.setActive(active, for: .clickThrough) }
+    }
+
+    /// Host selection view toolbars are reparented onto during click-through.
+    var hostSelectionViewForChrome: SelectionView? { hostSelectionView }
+
+    /// Views that must remain interactive while the overlay shell ignores
+    /// mouse events (promoted into floating panels by OverlayWindowController).
+    func captureClickThroughChromeViews() -> [NSView] {
+        // Dismiss option rows so only the main bars need reparenting.
+        subToolbarView?.removeFromSuperview()
+        subToolbarView = nil
+        beautifySubToolbarView?.removeFromSuperview()
+        beautifySubToolbarView = nil
+        return toolbars
+    }
+
+    /// Hides the frozen annotation canvas / chrome so the selection hole
+    /// reveals live desktop content during capture click-through.
+    func setCaptureClickThroughContentHidden(_ hidden: Bool) {
+        isCaptureClickThroughContentHidden = hidden
+        canvasScrollView?.isHidden = hidden
+        selectionChromeOverlay?.isHidden = hidden
+        qrCodeOverlayView?.isHidden = hidden
+        if hidden {
+            subToolbarView?.isHidden = true
+            beautifySubToolbarView?.isHidden = true
+        } else {
+            subToolbarView?.isHidden = false
+            beautifySubToolbarView?.isHidden = false
+        }
+    }
+
+    /// Re-anchors toolbars after they are restored from click-through panels.
+    func relayoutCaptureClickThroughChrome() {
+        repositionFloatingChrome()
+        // Keep toolbar above the canvas after reparenting back.
+        toolbars.forEach { hostSelectionView?.addSubview($0) }
+        if let overlay = selectionChromeOverlay {
+            hostSelectionView?.addSubview(overlay)
+        }
+    }
+
+    private func toggleCaptureClickThrough() {
+        onToggleCaptureClickThrough?()
+    }
+
     func show() {
         guard let hostSelectionView else {
             onComplete(nil)
@@ -323,7 +385,20 @@ class EditWindowController {
 
     private func showToolbar() {
         guard let hostSelectionView else { return }
-        let layout = Defaults.toolbarLayout
+        var layout = Defaults.toolbarLayout
+        // Older persisted layouts may tuck newly introduced tools into
+        // `hidden` (next to a hidden canonical neighbour). Promote refresh
+        // and click-through onto a visible bar so the actions stay reachable.
+        for promoteID in [ToolbarItemID.refreshCapture, .clickThrough] {
+            if !layout.primary.contains(promoteID), !layout.side.contains(promoteID) {
+                layout.hidden.removeAll { $0 == promoteID }
+                if layout.primary.isEmpty {
+                    layout.side.insert(promoteID, at: 0)
+                } else {
+                    layout.primary.append(promoteID)
+                }
+            }
+        }
 
         // Each toolbar exists only when the user has assigned tools to it.
         if !layout.primary.isEmpty {
@@ -360,6 +435,8 @@ class EditWindowController {
         tv.onRedo = { [weak self] in _ = self?.canvasView?.redo() }
         tv.onColorPicker = { [weak self] in self?.runColorPicker() }
         tv.onScrollCapture = { [weak self] in self?.toggleScrollCapture() }
+        tv.onRefreshCapture = { [weak self] in self?.refreshCapture() }
+        tv.onClickThrough = { [weak self] in self?.toggleCaptureClickThrough() }
         tv.onBeautify = { [weak self] in self?.toggleBeautify() }
         tv.onInsertImage = { [weak self] in self?.showInsertImageMenu() }
         tv.onQRCode = { [weak self] in self?.performQRCodeRecognition() }
@@ -391,10 +468,112 @@ class EditWindowController {
     private func updateCaptureActionAvailability() {
         let scrollCaptureEnabled = isScrollCaptureAllowed && !isScrollCaptureBusy && canvasView?.hasPreviewImage != true
         let recordingEnabled = isLiveScreenCaptureSession && !isScrollCaptureBusy
+        let refreshEnabled = isRefreshCaptureAllowed
         toolbars.forEach {
             $0.setScrollCaptureEnabled(scrollCaptureEnabled)
             $0.setRecordingEnabled(recordingEnabled)
+            $0.setRefreshCaptureEnabled(refreshEnabled)
         }
+    }
+
+    private var isRefreshCaptureAllowed: Bool {
+        isLiveScreenCaptureSession
+            && !isScrollCaptureBusy
+            && !isCropping
+            && !isTextEditing
+            && captureRect.width > 0
+            && captureRect.height > 0
+    }
+
+    /// Re-captures the current selection region and replaces the editor base
+    /// image while keeping all annotations and undo history. Used by the
+    /// toolbar refresh control and when exiting capture click-through so the
+    /// cutout matches the live desktop the user was interacting with.
+    func refreshCaptureContent(showSuccessToast: Bool = true) {
+        refreshCapture(showSuccessToast: showSuccessToast)
+    }
+
+    /// Re-captures the current selection region and replaces the editor base
+    /// image while keeping all annotations and undo history.
+    private func refreshCapture(showSuccessToast: Bool = true) {
+        guard isRefreshCaptureAllowed, !isRefreshingCapture else {
+            if !isLiveScreenCaptureSession {
+                ToastWindow.show(message: L10n.refreshCaptureUnavailable)
+            }
+            return
+        }
+
+        // Critical: do not mutate the toolbar button (enable/hide) on the same
+        // call stack as its action. AppKit asserts with EXC_BREAKPOINT when a
+        // control is disabled/hidden while still tracking its mouse-up.
+        isRefreshingCapture = true
+        let rect = captureRect
+        let targetScreen = screen
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.canvasView?.commitActiveTextEditing()
+            self.toolbars.forEach { $0.setRefreshCaptureEnabled(false) }
+
+            // Snapshot AppKit state on the main thread only.
+            var excluded: [CGWindowID] = []
+            for window in NSApp.windows {
+                let number = window.windowNumber
+                guard number > 0 else { continue }
+                excluded.append(UInt32(truncatingIfNeeded: number))
+            }
+            excluded.append(contentsOf: ToastWindow.captureExcludedWindowNumbers)
+            ToastWindow.dismissForCaptureIfNeeded()
+
+            let displayID = targetScreen.deviceDescription[
+                NSDeviceDescriptionKey("NSScreenNumber")
+            ] as? CGDirectDisplayID
+            let scale = targetScreen.backingScaleFactor
+
+            Task.detached(priority: .userInitiated) { [weak self] in
+                let image: NSImage?
+                do {
+                    image = try await ScreenCapturer.captureAsync(
+                        rect: rect,
+                        requestedDisplayID: displayID,
+                        screenScale: scale,
+                        excludingWindowNumbers: excluded
+                    )
+                } catch {
+                    image = nil
+                }
+                await MainActor.run {
+                    guard let self else { return }
+                    self.isRefreshingCapture = false
+                    self.updateCaptureActionAvailability()
+                    guard let image else {
+                        ToastWindow.show(message: L10n.refreshCaptureFailed)
+                        return
+                    }
+                    self.canvasView?.setRefreshedBaseImage(image)
+                    self.isWindowCapture = false
+                    if self.isBeautifyActive {
+                        self.canvasView?.externalBaseImage = image
+                    }
+                    self.canvasView?.needsDisplay = true
+                    if showSuccessToast {
+                        ToastWindow.show(message: L10n.refreshCaptureSuccess)
+                    }
+                }
+            }
+        }
+    }
+
+    func refreshCaptureFromKeyboard(for event: NSEvent) -> Bool {
+        guard !isTextEditing else { return false }
+        // ⌘R — avoid conflicting with bare R (rectangle tool)
+        let mods = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        guard mods == .command,
+              event.charactersIgnoringModifiers?.lowercased() == "r" else {
+            return false
+        }
+        refreshCapture()
+        return true
     }
 
     /// Frame the option sub-toolbars (color/size, text, beautify) anchor
@@ -1733,6 +1912,9 @@ class EditWindowController {
     }
 
     private func save() {
+        // Ignore while a location sheet is already open (double-hotkey /
+        // double-click would otherwise stack panels or look "dead").
+        guard !isFilePanelActive else { return }
         canvasView?.commitActiveTextEditing()
         guard let finalImage = currentCompositeImage() else { return }
         let quality = Defaults.screenshotSaveQuality
@@ -1746,7 +1928,11 @@ class EditWindowController {
             promptForScreenshotSaveLocation(suggestedName: suggestedName) { [weak self] chosen in
                 guard let self else { return }
                 guard let chosen else {
-                    self.bringEditorToFront()
+                    // Cancel must keep the selection/editor alive. Skip if
+                    // tearDown already ran (e.g. session ended mid-sheet).
+                    if self.canvasView != nil {
+                        self.bringEditorToFront()
+                    }
                     return
                 }
                 self.finishSave(image: finalImage, destinationOverride: chosen)
@@ -1829,6 +2015,11 @@ class EditWindowController {
         suggestedName: String,
         completion: @escaping (URL?) -> Void
     ) {
+        // One panel at a time; a previous aborted sheet can leave AppKit modal
+        // state stuck so subsequent Save clicks appear dead.
+        guard !isFilePanelActive else { return }
+        endAttachedFilePanels()
+
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.png]
         panel.canCreateDirectories = true
@@ -1836,7 +2027,16 @@ class EditWindowController {
         panel.directoryURL = Defaults.screenshotSaveDirectory
         panel.nameFieldStringValue = suggestedName
 
-        let finish: (NSApplication.ModalResponse) -> Void = { response in
+        isFilePanelActive = true
+        let finish: (NSApplication.ModalResponse) -> Void = { [weak self] response in
+            guard let self else {
+                completion(nil)
+                return
+            }
+            // Forced end (tearDown / re-prompt) clears the flag first so we
+            // skip user-facing cancel restore / OK save on a dying editor.
+            guard self.isFilePanelActive else { return }
+            self.isFilePanelActive = false
             guard response == .OK, let url = panel.url else {
                 completion(nil)
                 return
@@ -1846,9 +2046,23 @@ class EditWindowController {
 
         NSApp.activate(ignoringOtherApps: true)
         if let hostWindow = hostSelectionView?.window {
+            // Sheet stays above the screenSaver-level overlay. Escape is owned
+            // by the panel while `isFilePanelActive` is true (see overlay key
+            // monitors) so it only dismisses the dialog, not the capture session.
             panel.beginSheetModal(for: hostWindow, completionHandler: finish)
         } else {
             panel.begin(completionHandler: finish)
+        }
+    }
+
+    /// Ends any leftover save/open sheets so a cancelled or torn-down session
+    /// cannot leave AppKit in a permanent modal state that blocks the next Save.
+    func endAttachedFilePanels() {
+        // Clear the flag first so sheet completion handlers no-op.
+        isFilePanelActive = false
+        if let hostWindow = hostSelectionView?.window,
+           let sheet = hostWindow.attachedSheet {
+            hostWindow.endSheet(sheet, returnCode: .cancel)
         }
     }
 
@@ -2154,7 +2368,10 @@ class EditWindowController {
     }
 
     private func insertImageFromFile() {
+        guard !isFilePanelActive else { return }
         canvasView?.commitActiveTextEditing()
+        endAttachedFilePanels()
+
         let panel = NSOpenPanel()
         panel.title = L10n.insertImageChooseFile
         panel.canChooseFiles = true
@@ -2162,18 +2379,25 @@ class EditWindowController {
         panel.allowsMultipleSelection = false
         panel.allowedContentTypes = [.image]
 
+        isFilePanelActive = true
         let completion: (NSApplication.ModalResponse) -> Void = { [weak self, panel] response in
+            guard let self else { return }
+            guard self.isFilePanelActive else { return }
+            self.isFilePanelActive = false
             guard
                 response == .OK,
                 let url = panel.url,
                 let image = Self.loadImageForInsertion(from: url)
             else {
-                self?.bringEditorToFront()
+                if self.canvasView != nil {
+                    self.bringEditorToFront()
+                }
                 return
             }
-            self?.insertImage(image)
+            self.insertImage(image)
         }
 
+        NSApp.activate(ignoringOtherApps: true)
         if let hostWindow = hostSelectionView?.window {
             panel.beginSheetModal(for: hostWindow, completionHandler: completion)
         } else {
@@ -2439,6 +2663,9 @@ class EditWindowController {
     }
 
     func tearDown() {
+        // End file sheets before detaching host views so modal state cannot
+        // stick across the next capture session.
+        endAttachedFilePanels()
         dismissQRCodeOverlay()
         cancelActiveColorSampler()
         isScrollCapturing = false
@@ -2572,6 +2799,10 @@ class EditWindowController {
         var fallbackBaseImage: NSImage?
         if canvasView?.hasPreviewImage == true {
             fallbackBaseImage = nil
+        } else if let refreshed = canvasView?.refreshedBaseImage {
+            fallbackBaseImage = refreshed
+        } else if let external = canvasView?.externalBaseImage {
+            fallbackBaseImage = external
         } else if let overrideBaseImage {
             fallbackBaseImage = overrideBaseImage
         } else if isWindowCapture, let windowBaseImage {
@@ -2883,6 +3114,8 @@ class ToolbarView: NSView {
     var onRedo: (() -> Void)?
     var onColorPicker: (() -> Void)?
     var onScrollCapture: (() -> Void)?
+    var onRefreshCapture: (() -> Void)?
+    var onClickThrough: (() -> Void)?
     var onBeautify: (() -> Void)?
     var onInsertImage: (() -> Void)?
     var onQRCode: (() -> Void)?
@@ -2953,6 +3186,7 @@ class ToolbarView: NSView {
     // Convenience wrappers so callers don't repeat the id literals.
     func setScrollCaptureActive(_ active: Bool) { setActive(active, for: .scrollCapture) }
     func setScrollCaptureEnabled(_ enabled: Bool) { setEnabled(enabled, for: .scrollCapture) }
+    func setRefreshCaptureEnabled(_ enabled: Bool) { setEnabled(enabled, for: .refreshCapture) }
     func setBeautifyActive(_ active: Bool) { setActive(active, for: .beautify) }
     func setUndoEnabled(_ enabled: Bool) { setEnabled(enabled, for: .undo) }
     func setRedoEnabled(_ enabled: Bool) { setEnabled(enabled, for: .redo) }
@@ -3031,6 +3265,8 @@ class ToolbarView: NSView {
         case .undo:          onUndo?()
         case .redo:          onRedo?()
         case .scrollCapture: onScrollCapture?()
+        case .refreshCapture: onRefreshCapture?()
+        case .clickThrough:  onClickThrough?()
         case .beautify:      onBeautify?()
         case .qrCode:        onQRCode?()
         case .ocr:           onOCR?()

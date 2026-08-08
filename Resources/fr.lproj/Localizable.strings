@@ -189,14 +189,14 @@
 
 /* Cursor chip */
 "dragToScreenshot" = "Cliquez sur une fenêtre ou faites glisser pour capturer";
-"dragToScreenshotAspectFree" = "Cliquez sur une fenêtre ou faites glisser pour capturer · Sélection libre (R)";
-"dragToScreenshotAspect" = "Cliquez sur une fenêtre ou faites glisser pour capturer · Sélection %@ (R)";
+"dragToScreenshotAspectFree" = "Cliquez sur une fenêtre ou faites glisser pour capturer · Ratio libre (⇧R)";
+"dragToScreenshotAspect" = "Cliquez sur une fenêtre ou faites glisser pour capturer · %@ (⇧R)";
 "dragToTextRecognition" = "Cliquez sur une fenêtre ou sélectionnez une zone pour reconnaître le texte";
 "dragToCopyImageText" = "Cliquez sur une fenêtre ou sélectionnez une zone pour copier le texte";
 "dragToScreenshotTranslation" = "Cliquez sur une fenêtre ou sélectionnez une zone pour traduire le contenu";
 "dragToRecord" = "Cliquez sur une fenêtre ou faites glisser pour enregistrer";
-"dragToRecordAspectFree" = "Cliquez sur une fenêtre ou faites glisser pour enregistrer · Sélection libre (R)";
-"dragToRecordAspect" = "Cliquez sur une fenêtre ou faites glisser pour enregistrer · Sélection %@ (R)";
+"dragToRecordAspectFree" = "Cliquez sur une fenêtre ou faites glisser pour enregistrer · Sélection libre (⇧R)";
+"dragToRecordAspect" = "Cliquez sur une fenêtre ou faites glisser pour enregistrer · Sélection %@ (⇧R)";
 
 /* Toast */
 "copiedToClipboard" = "Copié dans le presse-papiers";
@@ -645,7 +645,7 @@
 "magnifierLensPanelCopyHint" = "Copier couleur(C)";
 "magnifierLensPanelFormatHint" = "Format(F)";
 "magnifierLensPanelAspectFree" = "Libre";
-"magnifierLensPanelAspectHint" = "Ratio(R)";
+"magnifierLensPanelAspectHint" = "Ratio(⇧R)";
 /* Téléversement de fichiers */
 "fileUploadShortcutHeader" = "Téléverser des fichiers";
 "finderUploadShortcutDefaultDisplay" = "Non défini";
@@ -664,3 +664,28 @@
 "finderUploadUnknownSize" = "Taille inconnue";
 "finderUploadReadFailed" = "Impossible de lire le fichier %@";
 "finderUploadCompleted" = "%d fichiers téléversés et liens copiés";
+
+"tipRefreshCapture" = "Actualiser la capture";
+"refreshCaptureSuccess" = "Capture actualisée";
+"refreshCaptureFailed" = "Impossible d'actualiser";
+"refreshCaptureUnavailable" = "Actualisation réservée aux captures d'écran";
+"repeatLastRegionMenu" = "Répéter la dernière zone";
+"repeatLastRegionNone" = "Aucune zone précédente";
+"repeatLastRegionRelocated" = "Zone précédente déplacée sur l'écran actuel";
+"repeatLastRegionShortcutHeader" = "Répéter la dernière zone";
+"repeatLastRegionShortcutDefaultDisplay" = "Non défini";
+"selectionSizeInputHint" = "Largeur × Hauteur";
+"selectionSizeInputInvalid" = "Saisissez une taille comme 800x600";
+"selectionSizeLabelTip" = "Cliquez ou appuyez sur Tab pour la taille exacte";
+"magnifierLensPanelSizeHint" = "Taille(Tab)";
+"pinClickThrough" = "Clics traversants";
+"pinClickThroughOn" = "Clics traversants activés";
+"pinClickThroughOff" = "Clics traversants désactivés";
+"pinClickThroughMenu" = "Désactiver les clics traversants";
+"pinClickThroughShortcutHeader" = "Clics traversants (capture)";
+"pinClickThroughShortcutDefaultDisplay" = "⌥⌘P";
+"shortcutConflictRepeatLastRegion" = "Conflit avec Répéter la dernière zone";
+"shortcutConflictPinClickThrough" = "Conflit avec les clics traversants";
+"tipClickThrough" = "Clics traversants";
+"captureClickThroughOn" = "Clics traversants activés";
+"captureClickThroughOff" = "Clics traversants désactivés";

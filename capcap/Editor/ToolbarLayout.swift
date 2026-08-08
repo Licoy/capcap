@@ -26,6 +26,8 @@ enum ToolbarItemID: String, Codable, CaseIterable {
     case redo
     case moveSelection
     case scrollCapture
+    case refreshCapture
+    case clickThrough
     case beautify
     case ocr
     case screenshotTranslate
@@ -56,11 +58,11 @@ extension ToolbarItemID {
         switch self {
         case .rectangle, .ellipse, .arrow, .line, .pen, .marker, .spotlight, .mosaic, .eraser, .magnifier, .numbered, .text, .emoji:
             return .toggleTool
-        case .scrollCapture, .beautify, .qrCode:
+        case .scrollCapture, .beautify, .qrCode, .clickThrough:
             return .toggleAction
         case .moveSelection:
             return .dragHandle
-        case .insertImage, .colorPicker, .undo, .redo, .ocr, .screenshotTranslate, .save, .upload, .pin, .record, .close, .confirm:
+        case .insertImage, .colorPicker, .undo, .redo, .ocr, .screenshotTranslate, .refreshCapture, .save, .upload, .pin, .record, .close, .confirm:
             return .momentary
         }
     }
@@ -107,6 +109,8 @@ extension ToolbarItemID {
         case .redo:          return "arrow.uturn.forward"
         case .moveSelection: return "arrow.up.and.down.and.arrow.left.and.right"
         case .scrollCapture: return "arrow.up.and.down.text.horizontal"
+        case .refreshCapture: return "arrow.clockwise"
+        case .clickThrough:  return "cursorarrow.slash"
         case .beautify:      return "sparkles"
         case .ocr:           return "text.viewfinder"
         case .screenshotTranslate: return "character.bubble"
@@ -143,6 +147,8 @@ extension ToolbarItemID {
         case .redo:          title = L10n.tipRedo
         case .moveSelection: title = L10n.tipMoveSelection
         case .scrollCapture: title = L10n.tipScrollCapture
+        case .refreshCapture: title = L10n.tipRefreshCapture
+        case .clickThrough:  title = L10n.tipClickThrough
         case .beautify:      title = L10n.tipBeautify
         case .ocr:           title = L10n.tipOCR
         case .screenshotTranslate: title = L10n.tipScreenshotTranslate
@@ -172,6 +178,8 @@ extension ToolbarItemID {
         case .numbered:  return "N"
         case .save:      return HotkeyManager.currentFileSaveDisplayString()
         case .confirm:   return HotkeyManager.currentClipboardDisplayString() ?? L10n.clipboardShortcutDefaultDisplay
+        case .refreshCapture: return "⌘R"
+        case .clickThrough: return HotkeyManager.currentPinClickThroughDisplayString()
         case .undo:      return "⌘+Z"
         case .redo:      return "Z"
         case .close:     return "X"
@@ -216,7 +224,7 @@ struct ToolbarLayout: Equatable {
     /// recorded.
     static let canonicalOrder: [ToolbarItemID] = [
         .rectangle, .ellipse, .line, .arrow, .pen, .marker, .spotlight, .mosaic, .eraser, .numbered, .text, .emoji, .insertImage,
-        .colorPicker, .magnifier, .undo, .redo, .moveSelection, .scrollCapture, .beautify, .qrCode, .ocr,
+        .colorPicker, .magnifier, .undo, .redo, .moveSelection, .scrollCapture, .refreshCapture, .clickThrough, .beautify, .qrCode, .ocr,
         .screenshotTranslate,
         .save, .upload, .pin, .record, .close, .confirm,
     ]
@@ -228,7 +236,7 @@ struct ToolbarLayout: Equatable {
         ToolbarLayout(
             primary: [
                 .rectangle, .ellipse, .line, .arrow, .pen, .marker, .spotlight, .mosaic, .eraser, .numbered, .text, .emoji, .insertImage,
-                .colorPicker, .magnifier, .beautify, .qrCode, .ocr, .screenshotTranslate, .undo, .redo, .moveSelection,
+                .colorPicker, .magnifier, .beautify, .qrCode, .ocr, .screenshotTranslate, .undo, .redo, .moveSelection, .refreshCapture, .clickThrough,
             ],
             side: [.scrollCapture, .upload, .save, .pin, .record, .close, .confirm],
             hidden: []

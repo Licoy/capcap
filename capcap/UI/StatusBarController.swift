@@ -4,6 +4,7 @@ class StatusBarController: NSObject {
     private var statusItem: NSStatusItem
     private let onTakeScreenshot: () -> Void
     private let onTakeFullScreenScreenshot: () -> Void
+    private let onRepeatLastRegion: () -> Void
     private let onRecord: () -> Void
     private let onMergeImages: () -> Void
     private let onUploadFiles: () -> Void
@@ -16,6 +17,7 @@ class StatusBarController: NSObject {
     init(
         onTakeScreenshot: @escaping () -> Void,
         onTakeFullScreenScreenshot: @escaping () -> Void,
+        onRepeatLastRegion: @escaping () -> Void,
         onRecord: @escaping () -> Void,
         onMergeImages: @escaping () -> Void,
         onUploadFiles: @escaping () -> Void,
@@ -25,6 +27,7 @@ class StatusBarController: NSObject {
     ) {
         self.onTakeScreenshot = onTakeScreenshot
         self.onTakeFullScreenScreenshot = onTakeFullScreenScreenshot
+        self.onRepeatLastRegion = onRepeatLastRegion
         self.onRecord = onRecord
         self.onMergeImages = onMergeImages
         self.onUploadFiles = onUploadFiles
@@ -80,6 +83,18 @@ class StatusBarController: NSObject {
         fullScreenItem.image = Self.menuIcon(systemName: "display")
         HotkeyManager.applyFullScreenScreenshotToMenuItem(fullScreenItem)
         menu.addItem(fullScreenItem)
+
+        let repeatItem = NSMenuItem(
+            title: L10n.repeatLastRegionMenu,
+            action: #selector(repeatLastRegion),
+            keyEquivalent: ""
+        )
+        repeatItem.target = self
+        repeatItem.image = Self.menuIcon(systemName: "arrow.uturn.backward.square")
+        // Always leave the item enabled; the action validates and toasts when
+        // no region is stored. Disabling at build time stuck after first open.
+        HotkeyManager.applyRepeatLastRegionToMenuItem(repeatItem)
+        menu.addItem(repeatItem)
 
         let recordItem = NSMenuItem(title: L10n.record, action: #selector(record), keyEquivalent: "")
         recordItem.target = self
@@ -146,6 +161,7 @@ class StatusBarController: NSObject {
         quitItem.image = Self.menuIcon(systemName: "power")
         menu.addItem(quitItem)
 
+        menu.delegate = self
         statusItem.menu = menu
 
         refreshHistoryItemState()
@@ -185,6 +201,10 @@ class StatusBarController: NSObject {
 
     @objc private func takeFullScreenScreenshot() {
         onTakeFullScreenScreenshot()
+    }
+
+    @objc private func repeatLastRegion() {
+        onRepeatLastRegion()
     }
 
     @objc private func record() {

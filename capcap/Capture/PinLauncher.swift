@@ -17,7 +17,9 @@ final class PinWindow: NSWindow {
     /// which have no external source to clear.
     var pinSource: PinSource?
 
-    override var canBecomeKey: Bool { true }
+    private(set) var isClickThrough = false
+
+    override var canBecomeKey: Bool { !isClickThrough }
 
     override func resignKey() {
         super.resignKey()
@@ -35,8 +37,36 @@ final class PinWindow: NSWindow {
         }
     }
 
+    func setClickThrough(_ enabled: Bool) {
+        guard isClickThrough != enabled else { return }
+        isClickThrough = enabled
+        ignoresMouseEvents = enabled
+        alphaValue = enabled ? 0.88 : 1.0
+        if enabled {
+            PinClickThroughCoordinator.register(self)
+            if let content = contentView as? PinContentView {
+                content.setOCRSelectionEnabled(false)
+                content.setClickThroughActive(true)
+            }
+            if let content = contentView as? TextPinContentView {
+                content.setClickThroughActive(true)
+            }
+        } else {
+            PinClickThroughCoordinator.unregister(self)
+            if let content = contentView as? PinContentView {
+                content.setClickThroughActive(false)
+            }
+            if let content = contentView as? TextPinContentView {
+                content.setClickThroughActive(false)
+            }
+        }
+    }
+
     /// Tears the window down and drops it from the manager so it deallocates.
     func dismiss() {
+        if isClickThrough {
+            setClickThrough(false)
+        }
         orderOut(nil)
         contentView = nil
         PinWindowManager.shared.remove(self)
@@ -575,6 +605,12 @@ private final class TextPinContentView: NSView, NSTextViewDelegate {
         addSubview(toolbar)
     }
 
+    func setClickThroughActive(_ active: Bool) {
+        if active {
+            setToolbarVisible(false)
+        }
+    }
+
     private func layoutToolbar() {
         toolbar.frame = NSRect(
             x: 8,
@@ -1083,6 +1119,9 @@ final class PinContentView: NSView {
         toolbar.onOCR = { [weak self] in
             self?.toggleOCRSelection()
         }
+        toolbar.onClickThrough = { [weak self] in
+            self?.toggleClickThrough()
+        }
         toolbar.onMoveMouseDown = { [weak self] event in
             guard self?.usesLowResolutionPreview == false else { return }
             self?.performPinWindowDrag(with: event)
@@ -1126,6 +1165,10 @@ final class PinContentView: NSView {
               let appDelegate = NSApp.delegate as? AppDelegate
         else {
             return
+        }
+
+        if pinWindow.isClickThrough {
+            pinWindow.setClickThrough(false)
         }
 
         let imageForEditing = image.copy() as? NSImage ?? image
@@ -1783,6 +1826,9 @@ final class PinContentView: NSView {
 
     private func toggleOCRSelection() {
         guard image != nil else { return }
+        if pinWindow?.isClickThrough == true {
+            pinWindow?.setClickThrough(false)
+        }
         if isOCRSelectionEnabled {
             isOCRSelectionEnabled = false
             return
@@ -1796,6 +1842,32 @@ final class PinContentView: NSView {
         window?.makeFirstResponder(self)
         isOCRSelectionEnabled = true
         startOCRRecognitionIfNeeded()
+    }
+
+    private func toggleClickThrough() {
+        guard let pinWindow else { return }
+        if isOCRSelectionEnabled {
+            isOCRSelectionEnabled = false
+        }
+        let enabled = !pinWindow.isClickThrough
+        pinWindow.setClickThrough(enabled)
+        if enabled {
+            let shortcut = HotkeyManager.currentPinClickThroughDisplayString()
+            ToastWindow.show(message: "\(L10n.pinClickThroughOn) (\(shortcut))")
+        } else {
+            ToastWindow.show(message: L10n.pinClickThroughOff)
+        }
+    }
+
+    func setOCRSelectionEnabled(_ enabled: Bool) {
+        isOCRSelectionEnabled = enabled
+    }
+
+    func setClickThroughActive(_ active: Bool) {
+        toolbar.isClickThroughActive = active
+        if active {
+            setToolbarVisible(false, animated: true)
+        }
     }
 
     private func startOCRRecognitionIfNeeded() {
@@ -2788,11 +2860,12 @@ private final class PinToolbarPanel: NSPanel {
 }
 
 private final class PinToolbarView: NSView {
-    static let preferredWidth: CGFloat = 258
+    static let preferredWidth: CGFloat = 290
     static let preferredHeight = FloatingControlChrome.height
 
     var onEdit: (() -> Void)?
     var onOCR: (() -> Void)?
+    var onClickThrough: (() -> Void)?
     var onMoveMouseDown: ((NSEvent) -> Void)?
     var onZoomOut: (() -> Void)?
     var onZoomIn: (() -> Void)?
@@ -2804,6 +2877,9 @@ private final class PinToolbarView: NSView {
     var isOCRActive = false {
         didSet { ocrButton.isActive = isOCRActive }
     }
+    var isClickThroughActive = false {
+        didSet { clickThroughButton.isActive = isClickThroughActive }
+    }
 
     var zoomScale: CGFloat = 1.0 {
         didSet {
@@ -2813,6 +2889,10 @@ private final class PinToolbarView: NSView {
 
     private let editButton = PinToolbarIconButton(symbolName: "pencil", accessibilityLabel: L10n.pinToolbarEdit)
     private let ocrButton = PinToolbarIconButton(symbolName: "text.viewfinder", accessibilityLabel: L10n.tipOCR)
+    private let clickThroughButton = PinToolbarIconButton(
+        symbolName: "hand.raised.slash",
+        accessibilityLabel: L10n.pinClickThrough
+    )
     private let moveButton = PinToolbarMoveButton(symbolName: "arrow.up.and.down.and.arrow.left.and.right",
                                                   accessibilityLabel: "Move pinned image")
     private let zoomOutButton = PinToolbarIconButton(symbolName: "minus.magnifyingglass", accessibilityLabel: "Zoom out")
@@ -2844,6 +2924,10 @@ private final class PinToolbarView: NSView {
         ocrButton.toolTip = L10n.tipOCR
         ocrButton.target = self
         ocrButton.action = #selector(ocrTapped)
+        clickThroughButton.toolTip =
+            "\(L10n.pinClickThrough) (\(HotkeyManager.currentPinClickThroughDisplayString()))"
+        clickThroughButton.target = self
+        clickThroughButton.action = #selector(clickThroughTapped)
         moveButton.onMouseDown = { [weak self] event in
             self?.onMoveMouseDown?(event)
         }
@@ -2863,6 +2947,7 @@ private final class PinToolbarView: NSView {
         addSubview(moveButton)
         addSubview(editButton)
         addSubview(ocrButton)
+        addSubview(clickThroughButton)
         addSubview(zoomOutButton)
         addSubview(zoomLabel)
         addSubview(zoomInButton)
@@ -2897,9 +2982,15 @@ private final class PinToolbarView: NSView {
             width: buttonSide,
             height: buttonSide
         )
+        clickThroughButton.frame = NSRect(
+            x: ocrButton.frame.minX - buttonGap - buttonSide,
+            y: buttonY,
+            width: buttonSide,
+            height: buttonSide
+        )
 
         let centerX = closeButton.frame.maxX + gap
-        let centerWidth = max(76, ocrButton.frame.minX - gap - centerX)
+        let centerWidth = max(76, clickThroughButton.frame.minX - gap - centerX)
         let stepWidth = min(24, max(20, centerWidth * 0.22))
         let labelWidth = max(36, centerWidth - stepWidth * 2)
 
@@ -2984,6 +3075,10 @@ private final class PinToolbarView: NSView {
 
     @objc private func ocrTapped() {
         onOCR?()
+    }
+
+    @objc private func clickThroughTapped() {
+        onClickThrough?()
     }
 
     @objc private func zoomOutTapped() {

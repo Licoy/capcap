@@ -189,14 +189,14 @@
 
 /* Cursor chip */
 "dragToScreenshot" = "點選視窗或拖曳以截圖";
-"dragToScreenshotAspectFree" = "點選視窗或拖曳以截圖 · 框選自由比例（R）";
-"dragToScreenshotAspect" = "點選視窗或拖曳以截圖 · 框選 %@（R）";
+"dragToScreenshotAspectFree" = "點選視窗或拖曳以截圖 · 框選自由比例（⇧R）";
+"dragToScreenshotAspect" = "點選視窗或拖曳以截圖 · 框選 %@（⇧R）";
 "dragToTextRecognition" = "點選視窗或框選區域辨識文字";
 "dragToCopyImageText" = "點選視窗或框選區域複製文字";
 "dragToScreenshotTranslation" = "點選視窗或框選區域翻譯內容";
 "dragToRecord" = "點選視窗或拖曳以錄製";
-"dragToRecordAspectFree" = "點選視窗或拖曳以錄製 · 框選自由比例（R）";
-"dragToRecordAspect" = "點選視窗或拖曳以錄製 · 框選 %@（R）";
+"dragToRecordAspectFree" = "點選視窗或拖曳以錄製 · 框選自由比例（⇧R）";
+"dragToRecordAspect" = "點選視窗或拖曳以錄製 · 框選 %@（⇧R）";
 
 /* Toast */
 "copiedToClipboard" = "已複製到剪貼簿";
@@ -645,7 +645,7 @@
 "magnifierLensPanelCopyHint" = "複製色彩(C)";
 "magnifierLensPanelFormatHint" = "色值格式(F)";
 "magnifierLensPanelAspectFree" = "自由";
-"magnifierLensPanelAspectHint" = "截圖比例(R)";
+"magnifierLensPanelAspectHint" = "比例(⇧R)";
 /* 檔案上傳 */
 "fileUploadShortcutHeader" = "上傳檔案";
 "finderUploadShortcutDefaultDisplay" = "未設定";
@@ -664,3 +664,28 @@
 "finderUploadUnknownSize" = "未知大小";
 "finderUploadReadFailed" = "無法讀取檔案 %@";
 "finderUploadCompleted" = "已上傳 %d 個檔案並複製連結";
+
+"tipRefreshCapture" = "重新整理截圖";
+"refreshCaptureSuccess" = "已重新整理截圖";
+"refreshCaptureFailed" = "無法重新整理截圖";
+"refreshCaptureUnavailable" = "僅螢幕截圖可重新整理";
+"repeatLastRegionMenu" = "重複上次區域";
+"repeatLastRegionNone" = "沒有上次截圖區域";
+"repeatLastRegionRelocated" = "上次區域已移到目前顯示器";
+"repeatLastRegionShortcutHeader" = "重複上次區域";
+"repeatLastRegionShortcutDefaultDisplay" = "未設定";
+"selectionSizeInputHint" = "寬度 × 高度";
+"selectionSizeInputInvalid" = "請輸入如 800x600 的尺寸";
+"selectionSizeLabelTip" = "點擊或按 Tab 輸入精確尺寸";
+"magnifierLensPanelSizeHint" = "尺寸(Tab)";
+"pinClickThrough" = "穿透點擊";
+"pinClickThroughOn" = "已開啟穿透";
+"pinClickThroughOff" = "已關閉穿透";
+"pinClickThroughMenu" = "關閉釘圖穿透";
+"pinClickThroughShortcutHeader" = "截圖穿透";
+"pinClickThroughShortcutDefaultDisplay" = "⌥⌘P";
+"shortcutConflictRepeatLastRegion" = "與重複上次區域衝突";
+"shortcutConflictPinClickThrough" = "與釘圖穿透衝突";
+"tipClickThrough" = "截圖穿透";
+"captureClickThroughOn" = "已開啟截圖穿透";
+"captureClickThroughOff" = "已關閉截圖穿透";

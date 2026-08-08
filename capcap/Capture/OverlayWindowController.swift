@@ -117,8 +117,11 @@ class OverlayWindowController {
     /// In image-edit mode, where `presetImage` came from. nil otherwise.
     private let presetSource: PresetSource?
     private let suspendedDraft: SuspendedEditDraft?
+    /// When set, the overlay opens with this region already selected.
+    private let initialSelection: LastCaptureRegion?
     private let keepsEditorAcrossSpaces: Bool
     private var presentationScheduled = false
+    private var didApplyInitialSelection = false
     /// Bumped whenever a presentation starts or ends so stale asynchronous
     /// snapshot/window-list callbacks cannot mutate a newer overlay session.
     private var presentationGeneration = 0
@@ -258,11 +261,13 @@ class OverlayWindowController {
         onRecordingSelection: ((NSRect, NSScreen) -> Void)? = nil,
         onRequestFocusReturn: (() -> Void)? = nil,
         onSuspend: ((SuspendedEditDraft) -> Void)? = nil,
+        initialSelection: LastCaptureRegion? = nil,
         onComplete: @escaping (NSImage?) -> Void
     ) {
         self.presetImage = nil
         self.presetSource = nil
         self.suspendedDraft = nil
+        self.initialSelection = initialSelection
         self.keepsEditorAcrossSpaces = false
         self.postCaptureAction = postCaptureAction
         self.triggerContext = triggerContext
@@ -292,6 +297,7 @@ class OverlayWindowController {
         self.presetImage = presetImage
         self.presetSource = presetSource
         self.suspendedDraft = nil
+        self.initialSelection = nil
         self.keepsEditorAcrossSpaces = keepsEditorAcrossSpaces
         self.postCaptureAction = .edit
         self.triggerContext = nil
@@ -333,6 +339,7 @@ class OverlayWindowController {
         self.presetImage = nil
         self.presetSource = nil
         self.suspendedDraft = suspendedDraft
+        self.initialSelection = nil
         self.keepsEditorAcrossSpaces = suspendedDraft.keepsEditorAcrossSpaces
         self.postCaptureAction = .edit
         self.triggerContext = nil
@@ -697,6 +704,17 @@ class OverlayWindowController {
         }
 
         escLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            // Size-input panel owns Escape / Return while open; do not cancel
+            // the whole capture session or fire editor shortcuts.
+            if self?.selectionSizeInput.isActive == true {
+                return event
+            }
+            // Save/Open panels own Escape (cancel dialog only). Intercepting
+            // here used to tear down the entire selection when the user
+            // dismissed the save-location sheet.
+            if self?.editController?.isFilePanelActive == true {
+                return event
+            }
             if self?.editController?.isTextEditing == true {
                 return event
             }
@@ -734,6 +752,9 @@ class OverlayWindowController {
                 self?.cancel()
                 return nil
             }
+            if self?.toggleCaptureClickThroughFromKeyboard(for: event) == true {
+                return nil
+            }
             if self?.cycleSelectionAspectRatioFromKeyboard(for: event) == true {
                 return nil
             }
@@ -743,6 +764,12 @@ class OverlayWindowController {
             }
             if HotkeyManager.eventMatchesFileSaveHotkey(event) {
                 self?.editController?.saveFromKeyboard()
+                return nil
+            }
+            if self?.editController?.refreshCaptureFromKeyboard(for: event) == true {
+                return nil
+            }
+            if self?.beginSelectionSizeInputFromKeyboard(for: event) == true {
                 return nil
             }
             if self?.editController?.handleEditorShortcutFromKeyboard(for: event) == true {
@@ -759,6 +786,9 @@ class OverlayWindowController {
         }
         escGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if self?.editController?.isTextEditing == true {
+                return
+            }
+            if self?.editController?.isFilePanelActive == true {
                 return
             }
             if event.keyCode == 53 {
@@ -780,7 +810,35 @@ class OverlayWindowController {
             self?.editController?.handleSelectionMoveModifierFlagsChanged(event)
         }
         magnifierLensPanelKeyDownGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            self?.handleMagnifierLensPanelCopyShortcut(for: event, allowsPlainC: false)
+            guard let self else { return }
+            if self.selectionSizeInput.isActive { return }
+            if self.editController?.isFilePanelActive == true { return }
+            if self.editController?.isTextEditing == true { return }
+            // Overlay is non-activating; while another app is frontmost the
+            // local key monitor never fires. Mirror selection-phase shortcuts
+            // (aspect ratio, size input, click-through) and editor refresh.
+            // Click-through must keep working while the shell ignores mouse
+            // events and another app is focused underneath.
+            if self.toggleCaptureClickThroughFromKeyboard(for: event) {
+                return
+            }
+            if self.isCaptureClickThroughActive {
+                // While pass-through is on, only the exit hotkey is mirrored;
+                // other shortcuts stay dormant until interaction resumes.
+                return
+            }
+            if self.handleMagnifierLensPanelCopyShortcut(for: event, allowsPlainC: false) {
+                return
+            }
+            if self.cycleSelectionAspectRatioFromKeyboard(for: event) {
+                return
+            }
+            if self.beginSelectionSizeInputFromKeyboard(for: event) {
+                return
+            }
+            if self.editController?.refreshCaptureFromKeyboard(for: event) == true {
+                return
+            }
         }
         mouseMovedLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { [weak self] event in
             self?.refreshMagnifierLensPanelContent()
@@ -793,11 +851,17 @@ class OverlayWindowController {
             if self?.editController?.isTextEditing == true {
                 return event
             }
+            if self?.editController?.isFilePanelActive == true {
+                return event
+            }
             self?.cancel()
             return nil
         }
         rightMouseGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .rightMouseDown) { [weak self] _ in
             if self?.editController?.isTextEditing == true {
+                return
+            }
+            if self?.editController?.isFilePanelActive == true {
                 return
             }
             self?.cancel()
@@ -815,6 +879,8 @@ class OverlayWindowController {
             // the previous frontmost app before this point and restores focus
             // via onRequestFocusReturn when the capture session ends.
             NSApp.activate(ignoringOtherApps: true)
+            installSelectionSizeLabelObserver()
+            applyInitialSelectionIfNeeded()
         } else {
             // Skip cursor push so tearDown's pop doesn't strip an unrelated cursor.
             cursorPopped = true
@@ -958,10 +1024,29 @@ class OverlayWindowController {
 
     private func cycleSelectionAspectRatioFromKeyboard(for event: NSEvent) -> Bool {
         guard usesAspectRatioSelection else { return false }
-        guard editController == nil, event.keyCode == 15 else { return false }
-        let modifierMask: NSEvent.ModifierFlags = [.command, .option, .control, .shift]
-        guard event.modifierFlags.intersection(modifierMask).isEmpty else { return false }
+        // ⇧R cycles free / presets. Bare R is reserved for the rectangle tool
+        // once the editor is open, so aspect lock must not use plain R.
+        guard event.keyCode == 15 else { return false }
+        let mods = event.modifierFlags.intersection([.command, .option, .control, .shift])
+        guard mods == .shift else { return false }
+        if editController?.isTextEditing == true { return false }
 
+        let nextAspectRatio = Self.nextAspectRatioPreset()
+        applySelectionAspectRatio(nextAspectRatio)
+        if usesAspectRatioSelection {
+            chipWindow?.updateText(Self.aspectRatioCursorChipText(for: postCaptureAction, aspectRatio: nextAspectRatio))
+            magnifierLensPanel?.refreshDisplay()
+            let label = nextAspectRatio.map { Self.aspectRatioLabel(for: $0) } ?? L10n.magnifierLensPanelAspectFree
+            ToastWindow.show(message: "\(L10n.magnifierLensPanelAspectHint) \(label)", duration: 0.7)
+        }
+        if let view = activeSelectionView ?? windows.compactMap({ $0.contentView as? SelectionView }).first,
+           let rect = view.currentSelectionRect {
+            propagateSelectionGeometryChange(rect: rect, in: view)
+        }
+        return true
+    }
+
+    private static func nextAspectRatioPreset() -> CGFloat? {
         let presets = Defaults.selectionAspectRatioPresets
         let currentModeIndex: Int
         if Defaults.hasSelectionAspectRatio {
@@ -971,30 +1056,342 @@ class OverlayWindowController {
         } else {
             currentModeIndex = 0
         }
-
         let nextModeIndex = (currentModeIndex + 1) % (presets.count + 1)
-        let nextAspectRatio: CGFloat?
         if nextModeIndex == 0 {
             Defaults.clearSelectionAspectRatio()
-            nextAspectRatio = nil
-        } else {
-            let ratio = presets[nextModeIndex - 1]
-            Defaults.selectionAspectRatio = Double(ratio)
-            nextAspectRatio = ratio
+            return nil
         }
-        applySelectionAspectRatio(nextAspectRatio)
-        if usesAspectRatioSelection {
-            chipWindow?.updateText(Self.aspectRatioCursorChipText(for: postCaptureAction, aspectRatio: nextAspectRatio))
-            magnifierLensPanel?.refreshDisplay()
-        }
-        return true
+        let ratio = presets[nextModeIndex - 1]
+        Defaults.selectionAspectRatio = Double(ratio)
+        return ratio
     }
 
     private func applySelectionAspectRatio(_ aspectRatio: CGFloat?) {
         for case let selectionView as SelectionView in windows.compactMap(\.contentView) {
             selectionView.aspectRatio = aspectRatio
+            if aspectRatio != nil {
+                _ = selectionView.reflowSelectionKeepingCenter()
+            }
         }
         activeSelectionView?.aspectRatio = aspectRatio
+        if aspectRatio != nil {
+            _ = activeSelectionView?.reflowSelectionKeepingCenter()
+        }
+    }
+
+    // MARK: - Capture click-through
+
+    private(set) var isCaptureClickThroughActive = false
+    /// Floating chrome panels that stay interactive while the overlay ignores
+    /// mouse events (toolbars reparented out of the click-through shell).
+    private var captureClickThroughChromePanels: [NSPanel] = []
+
+    /// Lets mouse events pass through the capture overlay so the user can
+    /// operate apps underneath mid-screenshot. Selection cutout shows the live
+    /// desktop (not the frozen snapshot). Toggle again (hotkey or toolbar) to
+    /// resume capture interaction.
+    @discardableResult
+    func toggleCaptureClickThrough() -> Bool {
+        setCaptureClickThrough(!isCaptureClickThroughActive)
+        return true
+    }
+
+    func setCaptureClickThrough(_ enabled: Bool) {
+        guard isCaptureClickThroughActive != enabled else {
+            editController?.setCaptureClickThroughActive(enabled)
+            return
+        }
+        isCaptureClickThroughActive = enabled
+
+        // Reveal live desktop in the selection hole (and full-screen before
+        // a selection exists). Mirror scroll-capture's clear-cutout approach.
+        for case let selectionView as SelectionView in windows.compactMap(\.contentView) {
+            selectionView.showsLiveBackground = enabled
+        }
+
+        if enabled {
+            magnifierLensPanel?.dismiss()
+            magnifierLensPanel = nil
+            chipWindow?.orderOut(nil)
+            selectionSizeInput.dismiss(apply: false)
+            // Reparent toolbars into interactive panels BEFORE the shell
+            // starts ignoring mouse events, otherwise the toggle button is
+            // trapped inside a pass-through window.
+            promoteCaptureClickThroughChrome()
+            for window in windows {
+                window.ignoresMouseEvents = true
+            }
+            let shortcut = HotkeyManager.currentPinClickThroughDisplayString()
+            ToastWindow.show(message: "\(L10n.captureClickThroughOn) (\(shortcut))")
+        } else {
+            for window in windows {
+                window.ignoresMouseEvents = false
+            }
+            restoreCaptureClickThroughChrome()
+            // The cutout was showing live desktop; freeze that latest content
+            // into the editor base (equivalent to a refresh) instead of the
+            // pre-click-through snapshot.
+            editController?.refreshCaptureContent(showSuccessToast: false)
+            ToastWindow.show(message: L10n.captureClickThroughOff)
+            if editController == nil, magnifierLensPanel == nil, shouldShowMagnifierLensPanel {
+                setupMagnifierLensPanel()
+            }
+        }
+        editController?.setCaptureClickThroughActive(enabled)
+    }
+
+    func toggleCaptureClickThroughFromKeyboard(for event: NSEvent) -> Bool {
+        guard HotkeyManager.eventMatchesPinClickThroughHotkey(event) else { return false }
+        toggleCaptureClickThrough()
+        return true
+    }
+
+    /// Moves editor toolbars into separate high-level panels so they remain
+    /// clickable while overlay shells pass mouse events through to apps below.
+    private func promoteCaptureClickThroughChrome() {
+        restoreCaptureClickThroughChrome()
+        guard let editController else { return }
+        // Hide frozen canvas first so the cutout shows live content.
+        editController.setCaptureClickThroughContentHidden(true)
+        let hosts = editController.captureClickThroughChromeViews()
+        for host in hosts {
+            guard let sourceWindow = host.window else { continue }
+            let screenFrame = sourceWindow.convertToScreen(
+                host.convert(host.bounds, to: nil)
+            )
+            let panel = CaptureClickThroughChromePanel(
+                contentRect: screenFrame
+            )
+            host.removeFromSuperview()
+            let contentBounds = NSRect(origin: .zero, size: screenFrame.size)
+            host.frame = contentBounds
+            host.autoresizingMask = [.width, .height]
+            panel.contentView?.addSubview(host)
+            panel.orderFrontRegardless()
+            captureClickThroughChromePanels.append(panel)
+        }
+    }
+
+    private func restoreCaptureClickThroughChrome() {
+        editController?.setCaptureClickThroughContentHidden(false)
+        guard !captureClickThroughChromePanels.isEmpty else { return }
+        let hostView = editController?.hostSelectionViewForChrome
+        for panel in captureClickThroughChromePanels {
+            if let chrome = panel.contentView?.subviews.first {
+                chrome.removeFromSuperview()
+                chrome.autoresizingMask = []
+                if let hostView {
+                    hostView.addSubview(chrome)
+                }
+            }
+            panel.orderOut(nil)
+        }
+        captureClickThroughChromePanels.removeAll()
+        editController?.relayoutCaptureClickThroughChrome()
+    }
+
+    // MARK: - Selection size input
+
+    private let selectionSizeInput = SelectionSizeInputController()
+    private var sizeLabelClickObserver: NSObjectProtocol?
+
+    private func installSelectionSizeLabelObserver() {
+        guard sizeLabelClickObserver == nil else { return }
+        sizeLabelClickObserver = NotificationCenter.default.addObserver(
+            forName: .selectionSizeLabelClicked,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self,
+                  let view = notification.object as? SelectionView else { return }
+            self.presentSelectionSizeInput(for: view)
+        }
+    }
+
+    private func removeSelectionSizeLabelObserver() {
+        if let sizeLabelClickObserver {
+            NotificationCenter.default.removeObserver(sizeLabelClickObserver)
+            self.sizeLabelClickObserver = nil
+        }
+        selectionSizeInput.dismiss(apply: false)
+    }
+
+    private func beginSelectionSizeInputFromKeyboard(for event: NSEvent) -> Bool {
+        guard !selectionSizeInput.isActive else { return false }
+        guard !isCaptureClickThroughActive else { return false }
+        // Tab — set exact W×H. Works with no selection yet (pre-place a size),
+        // after a freehand selection, and inside the editor.
+        guard event.keyCode == 48 else { return false }
+        let mods = event.modifierFlags.intersection([.command, .option, .control, .shift])
+        guard mods.isEmpty else { return false }
+        if editController?.isTextEditing == true { return false }
+        // Prefer the screen under the cursor so multi-monitor Tab places size
+        // on the display the user is looking at.
+        let mouseScreen = NSScreen.screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) }
+        let view: SelectionView?
+        if let mouseScreen,
+           let match = windows.first(where: { $0.screen == mouseScreen })?.contentView as? SelectionView {
+            view = match
+        } else {
+            view = activeSelectionView ?? windows.compactMap({ $0.contentView as? SelectionView }).first
+        }
+        guard let view else { return false }
+        // Once the editor is open there must already be a selection to resize.
+        if editController != nil, view.currentSelectionRect == nil { return false }
+        presentSelectionSizeInput(for: view)
+        return true
+    }
+
+    private func presentSelectionSizeInput(for view: SelectionView) {
+        guard !isCaptureClickThroughActive else { return }
+        guard let window = view.window else { return }
+        let existing = view.currentSelectionRect
+        let initialWidth = existing?.width ?? 800
+        let initialHeight = existing?.height ?? 600
+        let currentRatio = view.aspectRatio ?? Self.persistedSelectionAspectRatio
+        let anchor: NSRect
+        if let labelFrame = view.sizeLabelFrame() {
+            anchor = labelFrame
+        } else if let existing {
+            anchor = existing
+        } else {
+            // No selection yet — float the field near the cursor.
+            let mouseInWindow = window.convertPoint(fromScreen: NSEvent.mouseLocation)
+            let local = view.convert(mouseInWindow, from: nil)
+            anchor = NSRect(x: local.x, y: local.y, width: 1, height: 1)
+        }
+        let screenRect = window.convertToScreen(view.convert(anchor, to: nil))
+        selectionSizeInput.present(
+            near: screenRect,
+            initialWidth: initialWidth,
+            initialHeight: initialHeight,
+            aspectRatio: currentRatio,
+            onApply: { [weak self, weak view] width, height, ratio in
+                guard let self, let view else { return }
+                // Temporarily allow geometry mutation even if the selection
+                // was locked after entering the editor.
+                let wasInteractionEnabled = view.selectionInteractionEnabled
+                view.selectionInteractionEnabled = true
+                defer { view.selectionInteractionEnabled = wasInteractionEnabled }
+
+                if self.usesAspectRatioSelection {
+                    if let ratio {
+                        Defaults.selectionAspectRatio = Double(ratio)
+                    } else {
+                        Defaults.clearSelectionAspectRatio()
+                    }
+                    self.applySelectionAspectRatio(ratio)
+                    self.chipWindow?.updateText(
+                        Self.aspectRatioCursorChipText(for: self.postCaptureAction, aspectRatio: ratio)
+                    )
+                } else {
+                    view.aspectRatio = ratio
+                }
+
+                // Honor both typed dimensions; ratio only locks later drag-resize.
+                guard let newRect = view.applyPixelSize(
+                    width: width,
+                    height: height,
+                    respectAspectRatio: false
+                ) else { return }
+                self.activeSelectionView = view
+                if self.editController != nil {
+                    self.propagateSelectionGeometryChange(rect: newRect, in: view)
+                } else {
+                    // First placement (or last-region resize before capture):
+                    // commit into the normal capture / editor path.
+                    self.selectionDidComplete(
+                        rect: newRect,
+                        inView: view,
+                        isWindowSelection: false,
+                        windowID: nil
+                    )
+                }
+            },
+            onCancel: {}
+        )
+    }
+
+    /// Keeps the editor / capture rect in sync after an explicit size or ratio change.
+    private func propagateSelectionGeometryChange(rect: NSRect, in view: SelectionView) {
+        let screenRect = convertToScreenRect(rect, view: view)
+        let cgRect = convertToCGRect(screenRect)
+        if let editController {
+            editController.isWindowCapture = false
+            editController.updateLayout(
+                selectionRect: screenRect,
+                selectionViewRect: rect,
+                captureRect: cgRect
+            )
+        }
+        if let screen = view.window?.screen,
+           let displayID = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID {
+            rememberLastCaptureRegion(
+                screenRect: screenRect,
+                captureRect: cgRect,
+                displayID: displayID,
+                isWindowCapture: false,
+                windowID: nil
+            )
+        }
+    }
+
+    private func applyInitialSelectionIfNeeded() {
+        guard !didApplyInitialSelection,
+              let initial = initialSelection,
+              presetImage == nil,
+              suspendedDraft == nil else { return }
+        didApplyInitialSelection = true
+
+        var relocated = false
+        guard let resolved = initial.resolvedScreenRect(didRelocate: &relocated) else {
+            ToastWindow.show(message: L10n.repeatLastRegionNone)
+            return
+        }
+        let screen = resolved.screen
+        let screenRect = resolved.rect
+        guard let window = windows.first(where: { $0.screen == screen }),
+              let selectionView = window.contentView as? SelectionView else {
+            ToastWindow.show(message: L10n.repeatLastRegionNone)
+            return
+        }
+
+        // Window content view is screen-sized; convert global AppKit rect into
+        // the selection view's local coordinates.
+        let windowRect = window.convertFromScreen(screenRect)
+        var localRect = selectionView.convert(windowRect, from: nil)
+        localRect = localRect.intersection(selectionView.bounds)
+        guard localRect.width >= 5, localRect.height >= 5 else {
+            ToastWindow.show(message: L10n.repeatLastRegionNone)
+            return
+        }
+        selectionView.updateSelectionRect(localRect)
+        selectionView.aspectRatio = usesAspectRatioSelection ? Self.persistedSelectionAspectRatio : nil
+        activeSelectionView = selectionView
+        activeScreen = screen
+        window.makeKeyAndOrderFront(nil)
+        window.makeFirstResponder(selectionView)
+        if relocated {
+            ToastWindow.show(message: L10n.repeatLastRegionRelocated)
+        }
+    }
+
+    private func rememberLastCaptureRegion(
+        screenRect: NSRect,
+        captureRect: CGRect,
+        displayID: CGDirectDisplayID,
+        isWindowCapture: Bool,
+        windowID: CGWindowID?
+    ) {
+        guard presetImage == nil else { return }
+        guard screenRect.width >= 5, screenRect.height >= 5 else { return }
+        Defaults.lastCaptureRegion = LastCaptureRegion(
+            displayID: displayID,
+            screenRect: screenRect,
+            captureRect: captureRect,
+            isWindowCapture: isWindowCapture,
+            windowID: windowID
+        )
     }
 
     /// Image-edit mode: pick the screen under the cursor, place a centered
@@ -1169,6 +1566,10 @@ class OverlayWindowController {
     func cancel() {
         guard !sessionEnded else { return }
         triggerContext?.finish(.cancelled)
+        // Exit click-through first so toolbars reattach before editor teardown.
+        if isCaptureClickThroughActive {
+            setCaptureClickThrough(false)
+        }
         editController?.tearDown()
         editController = nil
         tearDown()
@@ -1178,6 +1579,9 @@ class OverlayWindowController {
 
     private func suspendCurrentEditFromMask() {
         guard let draft = makeSuspendedEditDraft() else { return }
+        if isCaptureClickThroughActive {
+            setCaptureClickThrough(false)
+        }
         editController?.tearDown()
         editController = nil
         tearDown()
@@ -1226,6 +1630,14 @@ class OverlayWindowController {
         windowCaptureTask = nil
         pendingWindowCapture = nil
         pendingSelection = nil
+        removeSelectionSizeLabelObserver()
+        if isCaptureClickThroughActive {
+            isCaptureClickThroughActive = false
+            restoreCaptureClickThroughChrome()
+            for case let selectionView as SelectionView in windows.compactMap(\.contentView) {
+                selectionView.showsLiveBackground = false
+            }
+        }
         ToastWindow.dismiss()
 
         if cursorWasPushed, !cursorPopped {
@@ -1474,6 +1886,14 @@ extension OverlayWindowController: SelectionViewDelegate {
             selectionView: selectionView,
             displayID: displayID,
             isWindowSelection: isWindowSelection,
+            windowID: windowID
+        )
+
+        rememberLastCaptureRegion(
+            screenRect: screenRect,
+            captureRect: cgRect,
+            displayID: displayID,
+            isWindowCapture: isWindowSelection,
             windowID: windowID
         )
 
@@ -1743,7 +2163,12 @@ extension OverlayWindowController: SelectionViewDelegate {
             self?.tearDown()
             self?.onComplete(finalImage)
         }
+        editController?.onToggleCaptureClickThrough = { [weak self] in
+            self?.toggleCaptureClickThrough()
+        }
         editController?.show()
+        // Toolbars exist only after show(); sync toggle highlight now.
+        editController?.setCaptureClickThroughActive(isCaptureClickThroughActive)
     }
 
     private func switchHistoryImageFromKeyboard(for event: NSEvent) -> Bool {
@@ -2061,4 +2486,32 @@ extension OverlayWindowController: SelectionViewDelegate {
 
         return ScreenCapturer.crop(from: preSnapshot, captureRect: captureRect, screen: screen)
     }
+}
+
+/// Interactive chrome host used while capture click-through is active.
+/// Overlay shells ignore mouse events; these panels keep toolbars clickable
+/// (including the toggle that exits click-through).
+private final class CaptureClickThroughChromePanel: NSPanel {
+    init(contentRect: NSRect) {
+        super.init(
+            contentRect: contentRect,
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        isFloatingPanel = true
+        level = NSWindow.Level(rawValue: NSWindow.Level.screenSaver.rawValue + 6)
+        isOpaque = false
+        backgroundColor = .clear
+        hasShadow = false
+        ignoresMouseEvents = false
+        hidesOnDeactivate = false
+        becomesKeyOnlyIfNeeded = true
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+        sharingType = .none
+        contentView = NSView(frame: NSRect(origin: .zero, size: contentRect.size))
+        contentView?.wantsLayer = false
+    }
+
+    override var canBecomeKey: Bool { true }
 }

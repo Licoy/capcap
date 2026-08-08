@@ -136,6 +136,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 )
             },
             onTakeFullScreenScreenshot: { [weak self] in self?.handleFullScreenScreenshotTrigger() },
+            onRepeatLastRegion: { [weak self] in self?.handleRepeatLastRegionTrigger() },
             onRecord: { [weak self] in self?.handleRecordingTrigger() },
             onMergeImages: { [weak self] in self?.handleImageMergeMenuTrigger() },
             onUploadFiles: { [weak self] in self?.handleFileUploadTrigger() },
@@ -317,6 +318,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             HotkeyManager.shared.unregisterFullScreenScreenshot()
         }
 
+        if Defaults.hasCustomRepeatLastRegionHotkey {
+            HotkeyManager.shared.registerRepeatLastRegion { [weak self] in
+                self?.handleRepeatLastRegionTrigger()
+            }
+        } else {
+            HotkeyManager.shared.unregisterRepeatLastRegion()
+        }
+
         if Defaults.hasCustomColorPickerHotkey {
             HotkeyManager.shared.registerColorPicker { [weak self] in
                 self?.handleColorPickerTrigger()
@@ -349,6 +358,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         HotkeyManager.shared.unregisterFullScreenScreenshot()
         HotkeyManager.shared.unregisterColorPicker()
         HotkeyManager.shared.unregisterHistoryPanel()
+        HotkeyManager.shared.unregisterRepeatLastRegion()
     }
 
     @discardableResult
@@ -770,6 +780,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func startCapture(
         postCaptureAction: OverlayWindowController.PostCaptureAction = .edit,
         triggerContext: CaptureTriggerContext? = nil,
+        initialSelection: LastCaptureRegion? = nil,
         onFirstFramePresented: (() -> Void)? = nil
     ) {
         let context = triggerContext ?? CaptureTriggerContext(source: .programmatic)
@@ -792,12 +803,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             onSuspend: { [weak self] draft in
                 self?.handleEditSuspension(draft)
             },
+            initialSelection: initialSelection,
             onComplete: { [weak self] finalImage in
                 self?.handleEditCompletion(finalImage)
             }
         )
         overlayController?.activate()
         applyHotkeyState()
+    }
+
+    func handleRepeatLastRegionTrigger() {
+        guard overlayController == nil, recordingEngine == nil else { return }
+        guard let region = Defaults.lastCaptureRegion else {
+            ToastWindow.show(message: L10n.repeatLastRegionNone)
+            return
+        }
+        startCapture(
+            triggerContext: CaptureTriggerContext(source: .menu),
+            initialSelection: region
+        )
     }
 
     private func handleEditCompletion(_ finalImage: NSImage?) {

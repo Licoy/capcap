@@ -189,14 +189,14 @@
 
 /* Cursor chip */
 "dragToScreenshot" = "Нажмите на окно или перетащите для снимка";
-"dragToScreenshotAspectFree" = "Нажмите на окно или перетащите для снимка · Свободное выделение (R)";
-"dragToScreenshotAspect" = "Нажмите на окно или перетащите для снимка · Выделение %@ (R)";
+"dragToScreenshotAspectFree" = "Нажмите на окно или перетащите для снимка · Свободное выделение (⇧R)";
+"dragToScreenshotAspect" = "Нажмите на окно или перетащите для снимка · %@ (⇧R)";
 "dragToTextRecognition" = "Нажмите на окно или выделите область для распознавания текста";
 "dragToCopyImageText" = "Нажмите на окно или выделите область, чтобы скопировать текст";
 "dragToScreenshotTranslation" = "Нажмите на окно или выделите область для перевода содержимого";
 "dragToRecord" = "Нажмите на окно или перетащите для записи";
-"dragToRecordAspectFree" = "Нажмите на окно или перетащите для записи · Свободное выделение (R)";
-"dragToRecordAspect" = "Нажмите на окно или перетащите для записи · Выделение %@ (R)";
+"dragToRecordAspectFree" = "Нажмите на окно или перетащите для записи · Свободное выделение (⇧R)";
+"dragToRecordAspect" = "Нажмите на окно или перетащите для записи · Выделение %@ (⇧R)";
 
 /* Toast */
 "copiedToClipboard" = "Скопировано в буфер обмена";
@@ -645,7 +645,7 @@
 "magnifierLensPanelCopyHint" = "Копировать цвет(C)";
 "magnifierLensPanelFormatHint" = "Формат(F)";
 "magnifierLensPanelAspectFree" = "Свободно";
-"magnifierLensPanelAspectHint" = "Пропорц.(R)";
+"magnifierLensPanelAspectHint" = "Пропорц.(⇧R)";
 /* Загрузка файлов */
 "fileUploadShortcutHeader" = "Загрузить файлы";
 "finderUploadShortcutDefaultDisplay" = "Не задано";
@@ -664,3 +664,28 @@
 "finderUploadUnknownSize" = "Размер неизвестен";
 "finderUploadReadFailed" = "Не удалось прочитать файл %@";
 "finderUploadCompleted" = "Загружено файлов: %d, ссылки скопированы";
+
+"tipRefreshCapture" = "Обновить снимок";
+"refreshCaptureSuccess" = "Снимок обновлён";
+"refreshCaptureFailed" = "Не удалось обновить снимок";
+"refreshCaptureUnavailable" = "Обновление доступно только для снимков экрана";
+"repeatLastRegionMenu" = "Повторить прошлую область";
+"repeatLastRegionNone" = "Нет предыдущей области";
+"repeatLastRegionRelocated" = "Прошлая область перенесена на текущий экран";
+"repeatLastRegionShortcutHeader" = "Повторить прошлую область";
+"repeatLastRegionShortcutDefaultDisplay" = "Не задано";
+"selectionSizeInputHint" = "Ширина × Высота";
+"selectionSizeInputInvalid" = "Введите размер вроде 800x600";
+"selectionSizeLabelTip" = "Нажмите или Tab для точного размера";
+"magnifierLensPanelSizeHint" = "Размер(Tab)";
+"pinClickThrough" = "Сквозной клик";
+"pinClickThroughOn" = "Сквозной клик включён";
+"pinClickThroughOff" = "Сквозной клик выключен";
+"pinClickThroughMenu" = "Отключить сквозной клик";
+"pinClickThroughShortcutHeader" = "Сквозной клик (снимок)";
+"pinClickThroughShortcutDefaultDisplay" = "⌥⌘P";
+"shortcutConflictRepeatLastRegion" = "Конфликт с повтором области";
+"shortcutConflictPinClickThrough" = "Конфликт со сквозным кликом";
+"tipClickThrough" = "Сквозной клик";
+"captureClickThroughOn" = "Сквозной клик включён";
+"captureClickThroughOff" = "Сквозной клик выключен";

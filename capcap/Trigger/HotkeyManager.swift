@@ -61,6 +61,10 @@ final class HotkeyManager {
     private static let historyPanelHotKeyID: UInt32 = 15
     private static let historyPreviewHotKeyID: UInt32 = 16
     private static let finderUploadHotKeyID: UInt32 = 17
+    private static let repeatLastRegionHotKeyID: UInt32 = 18
+
+    private var repeatLastRegionHotKeyRef: EventHotKeyRef?
+    private var repeatLastRegionCallback: (() -> Void)?
 
     private init() {}
 
@@ -82,6 +86,7 @@ final class HotkeyManager {
         unregisterColorPicker()
         unregisterHistoryPanel()
         unregisterHistoryPreview()
+        unregisterRepeatLastRegion()
         if let handler = eventHandlerRef {
             RemoveEventHandler(handler)
             eventHandlerRef = nil
@@ -436,6 +441,32 @@ final class HotkeyManager {
         }
     }
 
+    /// Register the saved "repeat last region" hotkey, if any.
+    func registerRepeatLastRegion(callback: @escaping () -> Void) {
+        self.repeatLastRegionCallback = callback
+        unregisterRepeatLastRegion()
+
+        guard let (keyCode, modifiers) = currentRepeatLastRegionHotkey() else { return }
+
+        installEventHandlerIfNeeded()
+        var ref: EventHotKeyRef?
+        let id = EventHotKeyID(signature: Self.regularHotKeySignature, id: Self.repeatLastRegionHotKeyID)
+        let status = RegisterEventHotKey(
+            keyCode, modifiers, id,
+            GetApplicationEventTarget(), 0, &ref
+        )
+        if status == noErr, let ref {
+            repeatLastRegionHotKeyRef = ref
+        }
+    }
+
+    func unregisterRepeatLastRegion() {
+        if let ref = repeatLastRegionHotKeyRef {
+            UnregisterEventHotKey(ref)
+            repeatLastRegionHotKeyRef = nil
+        }
+    }
+
     /// Register the saved full-screen screenshot hotkey, if any.
     func registerFullScreenScreenshot(callback: @escaping () -> Void) {
         self.fullScreenScreenshotCallback = callback
@@ -779,6 +810,37 @@ final class HotkeyManager {
         return modifierString(mods) + keyString(kc)
     }
 
+    func currentRepeatLastRegionHotkey() -> (keyCode: UInt32, modifiers: UInt32)? {
+        guard Defaults.hasCustomRepeatLastRegionHotkey else { return nil }
+        let kc = UInt32(Defaults.repeatLastRegionHotkeyKeyCode)
+        let mods = UInt32(Defaults.repeatLastRegionHotkeyModifiers)
+        guard mods != 0 || Self.isFunctionKey(kc) else { return nil }
+        return (kc, mods)
+    }
+
+    static func currentRepeatLastRegionDisplayString() -> String? {
+        guard let (kc, mods) = HotkeyManager.shared.currentRepeatLastRegionHotkey() else { return nil }
+        return modifierString(mods) + keyString(kc)
+    }
+
+    /// Pin click-through exit/toggle combo. Always has a value (default ⌥⌘P).
+    func currentPinClickThroughHotkey() -> (keyCode: UInt32, modifiers: UInt32) {
+        (
+            UInt32(Defaults.pinClickThroughHotkeyKeyCode),
+            UInt32(Defaults.pinClickThroughHotkeyModifiers)
+        )
+    }
+
+    static func currentPinClickThroughDisplayString() -> String {
+        let (kc, mods) = HotkeyManager.shared.currentPinClickThroughHotkey()
+        return modifierString(mods) + keyString(kc)
+    }
+
+    static func eventMatchesPinClickThroughHotkey(_ event: NSEvent) -> Bool {
+        let (kc, m) = HotkeyManager.shared.currentPinClickThroughHotkey()
+        return matches(event: event, keyCode: kc, modifiers: m)
+    }
+
     /// Returns (keyCode, carbonModifiers) for the saved full-screen screenshot
     /// hotkey.
     func currentFullScreenScreenshotHotkey() -> (keyCode: UInt32, modifiers: UInt32)? {
@@ -938,6 +1000,7 @@ final class HotkeyManager {
         case record
         case imageMerge
         case finderUpload
+        case repeatLastRegion
         case fullScreenScreenshot
         case colorPicker
         case clipboard
@@ -945,6 +1008,7 @@ final class HotkeyManager {
         case previousHistoryImage
         case nextHistoryImage
         case historyPanel
+        case pinClickThrough
     }
 
     /// Returns a localized message describing the existing binding a candidate
@@ -1072,6 +1136,27 @@ final class HotkeyManager {
             if slot == .screenshot, modifiers & UInt32(optionKey) == 0,
                m == modifiers | UInt32(optionKey) {
                 return L10n.shortcutConflictImageMerge
+            }
+        }
+        if slot != .repeatLastRegion,
+           let (kc, m) = currentRepeatLastRegionHotkey(),
+           kc == keyCode {
+            if m == modifiers {
+                return L10n.shortcutConflictRepeatLastRegion
+            }
+            if slot == .screenshot, modifiers & UInt32(optionKey) == 0,
+               m == modifiers | UInt32(optionKey) {
+                return L10n.shortcutConflictRepeatLastRegion
+            }
+        }
+        if slot != .pinClickThrough {
+            let (kc, m) = currentPinClickThroughHotkey()
+            if kc == keyCode, m == modifiers {
+                return L10n.shortcutConflictPinClickThrough
+            }
+            if slot == .screenshot, modifiers & UInt32(optionKey) == 0,
+               kc == keyCode, m == modifiers | UInt32(optionKey) {
+                return L10n.shortcutConflictPinClickThrough
             }
         }
         if slot != .finderUpload,
@@ -1222,6 +1307,8 @@ final class HotkeyManager {
                     callback = mgr.imageMergeCallback
                 case HotkeyManager.finderUploadHotKeyID:
                     callback = mgr.finderUploadCallback
+                case HotkeyManager.repeatLastRegionHotKeyID:
+                    callback = mgr.repeatLastRegionCallback
                 case HotkeyManager.fullScreenScreenshotHotKeyID:
                     callback = mgr.fullScreenScreenshotCallback
                 case HotkeyManager.colorPickerHotKeyID:
@@ -1296,6 +1383,22 @@ final class HotkeyManager {
             item.keyEquivalentModifierMask = []
             return
         }
+        apply(keyCode: kc, modifiers: mods, to: item)
+    }
+
+    static func applyRepeatLastRegionToMenuItem(_ item: NSMenuItem) {
+        item.attributedTitle = nil
+        guard let (kc, mods) = HotkeyManager.shared.currentRepeatLastRegionHotkey() else {
+            item.keyEquivalent = ""
+            item.keyEquivalentModifierMask = []
+            return
+        }
+        apply(keyCode: kc, modifiers: mods, to: item)
+    }
+
+    static func applyPinClickThroughToMenuItem(_ item: NSMenuItem) {
+        item.attributedTitle = nil
+        let (kc, mods) = HotkeyManager.shared.currentPinClickThroughHotkey()
         apply(keyCode: kc, modifiers: mods, to: item)
     }
 
