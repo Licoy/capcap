@@ -70,6 +70,45 @@ final class OverlayPresentationTests: XCTestCase {
         XCTAssertTrue(controller.isMagnifierLensPanelPresented)
     }
 
+    func testLegacyDisabledDemoModePreferenceIsIgnoredForPooledOverlays() {
+        _ = NSApplication.shared
+        let key = "demoMode"
+        let previousValue = UserDefaults.standard.object(forKey: key)
+        UserDefaults.standard.set(false, forKey: key)
+        defer {
+            if let previousValue {
+                UserDefaults.standard.set(previousValue, forKey: key)
+            } else {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+        }
+
+        let controller = OverlayWindowController(
+            snapshotProvider: ControlledScreenSnapshotProvider(),
+            onComplete: { _ in }
+        )
+        controller.activate()
+        let panels = controller.activeSelectionViews.compactMap(\.window)
+        XCTAssertFalse(panels.isEmpty)
+        XCTAssertTrue(panels.allSatisfy { $0.sharingType == .readOnly })
+        controller.cancel()
+
+        XCTAssertTrue(
+            panels.allSatisfy { $0.sharingType == .readOnly },
+            "Recycled overlay surfaces must stay visible to running recorders"
+        )
+
+        let reusedController = OverlayWindowController(
+            snapshotProvider: ControlledScreenSnapshotProvider(),
+            onComplete: { _ in }
+        )
+        reusedController.activate()
+        XCTAssertTrue(reusedController.activeSelectionViews.allSatisfy {
+            $0.window?.sharingType == .readOnly
+        })
+        reusedController.cancel()
+    }
+
     func testRShortcutIsHandledWhileSnapshotPreparationIsPending() throws {
         _ = NSApplication.shared
         let previousAspectRatio = Defaults.hasSelectionAspectRatio
@@ -124,6 +163,48 @@ final class OverlayPresentationTests: XCTestCase {
             try XCTUnwrap(Defaults.selectionAspectRatioPresets.first),
             accuracy: 0.000_001
         )
+    }
+
+    func testFShortcutTogglesMagnifierColorFormat() throws {
+        _ = NSApplication.shared
+        let controller = OverlayWindowController(
+            snapshotProvider: ControlledScreenSnapshotProvider(delay: 2),
+            onComplete: { _ in }
+        )
+        controller.activate()
+        defer { controller.cancel() }
+
+        let selectionView = try XCTUnwrap(
+            controller.activeSelectionViews.first(where: { $0.window?.isKeyWindow == true })
+        )
+        let windowNumber = try XCTUnwrap(selectionView.window?.windowNumber)
+
+        func sendF(isARepeat: Bool = false) throws {
+            let event = try XCTUnwrap(
+                NSEvent.keyEvent(
+                    with: .keyDown,
+                    location: .zero,
+                    modifierFlags: [],
+                    timestamp: ProcessInfo.processInfo.systemUptime,
+                    windowNumber: windowNumber,
+                    context: nil,
+                    characters: "f",
+                    charactersIgnoringModifiers: "f",
+                    isARepeat: isARepeat,
+                    keyCode: 3
+                )
+            )
+            NSApp.sendEvent(event)
+            drainMainRunLoop()
+        }
+
+        XCTAssertEqual(controller.currentMagnifierLensPanelFormat, .hex)
+        try sendF()
+        XCTAssertEqual(controller.currentMagnifierLensPanelFormat, .rgb)
+        try sendF(isARepeat: true)
+        XCTAssertEqual(controller.currentMagnifierLensPanelFormat, .rgb)
+        try sendF()
+        XCTAssertEqual(controller.currentMagnifierLensPanelFormat, .hex)
     }
 
     func testCaptureStartsWithCrosshairAndPointerEventsKeepIt() throws {
@@ -198,6 +279,209 @@ final class OverlayPresentationTests: XCTestCase {
         XCTAssertEqual(NSCursor.current, NSCursor.crosshair)
     }
 
+    func testSelectedHandlesUseDirectionalResizeCursorsForHoverAndDrag() throws {
+        _ = NSApplication.shared
+        let originalCursor = NSCursor.current
+        let selectionView = SelectionView(frame: NSRect(x: 0, y: 0, width: 500, height: 400))
+        defer { originalCursor.set() }
+
+        let selectionRect = NSRect(x: 100, y: 80, width: 240, height: 180)
+        selectionView.updateSelectionRect(selectionRect)
+        selectionView.selectionLocked = true
+        let positions = SelectionView.handlePositions(for: selectionRect)
+        let handles = SelectionView.HandlePosition.allCases
+        // These events are delivered directly to the view, so presenting a
+        // real window only adds WindowServer cursor-rect work. Keeping the
+        // test off-screen makes the AppKit unit test deterministic in CI.
+        let windowNumber = 0
+
+        for (index, handle) in handles.enumerated() {
+            let event = try XCTUnwrap(
+                NSEvent.mouseEvent(
+                    with: .mouseMoved,
+                    location: positions[index],
+                    modifierFlags: [],
+                    timestamp: ProcessInfo.processInfo.systemUptime,
+                    windowNumber: windowNumber,
+                    context: nil,
+                    eventNumber: index,
+                    clickCount: 0,
+                    pressure: 0
+                )
+            )
+            NSCursor.crosshair.set()
+            selectionView.mouseMoved(with: event)
+            XCTAssertEqual(
+                NSCursor.current,
+                SelectionView.cursorForHandle(handle),
+                "Handle \(handle) should use its directional resize cursor"
+            )
+        }
+
+        let draggedHandle = SelectionView.HandlePosition.topRight
+        let mouseDown = try XCTUnwrap(
+            NSEvent.mouseEvent(
+                with: .leftMouseDown,
+                location: positions[1],
+                modifierFlags: [],
+                timestamp: ProcessInfo.processInfo.systemUptime,
+                windowNumber: windowNumber,
+                context: nil,
+                eventNumber: 20,
+                clickCount: 1,
+                pressure: 1
+            )
+        )
+        let draggedPoint = NSPoint(x: positions[1].x + 30, y: positions[1].y + 20)
+        let mouseDragged = try XCTUnwrap(
+            NSEvent.mouseEvent(
+                with: .leftMouseDragged,
+                location: draggedPoint,
+                modifierFlags: [],
+                timestamp: ProcessInfo.processInfo.systemUptime,
+                windowNumber: windowNumber,
+                context: nil,
+                eventNumber: 21,
+                clickCount: 1,
+                pressure: 1
+            )
+        )
+
+        selectionView.mouseDown(with: mouseDown)
+        XCTAssertEqual(NSCursor.current, SelectionView.cursorForHandle(draggedHandle))
+        NSCursor.crosshair.set()
+        selectionView.mouseDragged(with: mouseDragged)
+        XCTAssertEqual(
+            NSCursor.current,
+            SelectionView.cursorForHandle(draggedHandle),
+            "Dragging an existing handle must not restore the initial crosshair"
+        )
+    }
+
+    func testAnnotationCanvasPreservesOuterSelectionResizeCursors() throws {
+        _ = NSApplication.shared
+        let originalCursor = NSCursor.current
+        let selectionView = SelectionView(frame: NSRect(x: 0, y: 0, width: 500, height: 400))
+        defer { originalCursor.set() }
+
+        let selectionRect = NSRect(x: 100, y: 80, width: 240, height: 180)
+        selectionView.updateSelectionRect(selectionRect)
+        selectionView.selectionLocked = true
+
+        let canvas = EditCanvasView(frame: selectionRect)
+        canvas.hostSelectionView = selectionView
+        selectionView.addSubview(canvas)
+        canvas.activeTool = .rectangle
+
+        func canvasEvent(
+            type: NSEvent.EventType,
+            point: NSPoint,
+            eventNumber: Int
+        ) throws -> NSEvent {
+            let locationInWindow = canvas.convert(point, to: selectionView)
+            return try XCTUnwrap(NSEvent.mouseEvent(
+                with: type,
+                location: locationInWindow,
+                modifierFlags: [],
+                timestamp: ProcessInfo.processInfo.systemUptime,
+                windowNumber: 0,
+                context: nil,
+                eventNumber: eventNumber,
+                clickCount: type == .mouseMoved ? 0 : 1,
+                pressure: type == .mouseMoved ? 0 : 1
+            ))
+        }
+
+        // Commit a real mark first so this follows the exact event-routing
+        // transition from the regression video.
+        let markStart = NSPoint(x: 70, y: 55)
+        let markEnd = NSPoint(x: 165, y: 125)
+        canvas.mouseDown(with: try canvasEvent(type: .leftMouseDown, point: markStart, eventNumber: 1))
+        canvas.mouseDragged(with: try canvasEvent(type: .leftMouseDragged, point: markEnd, eventNumber: 2))
+        canvas.mouseUp(with: try canvasEvent(type: .leftMouseUp, point: markEnd, eventNumber: 3))
+        XCTAssertTrue(canvas.canUndo, "The test must reach the post-annotation state")
+
+        let inwardOffsets: [SelectionView.HandlePosition: NSPoint] = [
+            .topLeft: NSPoint(x: 2, y: -2),
+            .topRight: NSPoint(x: -2, y: -2),
+            .bottomLeft: NSPoint(x: 2, y: 2),
+            .bottomRight: NSPoint(x: -2, y: 2),
+            .topCenter: NSPoint(x: 0, y: -2),
+            .bottomCenter: NSPoint(x: 0, y: 2),
+            .leftCenter: NSPoint(x: 2, y: 0),
+            .rightCenter: NSPoint(x: -2, y: 0),
+        ]
+        let positions = SelectionView.handlePositions(for: selectionRect)
+
+        for (index, handle) in SelectionView.HandlePosition.allCases.enumerated() {
+            let offset = try XCTUnwrap(inwardOffsets[handle])
+            let hostPoint = NSPoint(
+                x: positions[index].x + offset.x,
+                y: positions[index].y + offset.y
+            )
+            let canvasPoint = canvas.convert(hostPoint, from: selectionView)
+            NSCursor.arrow.set()
+            canvas.mouseMoved(with: try canvasEvent(
+                type: .mouseMoved,
+                point: canvasPoint,
+                eventNumber: 10 + index
+            ))
+            XCTAssertEqual(
+                NSCursor.current,
+                SelectionView.cursorForHandle(handle),
+                "Canvas tracking must preserve the outer cursor for \(handle)"
+            )
+        }
+
+        // Crossing out of the canvas at a frame handle also emits
+        // mouseExited; that event must not flash the arrow cursor.
+        let topCenter = positions[4]
+        let outsideCanvasPoint = canvas.convert(
+            NSPoint(x: topCenter.x, y: topCenter.y + 2),
+            from: selectionView
+        )
+        NSCursor.arrow.set()
+        canvas.mouseExited(with: try canvasEvent(
+            type: .mouseMoved,
+            point: outsideCanvasPoint,
+            eventNumber: 30
+        ))
+        XCTAssertEqual(
+            NSCursor.current,
+            SelectionView.cursorForHandle(.topCenter),
+            "Leaving the canvas through a frame handle must preserve its resize cursor"
+        )
+    }
+
+    func testExistingSelectionAdjustmentDoesNotRestoreMagnifier() throws {
+        _ = NSApplication.shared
+        let controller = OverlayWindowController(
+            snapshotProvider: ControlledScreenSnapshotProvider(delay: 2),
+            windowSnapshotLoader: { _ in .success([]) },
+            onComplete: { _ in }
+        )
+        controller.activate()
+        defer { controller.cancel() }
+
+        XCTAssertTrue(controller.isMagnifierLensPanelPresented)
+        let selectionView = try XCTUnwrap(
+            controller.activeSelectionViews.first(where: { $0.window?.isKeyWindow == true })
+        )
+        controller.selectionDidComplete(
+            rect: NSRect(x: 100, y: 100, width: 200, height: 150),
+            inView: selectionView,
+            isWindowSelection: false,
+            windowID: nil
+        )
+        XCTAssertFalse(controller.isMagnifierLensPanelPresented)
+
+        controller.selectionDidStart(reason: .existingSelectionAdjustment)
+        XCTAssertFalse(
+            controller.isMagnifierLensPanelPresented,
+            "Adjusting a completed selection must not restore the startup magnifier"
+        )
+    }
+
     func testCaptureReassertsCrosshairAfterTriggerModifierReleaseWithoutMouseMovement() {
         _ = NSApplication.shared
         let originalCursor = NSCursor.current
@@ -255,6 +539,89 @@ final class OverlayPresentationTests: XCTestCase {
         XCTAssertTrue(controller.isOverlayPresented)
         XCTAssertEqual(controller.appliedSnapshotCount, 1)
         controller.cancel()
+    }
+
+    func testApplicationModalCaptureWaitsForSnapshotBeforeAbortingModal() throws {
+        _ = NSApplication.shared
+        let provider = ControlledScreenSnapshotProvider()
+        let modalWindow = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 320, height: 180),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        modalWindow.isReleasedWhenClosed = false
+        var activeModalWindow: NSWindow? = modalWindow
+        var dismissedModalWindow: NSWindow?
+        let controller = OverlayWindowController(
+            snapshotProvider: provider,
+            windowSnapshotLoader: { _ in .success([]) },
+            modalWindowProvider: { activeModalWindow },
+            modalWindowDismissal: { window in
+                dismissedModalWindow = window
+                if activeModalWindow === window {
+                    activeModalWindow = nil
+                }
+            },
+            onComplete: { _ in }
+        )
+        defer {
+            controller.cancel()
+            modalWindow.close()
+        }
+
+        controller.activate()
+
+        XCTAssertFalse(controller.isOverlayPresented)
+        XCTAssertNil(dismissedModalWindow)
+
+        let displayID = try XCTUnwrap(provider.targets.first?.displayID)
+        provider.emit(.image(displayID: displayID, image: makeImage()))
+        drainMainRunLoop()
+
+        XCTAssertTrue(dismissedModalWindow === modalWindow)
+        XCTAssertNil(activeModalWindow)
+        XCTAssertTrue(controller.isOverlayPresented)
+        XCTAssertEqual(controller.appliedSnapshotCount, 1)
+    }
+
+    func testApplicationModalWithoutSnapshotAbortsBeforePresentingOverlay() {
+        _ = NSApplication.shared
+        let provider = ControlledScreenSnapshotProvider()
+        let modalWindow = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 320, height: 180),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        modalWindow.isReleasedWhenClosed = false
+        var activeModalWindow: NSWindow? = modalWindow
+        var dismissalCount = 0
+        let controller = OverlayWindowController(
+            postCaptureAction: .record,
+            snapshotProvider: provider,
+            windowSnapshotLoader: { _ in .success([]) },
+            modalWindowProvider: { activeModalWindow },
+            modalWindowDismissal: { window in
+                dismissalCount += 1
+                if activeModalWindow === window {
+                    activeModalWindow = nil
+                }
+            },
+            onComplete: { _ in }
+        )
+        defer {
+            controller.cancel()
+            modalWindow.close()
+        }
+
+        controller.activate()
+        drainMainRunLoop()
+
+        XCTAssertEqual(provider.captureCount, 0)
+        XCTAssertEqual(dismissalCount, 1)
+        XCTAssertNil(activeModalWindow)
+        XCTAssertTrue(controller.isOverlayPresented)
     }
 
     func testSelectionWaitsWithoutBlockingAndResumesWhenItsSnapshotArrives() throws {

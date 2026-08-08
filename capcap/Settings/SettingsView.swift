@@ -64,7 +64,6 @@ class SettingsView: NSView {
     // Switches
     private var menuBarSwitch: NSSwitch!
     private var launchAtLoginSwitch: NSSwitch!
-    private var demoModeSwitch: NSSwitch!
     private var pinAcrossSpacesSwitch: NSSwitch!
 
     // Modifier-assisted selection movement
@@ -257,8 +256,6 @@ class SettingsView: NSView {
     // Labels (kept for language switching)
     private var menuBarTitleLabel: NSTextField!
     private var launchAtLoginTitleLabel: NSTextField!
-    private var demoModeTitleLabel: NSTextField!
-    private var demoModeSubtitleLabel: NSTextField!
     private var pinAcrossSpacesTitleLabel: NSTextField!
     private var pinAcrossSpacesSubtitleLabel: NSTextField!
     private var langTitleLabel: NSTextField!
@@ -741,19 +738,6 @@ class SettingsView: NSView {
         login.row.widthAnchor.constraint(equalTo: togglesInner.widthAnchor).isActive = true
         togglesInner.addArrangedSubview(rowDivider())
 
-        let demo = makeToggleRow(
-            title: L10n.demoMode,
-            subtitle: L10n.demoModeHint,
-            isOn: Defaults.demoMode,
-            action: #selector(demoModeToggled(_:))
-        )
-        demoModeTitleLabel = demo.title
-        demoModeSubtitleLabel = demo.subtitle
-        demoModeSwitch = demo.toggle
-        togglesInner.addArrangedSubview(demo.row)
-        demo.row.widthAnchor.constraint(equalTo: togglesInner.widthAnchor).isActive = true
-        togglesInner.addArrangedSubview(rowDivider())
-
         let pinAcrossSpaces = makeToggleRow(
             title: L10n.pinAcrossSpaces,
             subtitle: L10n.pinAcrossSpacesHint,
@@ -765,7 +749,6 @@ class SettingsView: NSView {
         pinAcrossSpacesSwitch = pinAcrossSpaces.toggle
         togglesInner.addArrangedSubview(pinAcrossSpaces.row)
         pinAcrossSpaces.row.widthAnchor.constraint(equalTo: togglesInner.widthAnchor).isActive = true
-        togglesInner.addArrangedSubview(rowDivider())
 
         stack.addArrangedSubview(togglesCard)
         togglesCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
@@ -3405,10 +3388,6 @@ class SettingsView: NSView {
         }
     }
 
-    @objc private func demoModeToggled(_ sender: NSSwitch) {
-        Defaults.demoMode = sender.state == .on
-    }
-
     @objc private func pinAcrossSpacesToggled(_ sender: NSSwitch) {
         Defaults.pinAcrossSpaces = sender.state == .on
     }
@@ -5332,8 +5311,6 @@ class SettingsView: NSView {
         permissionFlowController.setLocaleIdentifier(Defaults.language.lprojName)
         menuBarTitleLabel?.stringValue = L10n.showMenuBarIcon
         launchAtLoginTitleLabel?.stringValue = L10n.launchAtLogin
-        demoModeTitleLabel?.stringValue = L10n.demoMode
-        demoModeSubtitleLabel?.stringValue = L10n.demoModeHint
         pinAcrossSpacesTitleLabel?.stringValue = L10n.pinAcrossSpaces
         pinAcrossSpacesSubtitleLabel?.stringValue = L10n.pinAcrossSpacesHint
         pinAcrossSpacesSwitch?.state = Defaults.pinAcrossSpaces ? .on : .off

@@ -103,7 +103,8 @@
 - **最近歷程**：選單列歷程子選單顯示截圖縮圖和取色記錄，方便快速再次複製；快取數量可設定。
 - **圖床上傳**：可選地把截圖一鍵上傳到騰訊雲 COS、七牛雲 Kodo 或阿里雲 OSS，公開網路連結寫入剪貼簿，並和縮圖一起儲存到歷程記錄。所有金鑰只儲存在本機 UserDefaults；選定一個為預設圖床後，編輯器裡的上傳按鈕即被點亮。
 - **自訂觸發方式**：預設雙擊 `⌘`，也可在設定裡錄製全域快速鍵。
-- **設定與本地化**：支援简体中文、繁體中文、English、日本語、한국어、Français、Русский、Tiếng Việt UI，並提供選單列圖示開關、開機啟動、示範模式、權限狀態、快速鍵錄製和歷程快取數量。
+- **外部錄影相容性**：選取遮罩與編輯器預設可被外部錄影軟體擷取，無需額外設定。
+- **設定與本地化**：支援简体中文、繁體中文、English、日本語、한국어、Français、Русский、Tiếng Việt UI，並提供選單列圖示開關、開機啟動、權限狀態、快速鍵錄製和歷程快取數量。
 - **選單列應用程式**：以 agent app 執行，不顯示 Dock 圖示。
 
 ## 環境需求
@@ -202,7 +203,6 @@ scripts/package-dmg.sh
 - 語言：简体中文、繁體中文、English、日本語、한국어、Français、Русский、Tiếng Việt
 - 是否顯示選單列圖示
 - 是否開機自動啟動
-- 示範模式：允許外部錄影軟體擷取 capcap 的遮罩和編輯器
 - 截圖快速鍵：保留雙擊 `⌘`、錄製自訂快速鍵，或恢復預設
 - 歷程快取數量：保留最近 5 到 20 條截圖/取色記錄
 - 圖床上傳：啟用騰訊雲 COS、七牛雲 Kodo 或阿里雲 OSS，填入對應的金鑰後選定一個作為預設圖床，編輯器裡的上傳按鈕即可一鍵上傳
@@ -241,10 +241,6 @@ bash scripts/rebuild-and-open.sh
 ## 第三方授權條款
 
 - [PermissionFlow](https://github.com/jaywcjlove/PermissionFlow) 使用 MIT License。詳見 [ThirdParty/PermissionFlow/LICENSE](ThirdParty/PermissionFlow/LICENSE)。
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=realskyrin/capcap&type=Date)](https://star-history.com/#realskyrin/capcap&Date)
 
 ## License
 

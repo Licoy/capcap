@@ -158,7 +158,7 @@ private final class SelectionDelegateSpy: SelectionViewDelegate {
     private(set) var changeCount = 0
     private(set) var completionCount = 0
 
-    func selectionDidStart() {}
+    func selectionDidStart(reason: SelectionStartReason) {}
 
     func selectionDidComplete(
         rect: NSRect,

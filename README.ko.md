@@ -130,11 +130,7 @@ bash scripts/rebuild-and-open.sh
 
 ## 설정
 
-설정에서 언어, 메뉴 막대 아이콘, 로그인 시 실행, 데모 모드, 단축키, 기록 크기, 이미지 호스트, 권한 바로가기를 조정할 수 있습니다. UI 언어는 简体中文, 繁體中文, English, 日本語, 한국어, Français, Русский, Tiếng Việt을 지원합니다.
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=realskyrin/capcap&type=Date)](https://star-history.com/#realskyrin/capcap&Date)
+설정에서 언어, 메뉴 막대 아이콘, 로그인 시 실행, 단축키, 기록 크기, 이미지 호스트, 권한 바로가기를 조정할 수 있습니다. 선택 오버레이와 편집기는 별도 설정 없이 외부 화면 녹화에 기본으로 표시됩니다. UI 언어는 简体中文, 繁體中文, English, 日本語, 한국어, Français, Русский, Tiếng Việt을 지원합니다.
 
 ## 라이선스
 

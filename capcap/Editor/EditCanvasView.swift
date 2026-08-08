@@ -33,6 +33,7 @@ class EditCanvasView: NSView {
     var captureRect: CGRect?
     var captureScreen: NSScreen?
     var preSnapshot: CGImage?
+    weak var hostSelectionView: SelectionView?
     /// When set (image-edit mode), this image is the source-of-truth base
     /// instead of preSnapshot/live capture.
     var overrideBaseImage: NSImage?
@@ -3607,8 +3608,11 @@ class EditCanvasView: NSView {
             emojiPreviewPoint = nil
             needsDisplay = true
         }
-        // Let whatever's underneath manage its own cursor.
-        NSCursor.arrow.set()
+        let point = convert(event.locationInWindow, from: nil)
+        if hostSelectionView?.setResizeCursorIfNeeded(at: point, from: self) != true {
+            // Let whatever's underneath manage its own cursor.
+            NSCursor.arrow.set()
+        }
     }
 
     private func updateEmojiPreview(at point: NSPoint) {
@@ -3627,8 +3631,15 @@ class EditCanvasView: NSView {
     }
 
     private func updateCursor(at point: NSPoint) {
+        // Modifier-move owns the whole selection, including over handles.
         if shouldUseSelectionMoveCursor?() == true {
             NSCursor.openHand.set()
+            return
+        }
+        // The outer screenshot frame stays resizable while an annotation tool
+        // owns canvas tracking events. Preserve its eight directional cursors
+        // before considering annotation-specific hover affordances.
+        if hostSelectionView?.setResizeCursorIfNeeded(at: point, from: self) == true {
             return
         }
         // Don't fight the text field's I-beam while editing.

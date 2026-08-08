@@ -130,11 +130,7 @@ bash scripts/rebuild-and-open.sh
 
 ## 設定
 
-設定では、言語、メニューバーアイコン、ログイン時起動、デモモード、ショートカット、履歴サイズ、画像ホスト、権限ショートカットを変更できます。UI 言語は简体中文、繁體中文、English、日本語、한국어、Français、Русский、Tiếng Việt に対応しています。
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=realskyrin/capcap&type=Date)](https://star-history.com/#realskyrin/capcap&Date)
+設定では、言語、メニューバーアイコン、ログイン時起動、ショートカット、履歴サイズ、画像ホスト、権限ショートカットを変更できます。選択オーバーレイとエディタは、追加設定なしで外部の画面収録に表示されます。UI 言語は简体中文、繁體中文、English、日本語、한국어、Français、Русский、Tiếng Việt に対応しています。
 
 ## ライセンス
 

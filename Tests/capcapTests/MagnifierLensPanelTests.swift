@@ -229,7 +229,8 @@ final class MagnifierLensPanelTests: XCTestCase {
 
     func testHintLabelsIncludeTheirShortcuts() {
         XCTAssertTrue(L10n.magnifierLensPanelAspectHint.contains("R"))
-        XCTAssertTrue(L10n.magnifierLensPanelShiftHint.contains("Shift"))
+        XCTAssertTrue(L10n.magnifierLensPanelFormatHint.contains("F"))
+        XCTAssertFalse(L10n.magnifierLensPanelFormatHint.contains("Shift"))
         XCTAssertTrue(L10n.magnifierLensPanelCopyHint.contains("C"))
         XCTAssertFalse(L10n.magnifierLensPanelAspectFree.isEmpty)
     }
@@ -285,7 +286,7 @@ final class MagnifierLensPanelTests: XCTestCase {
         UserDefaults.standard.removeObject(forKey: "magnifierLensPanelShowCopyHint")
         UserDefaults.standard.removeObject(forKey: "magnifierLensPanelShowShiftHint")
         XCTAssertTrue(Defaults.magnifierLensPanelShowCopyHint)
-        XCTAssertTrue(Defaults.magnifierLensPanelShowShiftHint)
+        XCTAssertTrue(Defaults.magnifierLensPanelShowFormatHint)
         // Follow-system defaults on; dark/light RGBA defaults match docs.
         UserDefaults.standard.removeObject(forKey: "magnifierLensPanelFollowSystemAppearance")
         XCTAssertTrue(Defaults.magnifierLensPanelFollowSystemAppearance)

@@ -69,7 +69,6 @@ class OverlayWindowController {
     private var magnifierLensPanelFlagsChangedLocalMonitor: Any?
     private var magnifierLensPanelFlagsChangedGlobalMonitor: Any?
     private var magnifierLensPanelKeyDownGlobalMonitor: Any?
-    private var lastMagnifierLensPanelShiftDown: TimeInterval = 0
     private var magnifierLensPanelActive: Bool { magnifierLensPanel != nil }
     private var screenFramesByDisplayID: [CGDirectDisplayID: NSRect] = [:]
     private var escLocalMonitor: Any?
@@ -92,6 +91,8 @@ class OverlayWindowController {
     private let eventTrackingStateProvider: () -> Bool
     private let eventTrackingDismissal: () -> Void
     private let colorSamplerActiveProvider: () -> Bool
+    private let modalWindowProvider: () -> NSWindow?
+    private let modalWindowDismissal: (NSWindow) -> Void
     private let triggerContext: CaptureTriggerContext?
     private let onFirstFramePresented: (() -> Void)?
     private var screenSnapshots: [CGDirectDisplayID: CGImage] = [:]
@@ -122,9 +123,14 @@ class OverlayWindowController {
     /// snapshot/window-list callbacks cannot mutate a newer overlay session.
     private var presentationGeneration = 0
     private var sessionEnded = false
-    private var waitsForEventTrackingSnapshot = false
+    private var deferredPresentationBlocker: PresentationBlocker?
     private var firstFrameReported = false
     private var firstFrameTargetDisplayID: CGDirectDisplayID?
+
+    private enum PresentationBlocker {
+        case eventTracking
+        case applicationModal(NSWindow)
+    }
 
     private struct ActiveEditorContext {
         let captureRect: CGRect
@@ -242,6 +248,12 @@ class OverlayWindowController {
         colorSamplerActiveProvider: @escaping () -> Bool = {
             ColorPickerRunner.shared.isActive
         },
+        modalWindowProvider: @escaping () -> NSWindow? = {
+            OverlayWindowController.currentApplicationModalWindow()
+        },
+        modalWindowDismissal: @escaping (NSWindow) -> Void = { window in
+            OverlayWindowController.abortApplicationModalSession(for: window)
+        },
         onFirstFramePresented: (() -> Void)? = nil,
         onRecordingSelection: ((NSRect, NSScreen) -> Void)? = nil,
         onRequestFocusReturn: (() -> Void)? = nil,
@@ -260,6 +272,8 @@ class OverlayWindowController {
         self.eventTrackingStateProvider = eventTrackingStateProvider
         self.eventTrackingDismissal = eventTrackingDismissal
         self.colorSamplerActiveProvider = colorSamplerActiveProvider
+        self.modalWindowProvider = modalWindowProvider
+        self.modalWindowDismissal = modalWindowDismissal
         self.onFirstFramePresented = onFirstFramePresented
         self.onRecordingSelection = onRecordingSelection
         self.onRequestFocusReturn = onRequestFocusReturn
@@ -296,6 +310,12 @@ class OverlayWindowController {
             OverlayWindowController.dismissActiveEventTrackingSurface()
         }
         self.colorSamplerActiveProvider = { ColorPickerRunner.shared.isActive }
+        self.modalWindowProvider = {
+            OverlayWindowController.currentApplicationModalWindow()
+        }
+        self.modalWindowDismissal = { window in
+            OverlayWindowController.abortApplicationModalSession(for: window)
+        }
         self.onFirstFramePresented = nil
         self.onRecordingSelection = nil
         self.onRequestFocusReturn = onRequestFocusReturn
@@ -331,6 +351,12 @@ class OverlayWindowController {
             OverlayWindowController.dismissActiveEventTrackingSurface()
         }
         self.colorSamplerActiveProvider = { ColorPickerRunner.shared.isActive }
+        self.modalWindowProvider = {
+            OverlayWindowController.currentApplicationModalWindow()
+        }
+        self.modalWindowDismissal = { window in
+            OverlayWindowController.abortApplicationModalSession(for: window)
+        }
         self.onFirstFramePresented = nil
         self.onRecordingSelection = onRecordingSelection
         self.onRequestFocusReturn = onRequestFocusReturn
@@ -352,6 +378,10 @@ class OverlayWindowController {
 
     var isMagnifierLensPanelPresented: Bool {
         magnifierLensPanelActive
+    }
+
+    var currentMagnifierLensPanelFormat: MagnifierLensPanelWindow.Format {
+        magnifierLensPanelFormat
     }
 
     var isSelectionInteractive: Bool {
@@ -386,8 +416,10 @@ class OverlayWindowController {
         expectedSnapshotDisplayIDs = Set(targets.map(\.displayID))
         firstFrameTargetDisplayID = Self.displayIDUnderPointer()
             ?? targets.first?.displayID
-        waitsForEventTrackingSnapshot = shouldCaptureSnapshots
-            && eventTrackingStateProvider()
+        let presentationBlocker = activePresentationBlocker()
+        deferredPresentationBlocker = shouldCaptureSnapshots
+            ? presentationBlocker
+            : nil
         triggerContext?.mark(.backgroundPreparationStarted)
 
         startWindowEnumeration(
@@ -395,7 +427,12 @@ class OverlayWindowController {
             displayBounds: targets.map(\.bounds)
         )
         startSnapshotCapture(targets: targets, generation: generation)
-        if !waitsForEventTrackingSnapshot {
+        if let presentationBlocker {
+            if !shouldCaptureSnapshots {
+                dismissPresentationBlockerIfActive(presentationBlocker)
+                scheduleOverlayPresentation(generation: generation)
+            }
+        } else {
             presentOverlay(generation: generation)
         }
     }
@@ -489,7 +526,7 @@ class OverlayWindowController {
                 )
             }
             resumePendingSelectionIfReady(displayID: displayID)
-            finishEventTrackingPresentationIfReady(
+            finishDeferredPresentationIfReady(
                 displayID: displayID,
                 generation: generation
             )
@@ -498,7 +535,7 @@ class OverlayWindowController {
             if pendingSelection?.displayID == displayID {
                 finishSelectionCaptureFailure()
             }
-            finishEventTrackingPresentationIfReady(
+            finishDeferredPresentationIfReady(
                 displayID: displayID,
                 generation: generation
             )
@@ -508,19 +545,19 @@ class OverlayWindowController {
                screenSnapshots[pendingSelection.displayID] == nil {
                 finishSelectionCaptureFailure()
             }
-            finishEventTrackingPresentationIfReady(
+            finishDeferredPresentationIfReady(
                 generation: generation,
                 force: true
             )
         }
     }
 
-    private func finishEventTrackingPresentationIfReady(
+    private func finishDeferredPresentationIfReady(
         displayID: CGDirectDisplayID? = nil,
         generation: Int,
         force: Bool = false
     ) {
-        guard waitsForEventTrackingSnapshot,
+        guard let presentationBlocker = deferredPresentationBlocker,
               generation == presentationGeneration,
               !sessionEnded else { return }
         if !force,
@@ -529,16 +566,50 @@ class OverlayWindowController {
             return
         }
 
-        waitsForEventTrackingSnapshot = false
-        if eventTrackingStateProvider() {
-            eventTrackingDismissal()
+        deferredPresentationBlocker = nil
+        dismissPresentationBlockerIfActive(presentationBlocker)
+        scheduleOverlayPresentation(generation: generation)
+    }
+
+    private func activePresentationBlocker() -> PresentationBlocker? {
+        if let modalWindow = modalWindowProvider() {
+            return .applicationModal(modalWindow)
         }
+        if eventTrackingStateProvider() {
+            return .eventTracking
+        }
+        return nil
+    }
+
+    private func dismissPresentationBlockerIfActive(_ blocker: PresentationBlocker) {
+        switch blocker {
+        case .eventTracking:
+            if eventTrackingStateProvider() {
+                eventTrackingDismissal()
+            }
+        case .applicationModal(let modalWindow):
+            if modalWindowProvider() === modalWindow {
+                modalWindowDismissal(modalWindow)
+            }
+        }
+    }
+
+    private func scheduleOverlayPresentation(generation: Int) {
         MainRunLoopScheduler.performInDefaultMode { [weak self] in
             guard let self,
                   generation == self.presentationGeneration,
                   !self.sessionEnded else { return }
             self.presentOverlay(generation: generation)
         }
+    }
+
+    private static func currentApplicationModalWindow() -> NSWindow? {
+        NSApp.modalWindow
+    }
+
+    private static func abortApplicationModalSession(for window: NSWindow) {
+        guard NSApp.modalWindow === window else { return }
+        NSApp.abortModal()
     }
 
     private func presentOverlay(generation: Int) {
@@ -564,7 +635,7 @@ class OverlayWindowController {
             window.backgroundColor = .clear
             window.ignoresMouseEvents = false
             window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-            window.sharingType = Defaults.demoMode ? .readOnly : .none
+            window.sharingType = OverlayPanelPool.overlaySharingType
             window.acceptsMouseMovedEvents = true
             window.animationBehavior = .none
 
@@ -629,6 +700,9 @@ class OverlayWindowController {
             if self?.editController?.isTextEditing == true {
                 return event
             }
+            if self?.toggleMagnifierLensPanelFormatFromKeyboard(for: event) == true {
+                return nil
+            }
             if self?.handleMagnifierLensPanelCopyShortcut(for: event, allowsPlainC: true) == true {
                 return nil
             }
@@ -692,18 +766,18 @@ class OverlayWindowController {
                 self?.cancel()
             }
         }
+        // Selection-move modifier must update while another app is focused under
+        // the non-activating overlay, so track flagsChanged locally and globally.
         magnifierLensPanelFlagsChangedLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
             self?.editController?.handleSelectionMoveModifierFlagsChanged(event)
-            self?.handleMagnifierLensPanelShiftFlagsChanged(event)
             return event
         }
         // The overlay is a non-activating panel, so keyboard events routed
         // to the foreground app never reach our local monitor. Mirror the
-        // Shift and legacy ⌘+C handling with global monitors so they still fire
-        // when the user has Gemini (or any other app) focused underneath.
+        // selection-move modifier and legacy ⌘+C handling with global monitors
+        // so they still fire when another app is focused underneath.
         magnifierLensPanelFlagsChangedGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
             self?.editController?.handleSelectionMoveModifierFlagsChanged(event)
-            self?.handleMagnifierLensPanelShiftFlagsChanged(event)
         }
         magnifierLensPanelKeyDownGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
             self?.handleMagnifierLensPanelCopyShortcut(for: event, allowsPlainC: false)
@@ -1166,12 +1240,17 @@ class OverlayWindowController {
         magnifierLensPanel?.dismiss()
         magnifierLensPanel = nil
         magnifierLensPanelFormat = .hex
-        lastMagnifierLensPanelShiftDown = 0
 
         if let m = escLocalMonitor { NSEvent.removeMonitor(m); escLocalMonitor = nil }
         if let m = escGlobalMonitor { NSEvent.removeMonitor(m); escGlobalMonitor = nil }
-        if let m = magnifierLensPanelFlagsChangedLocalMonitor { NSEvent.removeMonitor(m); magnifierLensPanelFlagsChangedLocalMonitor = nil }
-        if let m = magnifierLensPanelFlagsChangedGlobalMonitor { NSEvent.removeMonitor(m); magnifierLensPanelFlagsChangedGlobalMonitor = nil }
+        if let m = magnifierLensPanelFlagsChangedLocalMonitor {
+            NSEvent.removeMonitor(m)
+            magnifierLensPanelFlagsChangedLocalMonitor = nil
+        }
+        if let m = magnifierLensPanelFlagsChangedGlobalMonitor {
+            NSEvent.removeMonitor(m)
+            magnifierLensPanelFlagsChangedGlobalMonitor = nil
+        }
         if let m = magnifierLensPanelKeyDownGlobalMonitor { NSEvent.removeMonitor(m); magnifierLensPanelKeyDownGlobalMonitor = nil }
         if let m = mouseMovedLocalMonitor { NSEvent.removeMonitor(m); mouseMovedLocalMonitor = nil }
         if let m = mouseMovedGlobalMonitor { NSEvent.removeMonitor(m); mouseMovedGlobalMonitor = nil }
@@ -1189,7 +1268,7 @@ class OverlayWindowController {
         expectedSnapshotDisplayIDs.removeAll()
         failedSnapshotDisplayIDs.removeAll()
         snapshotCaptureFinished = false
-        waitsForEventTrackingSnapshot = false
+        deferredPresentationBlocker = nil
         firstFrameTargetDisplayID = nil
         activeSelectionView = nil
         activeScreen = nil
@@ -1260,24 +1339,15 @@ class OverlayWindowController {
         )
     }
 
-    private func handleMagnifierLensPanelShiftFlagsChanged(_ event: NSEvent) {
-        guard magnifierLensPanelActive else { return }
-        // Shift left/right keyCode is 56 / 60. We accept either.
-        guard event.keyCode == 56 || event.keyCode == 60 else { return }
-        let shiftIsDown = event.modifierFlags.contains(.shift)
-        let now = event.timestamp
-        if shiftIsDown {
-            lastMagnifierLensPanelShiftDown = now
-        } else if lastMagnifierLensPanelShiftDown > 0 {
-            let duration = now - lastMagnifierLensPanelShiftDown
-            lastMagnifierLensPanelShiftDown = 0
-            // Tap detection: quick press-and-release of Shift without other keys.
-            // 500 ms is generous enough for a deliberate tap but short enough to
-            // ignore Shift+letter holds where Shift stays down longer.
-            if duration < 0.5 {
-                toggleMagnifierLensPanelFormat()
-            }
+    private func toggleMagnifierLensPanelFormatFromKeyboard(for event: NSEvent) -> Bool {
+        guard magnifierLensPanelActive else { return false }
+        guard event.keyCode == 3 else { return false } // kVK_ANSI_F
+        let modifierMask: NSEvent.ModifierFlags = [.command, .option, .control, .shift]
+        guard event.modifierFlags.intersection(modifierMask).isEmpty else { return false }
+        if !event.isARepeat {
+            toggleMagnifierLensPanelFormat()
         }
+        return true
     }
 
     private func toggleMagnifierLensPanelFormat() {
@@ -1329,14 +1399,16 @@ class OverlayWindowController {
 // MARK: - SelectionViewDelegate
 
 extension OverlayWindowController: SelectionViewDelegate {
-    func selectionDidStart() {
+    func selectionDidStart(reason: SelectionStartReason) {
         editController?.prepareForSelectionGeometryChange()
         chipWindow?.dismiss()
         chipWindow = nil
-        // If the lens was dismissed by a previous selection completion
-        // (e.g. the user is now resizing or moving an existing selection),
-        // bring it back so the drag endpoint can be magnified.
-        if magnifierLensPanel == nil, shouldShowMagnifierLensPanel {
+        // The magnifier belongs to the initial selection gesture only. Once a
+        // selection exists, resizing or moving it should preserve the frame's
+        // own cursor affordances instead of restoring the startup lens.
+        if reason == .newSelection,
+           magnifierLensPanel == nil,
+           shouldShowMagnifierLensPanel {
             setupMagnifierLensPanel()
         }
     }
