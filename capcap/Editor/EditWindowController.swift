@@ -313,7 +313,10 @@ class EditWindowController {
         showToolbar()
         updateHistoryButtons(canUndo: canvas.canUndo, canRedo: canvas.canRedo)
         if Defaults.beautifyAutoEnabled {
-            activateBeautify()
+            // Apply beautify silently so the preset/padding/shadow row does
+            // not open and block the capture. User can open controls later
+            // via the beautify toolbar button.
+            activateBeautify(showControls: false)
         }
         bringEditorToFront()
     }
@@ -726,7 +729,7 @@ class EditWindowController {
         onArrowStyle: ((ArrowStyle) -> Void)? = nil
     ) {
         guard let hostSelectionView, let toolbarFrame = subToolbarAnchorFrame else { return }
-        let offset: CGFloat = isBeautifyActive ? (36 + 4) : 0
+        let offset: CGFloat = beautifySubToolbarOffset
         let resolvedWidth = width ?? ColorSizeSubToolbar.preferredWidth(
             sizes: sizes,
             dynamicColor: dynamicColor,
@@ -788,7 +791,7 @@ class EditWindowController {
 
     private func showTextSubToolbar() {
         guard let hostSelectionView, let toolbarFrame = subToolbarAnchorFrame else { return }
-        let offset: CGFloat = isBeautifyActive ? (36 + 4) : 0
+        let offset: CGFloat = beautifySubToolbarOffset
         let subRect = subToolbarRect(
             width: TextSubToolbar.preferredWidth(dynamicColor: pickedColorSwatch),
             height: 36,
@@ -846,7 +849,7 @@ class EditWindowController {
 
     private func showMosaicSubToolbar() {
         guard let hostSelectionView, let toolbarFrame = subToolbarAnchorFrame else { return }
-        let offset: CGFloat = isBeautifyActive ? (36 + 4) : 0
+        let offset: CGFloat = beautifySubToolbarOffset
         let subRect = subToolbarRect(
             width: MosaicSubToolbar.preferredWidth,
             height: 36,
@@ -875,7 +878,7 @@ class EditWindowController {
 
     private func showEmojiSubToolbar() {
         guard let hostSelectionView, let toolbarFrame = subToolbarAnchorFrame else { return }
-        let offset: CGFloat = isBeautifyActive ? (36 + 4) : 0
+        let offset: CGFloat = beautifySubToolbarOffset
         let width = min(
             EmojiSubToolbar.preferredVisibleWidth,
             max(EmojiSubToolbar.minimumVisibleWidth, hostSelectionView.bounds.width - 16)
@@ -981,7 +984,7 @@ class EditWindowController {
 
         // When the beautify gradient picker is up, keep the tool's color/size
         // sub-toolbar shifted below it so the two rows don't overlap.
-        let offset: CGFloat = isBeautifyActive ? (36 + 4) : 0
+        let offset: CGFloat = beautifySubToolbarOffset
         subToolbarView.frame = subToolbarRect(
             width: subToolbarView.frame.width,
             height: subToolbarView.frame.height,
@@ -1096,16 +1099,31 @@ class EditWindowController {
 
     // MARK: - Beautify
 
+    /// Extra vertical space reserved under the main toolbar when the beautify
+    /// preset/padding row is actually visible. Auto-open beautify keeps the
+    /// effect on without this row, so other sub-toolbars must not shift.
+    private var beautifySubToolbarOffset: CGFloat {
+        beautifySubToolbarView != nil ? (36 + 4) : 0
+    }
+
     private func toggleBeautify() {
         dismissQRCodeOverlay()
         if isBeautifyActive {
-            deactivateBeautify()
+            if beautifySubToolbarView == nil, let preset = currentBeautifyPreset {
+                // Active from auto-open (controls hidden): first click reveals
+                // the preset/padding/shadow row so the user can adjust.
+                showBeautifySubToolbar(selecting: preset)
+                repositionFloatingChrome()
+                bringEditorToFront()
+            } else {
+                deactivateBeautify()
+            }
         } else {
-            activateBeautify()
+            activateBeautify(showControls: true)
         }
     }
 
-    private func activateBeautify() {
+    private func activateBeautify(showControls: Bool = true) {
         guard let canvasView, let container = beautifyContainerView else {
             return
         }
@@ -1139,7 +1157,14 @@ class EditWindowController {
         container.setShadowEnabled(currentBeautifyShadowEnabled)
         isBeautifyActive = true
         toolbars.forEach { $0.setBeautifyActive(true) }
-        showBeautifySubToolbar(selecting: preset)
+        if showControls {
+            showBeautifySubToolbar(selecting: preset)
+        } else {
+            // Silent auto-apply: keep effect on, leave controls collapsed.
+            dismissBeautifyPresetPopover()
+            beautifySubToolbarView?.removeFromSuperview()
+            beautifySubToolbarView = nil
+        }
         Defaults.lastBeautifyPresetID = preset.id
 
         updateCanvasFrameForBeautify()
@@ -2509,6 +2534,9 @@ class EditWindowController {
     private func applyBeautifyState(_ state: BeautifyState) {
         guard let canvasView, let container = beautifyContainerView else { return }
         let preset = BeautifyPreset.preset(forID: state.presetID) ?? .defaultPreset
+        // Restore only re-shows the controls row if it was already open so
+        // undo/redo of annotations does not expand the beautify UI.
+        let shouldShowControls = beautifySubToolbarView != nil
 
         canvasView.beautifyCornerRadius = isWindowCapture ? nil : BeautifyRenderer.innerCornerRadius
         container.setInnerShadowCornerRadius(
@@ -2535,7 +2563,9 @@ class EditWindowController {
         container.setShadowEnabled(state.shadowEnabled)
         isBeautifyActive = true
         toolbars.forEach { $0.setBeautifyActive(true) }
-        showBeautifySubToolbar(selecting: preset)
+        if shouldShowControls {
+            showBeautifySubToolbar(selecting: preset)
+        }
     }
 
     private func currentCompositeImage() -> NSImage? {

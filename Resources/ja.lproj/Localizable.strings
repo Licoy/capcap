@@ -300,7 +300,7 @@
 "beautifyPresetGraphite" = "グラファイト";
 "beautifyShadowEffect" = "影効果";
 "beautifyAutoToggleLabel" = "エディタ起動時に美化を有効化";
-"beautifyAutoToggleHint" = "エディタを開くと前回の美化プリセット・余白・影を自動適用します";
+"beautifyAutoToggleHint" = "エディタを開くと美化をバックグラウンドで自動適用し、オプション欄は展開しません";
 "beautifyDefaultPresetLabel" = "デフォルトのプリセット";
 "beautifyDefaultPaddingLabel" = "デフォルトの余白";
 "textStrokeEffect" = "縁取り";

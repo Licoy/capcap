@@ -300,7 +300,7 @@
 "beautifyPresetGraphite" = "Графит";
 "beautifyShadowEffect" = "Тень";
 "beautifyAutoToggleLabel" = "Открывать редактор с Beautify";
-"beautifyAutoToggleHint" = "Автоматически применять последний пресет, отступ и тень при открытии редактора";
+"beautifyAutoToggleHint" = "При открытии редактора тихо применять последний пресет, отступ и тень без раскрытия панели";
 "beautifyDefaultPresetLabel" = "Пресет по умолчанию";
 "beautifyDefaultPaddingLabel" = "Отступ по умолчанию";
 "textStrokeEffect" = "Обводка";

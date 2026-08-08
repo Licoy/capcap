@@ -1977,8 +1977,9 @@ struct Defaults {
         return result
     }
 
-    /// When true, the annotation editor opens with beautify already active,
-    /// using the last-used preset / padding / shadow settings.
+    /// When true, the annotation editor opens with beautify already applied
+    /// in the background (last-used preset / padding / shadow). The beautify
+    /// controls row stays collapsed so it does not block the capture.
     static var beautifyAutoEnabled: Bool {
         get {
             if defaults.object(forKey: "beautifyAutoEnabled") == nil {

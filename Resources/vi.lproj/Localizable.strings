@@ -300,7 +300,7 @@
 "beautifyPresetGraphite" = "Than chì";
 "beautifyShadowEffect" = "Hiệu ứng bóng";
 "beautifyAutoToggleLabel" = "Mở trình chỉnh sửa với Beautify";
-"beautifyAutoToggleHint" = "Tự động áp dụng preset, lề và bóng đã dùng lần trước khi mở trình chỉnh sửa";
+"beautifyAutoToggleHint" = "Tự động áp dụng preset, lề và bóng ở nền khi mở trình chỉnh sửa, không mở rộng thanh tùy chọn";
 "beautifyDefaultPresetLabel" = "Preset mặc định";
 "beautifyDefaultPaddingLabel" = "Lề mặc định";
 "textStrokeEffect" = "Viền chữ";

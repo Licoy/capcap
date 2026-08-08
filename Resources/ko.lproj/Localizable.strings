@@ -300,7 +300,7 @@
 "beautifyPresetGraphite" = "그래파이트";
 "beautifyShadowEffect" = "그림자";
 "beautifyAutoToggleLabel" = "편집기 열 때 미화 자동 적용";
-"beautifyAutoToggleHint" = "편집기를 열면 마지막 미화 프리셋, 여백, 그림자를 자동으로 적용합니다";
+"beautifyAutoToggleHint" = "편집기를 열면 미화 프리셋·여백·그림자를 백그라운드로 자동 적용하며 옵션 패널은 펼치지 않습니다";
 "beautifyDefaultPresetLabel" = "기본 프리셋";
 "beautifyDefaultPaddingLabel" = "기본 여백";
 "textStrokeEffect" = "테두리";

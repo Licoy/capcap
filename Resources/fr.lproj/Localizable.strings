@@ -300,7 +300,7 @@
 "beautifyPresetGraphite" = "Graphite";
 "beautifyShadowEffect" = "Ombre";
 "beautifyAutoToggleLabel" = "Ouvrir l'éditeur avec Beautify";
-"beautifyAutoToggleHint" = "Applique automatiquement le dernier préréglage, le padding et l'ombre à l'ouverture de l'éditeur";
+"beautifyAutoToggleHint" = "Applique en arrière-plan le dernier préréglage, le padding et l'ombre à l'ouverture sans ouvrir les contrôles";
 "beautifyDefaultPresetLabel" = "Préréglage par défaut";
 "beautifyDefaultPaddingLabel" = "Marge par défaut";
 "textStrokeEffect" = "Contour";

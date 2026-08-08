@@ -300,7 +300,7 @@
 "beautifyPresetGraphite" = "Graphite";
 "beautifyShadowEffect" = "Shadow Effect";
 "beautifyAutoToggleLabel" = "Open Editor with Beautify";
-"beautifyAutoToggleHint" = "Automatically apply the last beautify preset, padding, and shadow when the editor opens";
+"beautifyAutoToggleHint" = "Silently apply the last beautify preset, padding, and shadow when the editor opens without expanding controls";
 "beautifyDefaultPresetLabel" = "Default Preset";
 "beautifyDefaultPaddingLabel" = "Default Padding";
 "textStrokeEffect" = "Stroke";

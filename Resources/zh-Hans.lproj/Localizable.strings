@@ -300,7 +300,7 @@
 "beautifyPresetGraphite" = "石墨灰";
 "beautifyShadowEffect" = "阴影效果";
 "beautifyAutoToggleLabel" = "进入编辑器默认开启美化";
-"beautifyAutoToggleHint" = "打开编辑器时自动应用上次的美化预设、边距和阴影";
+"beautifyAutoToggleHint" = "打开编辑器时后台自动应用美化预设、边距和阴影，不展开选项栏";
 "beautifyDefaultPresetLabel" = "默认预设";
 "beautifyDefaultPaddingLabel" = "默认边距";
 "textStrokeEffect" = "描边";
