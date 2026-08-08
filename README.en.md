@@ -180,7 +180,7 @@ Pushing a `v*` tag triggers GitHub Actions to build and publish a release:
    |--------|-------|
    | `MACOS_CERTIFICATE` | Contents of `capcap-signing.p12.base64` |
    | `MACOS_CERTIFICATE_PWD` | `.p12` export password |
-   | `MACOS_SIGNING_IDENTITY` | Certificate CN, default `capcap Self-Signed` |
+   | `MACOS_SIGNING_IDENTITY` | Certificate CN, default `CapCapRelease` |
    | `KEYCHAIN_PASSWORD` | Any throwaway string |
 
    See [scripts/signing/README.md](scripts/signing/README.md). **Do not** commit the `.p12` file.

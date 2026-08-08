@@ -189,7 +189,7 @@ jobs:
           # set these GitHub repo secrets:
           #   MACOS_CERTIFICATE       — base64 of capcap-signing.p12
           #   MACOS_CERTIFICATE_PWD   — the .p12 export password
-          #   MACOS_SIGNING_IDENTITY  — cert common name, e.g. "capcap Self-Signed"
+          #   MACOS_SIGNING_IDENTITY  — cert common name, e.g. "CapCapRelease"
           #   KEYCHAIN_PASSWORD       — any throwaway string
           #
           # If the secrets are absent the build falls back to ad-hoc signing

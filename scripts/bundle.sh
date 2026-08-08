@@ -127,21 +127,21 @@ cp -R "$PERMISSION_FLOW_BUNDLE" "$RESOURCES/"
 
 # Code signing
 # -----------------------------------------------------------------------------
-# Sign with the SAME self-signed certificate CI uses ("capcap Self-Signed") so
+# Sign with the SAME self-signed certificate CI uses ("CapCapRelease") so
 # the app's code-signing identity — and therefore its macOS TCC permission
 # grants (Screen Recording / Accessibility) — stay stable between local test
 # builds and released builds. Without this, every local rebuild looks like a
 # different app to TCC and you must re-authorize.
 #
 # Import the cert once (it lives in capcap-signing.p12, default password "capcap"):
-#   security import ~/Desktop/capcap-signing.p12 \
+#   security import scripts/signing/capcap-signing.p12 \
 #     -k ~/Library/Keychains/login.keychain-db -P capcap -T /usr/bin/codesign
 #
 # Override the identity with the SIGN_IDENTITY env var. If the cert isn't in the
 # keychain, fall back to ad-hoc signing (still launchable, but TCC grants won't
 # match released builds).
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SIGN_IDENTITY="${SIGN_IDENTITY:-capcap Self-Signed}"
+SIGN_IDENTITY="${SIGN_IDENTITY:-CapCapRelease}"
 sign_bundles() {
     local identity="$1"
     codesign --force --entitlements "$SCRIPT_DIR/capcap-share-extension.entitlements" \

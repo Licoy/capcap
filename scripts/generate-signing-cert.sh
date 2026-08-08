@@ -22,13 +22,13 @@
 #   scripts/generate-signing-cert.sh [output_dir]
 # Env:
 #   CERT_PASSWORD   password protecting the .p12 (default: capcap)
-#   CERT_NAME       certificate common name (default: capcap Self-Signed)
+#   CERT_NAME       certificate common name (default: CapCapRelease)
 #   CERT_DAYS       validity in days (default: 3650 — ~10 years)
 #
 set -euo pipefail
 
 OUT_DIR="${1:-$HOME/Desktop}"
-CERT_NAME="${CERT_NAME:-capcap Self-Signed}"
+CERT_NAME="${CERT_NAME:-CapCapRelease}"
 CERT_PASSWORD="${CERT_PASSWORD:-capcap}"
 CERT_DAYS="${CERT_DAYS:-3650}"
 

@@ -180,7 +180,7 @@ scripts/package-dmg.sh
    |--------|------|
    | `MACOS_CERTIFICATE` | `capcap-signing.p12.base64` 文件内容 |
    | `MACOS_CERTIFICATE_PWD` | `.p12` 导出密码 |
-   | `MACOS_SIGNING_IDENTITY` | 证书 CN，默认 `capcap Self-Signed` |
+   | `MACOS_SIGNING_IDENTITY` | 证书 CN，默认 `CapCapRelease` |
    | `KEYCHAIN_PASSWORD` | 任意临时字符串 |
 
    详见 [scripts/signing/README.md](scripts/signing/README.md)。**不要**将 `.p12` 提交进仓库。
