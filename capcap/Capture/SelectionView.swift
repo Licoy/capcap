@@ -434,6 +434,21 @@ class SelectionView: NSView {
     override func mouseDown(with event: NSEvent) {
         modifierMoveDragActive = false
         let point = convert(event.locationInWindow, from: nil)
+
+        // Handle hits beat the size label: the label is drawn just above the
+        // frame and its expanded hit area can cover the top-edge handles.
+        if let rect = selectionRect,
+           state == .selected,
+           selectionInteractionEnabled,
+           let handle = hitTestHandle(point: point, rect: rect) {
+            dragAction = .resize(handle)
+            dragStart = point
+            dragOriginalRect = rect
+            SelectionView.setCursorForHandle(handle)
+            delegate?.selectionDidStart(reason: .existingSelectionAdjustment)
+            return
+        }
+
         // Size label stays clickable even after the selection is locked for
         // editing so users can type an exact W×H without re-dragging.
         if state == .selected,
@@ -489,15 +504,6 @@ class SelectionView: NSView {
         }
 
         if let rect = selectionRect, state == .selected {
-            // Check control points first
-            if let handle = hitTestHandle(point: point, rect: rect) {
-                dragAction = .resize(handle)
-                dragStart = point
-                dragOriginalRect = rect
-                SelectionView.setCursorForHandle(handle)
-                delegate?.selectionDidStart(reason: .existingSelectionAdjustment)
-                return
-            }
             // Check inside selection for move
             if rect.contains(point) {
                 if annotationToolActive {
@@ -703,6 +709,12 @@ class SelectionView: NSView {
     }
 
     private func updateCursor(at point: NSPoint) {
+        // Resize handles sit on the selection edge and can overlap the size
+        // label (drawn just above the frame). Prefer the handle cursor so the
+        // top-edge controls stay discoverable.
+        if setResizeCursorIfNeeded(at: point, from: self) {
+            return
+        }
         // Size label stays editable even when the selection is locked for the
         // editor — point at it with a pointing hand so the affordance is clear.
         if hitTestSizeLabel(at: point) {
@@ -714,9 +726,6 @@ class SelectionView: NSView {
             return
         }
 
-        if setResizeCursorIfNeeded(at: point, from: self) {
-            return
-        }
         if state == .idle, !selectionLocked {
             NSCursor.crosshair.set()
         } else if state == .drawing {

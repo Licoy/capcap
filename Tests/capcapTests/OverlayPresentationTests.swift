@@ -109,7 +109,7 @@ final class OverlayPresentationTests: XCTestCase {
         reusedController.cancel()
     }
 
-    func testRShortcutIsHandledWhileSnapshotPreparationIsPending() throws {
+    func testShiftRShortcutIsHandledWhileSnapshotPreparationIsPending() throws {
         _ = NSApplication.shared
         let previousAspectRatio = Defaults.hasSelectionAspectRatio
             ? Defaults.selectionAspectRatio
@@ -140,15 +140,17 @@ final class OverlayPresentationTests: XCTestCase {
         )
         XCTAssertTrue(selectionView.window?.firstResponder === selectionView)
         let windowNumber = try XCTUnwrap(selectionView.window?.windowNumber)
+        // Aspect ratio cycles on ⇧R; bare R is reserved for the rectangle tool
+        // once the editor is open.
         let event = try XCTUnwrap(
             NSEvent.keyEvent(
                 with: .keyDown,
                 location: .zero,
-                modifierFlags: [],
+                modifierFlags: .shift,
                 timestamp: ProcessInfo.processInfo.systemUptime,
                 windowNumber: windowNumber,
                 context: nil,
-                characters: "r",
+                characters: "R",
                 charactersIgnoringModifiers: "r",
                 isARepeat: false,
                 keyCode: 15

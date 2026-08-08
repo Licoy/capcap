@@ -29,8 +29,8 @@ final class ForkIdentityTests: XCTestCase {
         let dict = try loadPlist(plistURL)
 
         XCTAssertEqual(dict["CFBundleIdentifier"] as? String, "com.github.licoy.capcap.desktop")
-        XCTAssertEqual(dict["CFBundleShortVersionString"] as? String, "1.0.0")
-        XCTAssertEqual(dict["CFBundleVersion"] as? String, "1000000")
+        XCTAssertEqual(dict["CFBundleShortVersionString"] as? String, "1.1.0")
+        XCTAssertEqual(dict["CFBundleVersion"] as? String, "1001000")
 
         let urlTypes = try XCTUnwrap(dict["CFBundleURLTypes"] as? [[String: Any]])
         let urlName = urlTypes.first?["CFBundleURLName"] as? String
@@ -46,8 +46,8 @@ final class ForkIdentityTests: XCTestCase {
             dict["CFBundleIdentifier"] as? String,
             "com.github.licoy.capcap.desktop.ShareExtension"
         )
-        XCTAssertEqual(dict["CFBundleShortVersionString"] as? String, "1.0.0")
-        XCTAssertEqual(dict["CFBundleVersion"] as? String, "1000000")
+        XCTAssertEqual(dict["CFBundleShortVersionString"] as? String, "1.1.0")
+        XCTAssertEqual(dict["CFBundleVersion"] as? String, "1001000")
         XCTAssertTrue((dict["CFBundleIdentifier"] as? String ?? "").hasPrefix("com.github.licoy.capcap.desktop"))
     }
 
