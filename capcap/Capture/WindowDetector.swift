@@ -2,6 +2,14 @@ import AppKit
 import CoreGraphics
 
 struct DetectedWindow: Sendable {
+    private static let selectableLayers: Set<Int> = [
+        Int(CGWindowLevelForKey(.normalWindow)),
+        Int(CGWindowLevelForKey(.floatingWindow)),
+        Int(CGWindowLevelForKey(.modalPanelWindow)),
+        Int(CGWindowLevelForKey(.utilityWindow)),
+        Int(CGWindowLevelForKey(.popUpMenuWindow))
+    ]
+
     let name: String
     let windowID: CGWindowID
     let layer: Int
@@ -12,10 +20,10 @@ struct DetectedWindow: Sendable {
     }
 
     var isSelectableCaptureTarget: Bool {
-        // Core Graphics exposes cursor, insertion-point, menu, popup, and
-        // other transient surfaces as windows. The idle hover selection should
-        // only target normal app/desktop windows.
-        layer == 0
+        // Keep real AppKit content windows and popup menus selectable while
+        // excluding menu-bar chrome, insertion points, cursors, and other
+        // transient WindowServer surfaces that would steal hover selection.
+        Self.selectableLayers.contains(layer)
     }
 }
 

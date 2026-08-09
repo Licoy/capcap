@@ -130,11 +130,7 @@ bash scripts/rebuild-and-open.sh
 
 ## Réglages
 
-Les réglages couvrent la langue, l'icône de barre des menus, le lancement à l'ouverture de session, le mode démo, les raccourcis, la taille de l'historique, l'hébergeur d'images et les accès rapides aux permissions. L'interface prend en charge 简体中文, 繁體中文, English, 日本語, 한국어, Français, Русский et Tiếng Việt.
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=realskyrin/capcap&type=Date)](https://star-history.com/#realskyrin/capcap&Date)
+Les réglages couvrent la langue, l'icône de barre des menus, le lancement à l'ouverture de session, les raccourcis, la taille de l'historique, l'hébergeur d'images et les accès rapides aux permissions. La sélection et l'éditeur apparaissent par défaut dans les enregistrements d'écran externes, sans réglage supplémentaire. L'interface prend en charge 简体中文, 繁體中文, English, 日本語, 한국어, Français, Русский et Tiếng Việt.
 
 ## Licence
 

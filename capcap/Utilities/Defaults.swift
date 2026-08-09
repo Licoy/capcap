@@ -90,8 +90,6 @@ enum L10n {
     static var screenRecordingDescription: String { s("screenRecordingDescription") }
     static var launchApp: String { s("launchApp") }
     static var launchAtLogin: String { s("launchAtLogin") }
-    static var demoMode: String { s("demoMode") }
-    static var demoModeHint: String { s("demoModeHint") }
     static var pinAcrossSpaces: String { s("pinAcrossSpaces") }
     static var pinAcrossSpacesHint: String { s("pinAcrossSpacesHint") }
     static var historyCacheToggleLabel: String { s("historyCacheToggleLabel") }
@@ -201,7 +199,7 @@ enum L10n {
     static var magnifierLensPanelHex: String { s("magnifierLensPanelHex") }
     static var magnifierLensPanelRgb: String { s("magnifierLensPanelRgb") }
     static var magnifierLensPanelCopyHint: String { s("magnifierLensPanelCopyHint") }
-    static var magnifierLensPanelShiftHint: String { s("magnifierLensPanelShiftHint") }
+    static var magnifierLensPanelFormatHint: String { s("magnifierLensPanelFormatHint") }
     static var magnifierLensPanelAspectFree: String { s("magnifierLensPanelAspectFree") }
     static var magnifierLensPanelAspectHint: String { s("magnifierLensPanelAspectHint") }
     static func magnifierLensPanelRgbString(r: Int, g: Int, b: Int) -> String {
@@ -2066,8 +2064,9 @@ struct Defaults {
         }
     }
 
-    /// Whether to show the "Press Shift to switch RGB" hint row in the lens.
-    static var magnifierLensPanelShowShiftHint: Bool {
+    /// Whether to show the "Press F to switch color format" hint row in the lens.
+    /// The stored key keeps its original name for preference compatibility.
+    static var magnifierLensPanelShowFormatHint: Bool {
         get {
             if defaults.object(forKey: "magnifierLensPanelShowShiftHint") == nil {
                 return true
@@ -2264,11 +2263,6 @@ struct Defaults {
         if oldMode != mode {
             NotificationCenter.default.post(name: .historyPanelDisplayModesDidChange, object: nil)
         }
-    }
-
-    static var demoMode: Bool {
-        get { defaults.bool(forKey: "demoMode") }
-        set { defaults.set(newValue, forKey: "demoMode") }
     }
 
     static var showMenuBar: Bool {

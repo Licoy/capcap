@@ -45,8 +45,13 @@ enum VideoEncodingSettings {
     }
 
     static func evenDimensions(width: CGFloat, height: CGFloat) -> (Int, Int) {
-        let w = (Int(width.rounded(.up)) / 2) * 2
-        let h = (Int(height.rounded(.up)) / 2) * 2
+        // Round UP to the next even integer. The naive `(n / 2) * 2` truncates
+        // odd integers back down (1921 -> 1920), defeating `.rounded(.up)` and
+        // capturing a frame one pixel smaller than the source. Adding 1 first
+        // makes odd inputs round up (1921 -> 1922) while even inputs are
+        // unchanged (1920 -> 1920).
+        let w = ((Int(width.rounded(.up)) + 1) / 2) * 2
+        let h = ((Int(height.rounded(.up)) + 1) / 2) * 2
         return (max(w, 2), max(h, 2))
     }
 

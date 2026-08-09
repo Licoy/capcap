@@ -1,8 +1,13 @@
 import AppKit
 import QuartzCore
 
+enum SelectionStartReason: Equatable {
+    case newSelection
+    case existingSelectionAdjustment
+}
+
 protocol SelectionViewDelegate: AnyObject {
-    func selectionDidStart()
+    func selectionDidStart(reason: SelectionStartReason)
     /// - Parameter isWindowSelection: true when the rect came from clicking a
     ///   detected window (no drag), so the editor can apply window-only
     ///   effects like rounded corners. False for free-drag / resize / preset.
@@ -59,13 +64,25 @@ class SelectionView: NSView {
     var annotationToolActive = false
 
     // When true, clicking outside selection won't start a new selection
-    var selectionLocked = false
+    var selectionLocked = false {
+        didSet {
+            if selectionLocked != oldValue {
+                refreshCursorRects()
+            }
+        }
+    }
 
     // Scroll capture mode: update border styling while the controller manages event routing.
     var scrollCaptureActive = false
 
     // When false, the selection frame becomes a fixed viewport.
-    var selectionInteractionEnabled = true
+    var selectionInteractionEnabled = true {
+        didSet {
+            if selectionInteractionEnabled != oldValue {
+                refreshCursorRects()
+            }
+        }
+    }
     var aspectRatio: CGFloat? = nil
     var selectionSizeLabelOverride: String? {
         didSet { needsDisplay = true }
@@ -132,6 +149,7 @@ class SelectionView: NSView {
         selectionRect = rect
         state = .selected
         needsDisplay = true
+        refreshCursorRects()
     }
 
     /// Translate the selection rect by `delta` from the supplied
@@ -183,13 +201,34 @@ class SelectionView: NSView {
 
     // MARK: - Cursors
 
-    /// Registers a crosshair cursor rect covering the entire idle view.
+    /// Registers the initial crosshair and the selected frame's directional
+    /// resize cursors. Explicit mouse-event updates below mirror these rects
+    /// so drag events cannot fall back to the initial crosshair.
     /// OverlayWindowController activates capcap before invalidating cursor
     /// rects, because AppKit cursor ownership is scoped to the frontmost app.
     override func resetCursorRects() {
         super.resetCursorRects()
         if state == .idle, !selectionLocked {
             addCursorRect(bounds, cursor: .crosshair)
+        } else if state == .selected,
+                  selectionInteractionEnabled,
+                  let rect = selectionRect {
+            let positions = SelectionView.handlePositions(for: rect)
+            for (index, handle) in HandlePosition.allCases.enumerated() {
+                let position = positions[index]
+                let cursorRect = NSRect(
+                    x: position.x - handleHitSize / 2,
+                    y: position.y - handleHitSize / 2,
+                    width: handleHitSize,
+                    height: handleHitSize
+                ).intersection(bounds)
+                if !cursorRect.isNull {
+                    addCursorRect(
+                        cursorRect,
+                        cursor: SelectionView.cursorForHandle(handle)
+                    )
+                }
+            }
         }
     }
 
@@ -199,11 +238,30 @@ class SelectionView: NSView {
         window?.invalidateCursorRects(for: self)
     }
 
+    /// Gives an editor subview a single source of truth for the outer
+    /// selection frame's resize handles. Editor views can receive tracking
+    /// events while the pointer is still inside the selected canvas, so they
+    /// must preserve this cursor instead of replacing it with their own.
+    @discardableResult
+    func setResizeCursorIfNeeded(at point: NSPoint, from sourceView: NSView) -> Bool {
+        guard state == .selected,
+              selectionInteractionEnabled,
+              let rect = selectionRect
+        else { return false }
+
+        let localPoint = convert(point, from: sourceView)
+        guard let handle = hitTestHandle(point: localPoint, rect: rect) else {
+            return false
+        }
+        SelectionView.setCursorForHandle(handle)
+        return true
+    }
+
     // MARK: - Mouse Events
 
     override func mouseDown(with event: NSEvent) {
-        NSCursor.crosshair.set()
         let point = convert(event.locationInWindow, from: nil)
+        updateCursor(at: point)
         if shouldConfirmFromSelectionDoubleClick(event: event, point: point) {
             dragAction = .none
             delegate?.selectionDidDoubleClickInsideSelection(inView: self)
@@ -233,7 +291,7 @@ class SelectionView: NSView {
             selectionRect = NSRect(origin: point, size: .zero)
             state = .drawing
             dragAction = .drawNew
-            delegate?.selectionDidStart()
+            delegate?.selectionDidStart(reason: .newSelection)
             needsDisplay = true
             return
         }
@@ -244,7 +302,8 @@ class SelectionView: NSView {
                 dragAction = .resize(handle)
                 dragStart = point
                 dragOriginalRect = rect
-                delegate?.selectionDidStart()
+                SelectionView.setCursorForHandle(handle)
+                delegate?.selectionDidStart(reason: .existingSelectionAdjustment)
                 return
             }
             // Check inside selection for move
@@ -256,7 +315,8 @@ class SelectionView: NSView {
                 dragAction = .move
                 dragStart = point
                 dragOriginalRect = rect
-                delegate?.selectionDidStart()
+                NSCursor.arrow.set()
+                delegate?.selectionDidStart(reason: .existingSelectionAdjustment)
                 return
             }
             // Click outside selection — if locked (editor active), ignore
@@ -271,7 +331,7 @@ class SelectionView: NSView {
         selectionRect = NSRect(origin: point, size: .zero)
         state = .drawing
         dragAction = .drawNew
-        delegate?.selectionDidStart()
+        delegate?.selectionDidStart(reason: .newSelection)
         needsDisplay = true
     }
 
@@ -296,11 +356,11 @@ class SelectionView: NSView {
 
     override func mouseDragged(with event: NSEvent) {
         guard selectionInteractionEnabled else { return }
-        NSCursor.crosshair.set()
         let point = convert(event.locationInWindow, from: nil)
 
         switch dragAction {
         case .drawNew:
+            NSCursor.crosshair.set()
             // If still within click threshold, keep the pending window rect alive
             if pendingWindowRect != nil {
                 let dx = abs(point.x - dragStart.x)
@@ -321,6 +381,7 @@ class SelectionView: NSView {
             needsDisplay = true
 
         case .move:
+            NSCursor.arrow.set()
             guard let _ = selectionRect else { return }
             let dx = point.x - dragStart.x
             let dy = point.y - dragStart.y
@@ -333,6 +394,7 @@ class SelectionView: NSView {
             needsDisplay = true
 
         case .resize(let handle):
+            SelectionView.setCursorForHandle(handle)
             let newRect = SelectionView.resizedRect(
                 from: dragOriginalRect,
                 handle: handle,
@@ -350,10 +412,16 @@ class SelectionView: NSView {
     }
 
     override func mouseUp(with event: NSEvent) {
-        NSCursor.arrow.set()
+        let point = convert(event.locationInWindow, from: nil)
         guard selectionInteractionEnabled else {
             dragAction = .none
+            NSCursor.arrow.set()
             return
+        }
+        defer {
+            dragAction = .none
+            refreshCursorRects()
+            updateCursor(at: point)
         }
 
         switch dragAction {
@@ -365,7 +433,6 @@ class SelectionView: NSView {
                 pendingWindowID = nil
                 selectionRect = windowRect
                 state = .selected
-                dragAction = .none
                 delegate?.selectionDidComplete(rect: windowRect, inView: self, isWindowSelection: true, windowID: windowID)
                 needsDisplay = true
                 return
@@ -373,7 +440,6 @@ class SelectionView: NSView {
             guard let rect = selectionRect, rect.width >= 5, rect.height >= 5 else {
                 selectionRect = nil
                 state = .idle
-                dragAction = .none
                 needsDisplay = true
                 return
             }
@@ -390,12 +456,11 @@ class SelectionView: NSView {
         case .none:
             break
         }
-
-        dragAction = .none
     }
 
     override func mouseMoved(with event: NSEvent) {
         guard selectionInteractionEnabled else { return }
+        let point = convert(event.locationInWindow, from: nil)
 
         // In idle state, detect windows under cursor for hover highlight
         if state == .idle && !selectionLocked {
@@ -407,6 +472,31 @@ class SelectionView: NSView {
             }
             NSCursor.crosshair.set()
             updateWindowHover(with: event)
+        } else {
+            updateCursor(at: point)
+        }
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        guard selectionInteractionEnabled else { return }
+        updateCursor(at: convert(event.locationInWindow, from: nil))
+    }
+
+    private func updateCursor(at point: NSPoint) {
+        guard selectionInteractionEnabled else {
+            NSCursor.arrow.set()
+            return
+        }
+
+        if setResizeCursorIfNeeded(at: point, from: self) {
+            return
+        }
+        if state == .idle, !selectionLocked {
+            NSCursor.crosshair.set()
+        } else if state == .drawing {
+            NSCursor.crosshair.set()
+        } else {
+            NSCursor.arrow.set()
         }
     }
 
@@ -922,25 +1012,29 @@ class SelectionView: NSView {
 
     // MARK: - Cursor
 
-    static func setCursorForHandle(_ handle: HandlePosition) {
+    static func cursorForHandle(_ handle: HandlePosition) -> NSCursor {
         switch handle {
         case .topLeft:
-            ResizeHandleCursor.setFrameResizeCursor(for: .topLeft)
+            return ResizeHandleCursor.frameResizeCursor(for: .topLeft)
         case .topRight:
-            ResizeHandleCursor.setFrameResizeCursor(for: .topRight)
+            return ResizeHandleCursor.frameResizeCursor(for: .topRight)
         case .bottomLeft:
-            ResizeHandleCursor.setFrameResizeCursor(for: .bottomLeft)
+            return ResizeHandleCursor.frameResizeCursor(for: .bottomLeft)
         case .bottomRight:
-            ResizeHandleCursor.setFrameResizeCursor(for: .bottomRight)
+            return ResizeHandleCursor.frameResizeCursor(for: .bottomRight)
         case .topCenter:
-            ResizeHandleCursor.setFrameResizeCursor(for: .top)
+            return ResizeHandleCursor.frameResizeCursor(for: .top)
         case .bottomCenter:
-            ResizeHandleCursor.setFrameResizeCursor(for: .bottom)
+            return ResizeHandleCursor.frameResizeCursor(for: .bottom)
         case .leftCenter:
-            ResizeHandleCursor.setFrameResizeCursor(for: .left)
+            return ResizeHandleCursor.frameResizeCursor(for: .left)
         case .rightCenter:
-            ResizeHandleCursor.setFrameResizeCursor(for: .right)
+            return ResizeHandleCursor.frameResizeCursor(for: .right)
         }
+    }
+
+    static func setCursorForHandle(_ handle: HandlePosition) {
+        cursorForHandle(handle).set()
     }
 
     // MARK: - Configuration

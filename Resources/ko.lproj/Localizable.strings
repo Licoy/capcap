@@ -12,8 +12,6 @@
 "microphoneDescription" = "선택;화면 녹화 중 음성을 녹음하는 데 필요합니다";
 "launchApp" = "앱 실행";
 "launchAtLogin" = "로그인 시 실행";
-"demoMode" = "데모 모드";
-"demoModeHint" = "화면 녹화 프로그램이 선택 영역 오버레이와 편집기를 녹화할 수 있도록 허용합니다";
 "pinAcrossSpaces" = "고정 이미지를 모든 데스크톱에 표시";
 "pinAcrossSpacesHint" = "켜면 새 고정 이미지가 모든 데스크톱과 전체 화면 Space에 표시됩니다";
 "historyCacheToggleLabel" = "스크린샷 캐시";
@@ -636,7 +634,7 @@
 "magnifierLensPanelRgb" = "RGB: %@";
 "magnifierLensPanelRgbString" = "rgb(%d, %d, %d)";
 "magnifierLensPanelCopyHint" = "색상 복사(C)";
-"magnifierLensPanelShiftHint" = "색상 형식(Shift)";
+"magnifierLensPanelFormatHint" = "색상 형식(F)";
 "magnifierLensPanelAspectFree" = "자유";
 "magnifierLensPanelAspectHint" = "캡처 비율(R)";
 /* 파일 업로드 */

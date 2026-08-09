@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.4] - 2026-08-07
+
+### Fixed
+- Allow pinned windows to be dragged immediately after app activation (39ccbaa)
+
+### Changed
+- Align editor toolbars with selection edges (a774146)
+
+## [1.7.3] - 2026-08-04
+
+### Fixed
+- Stabilize overlay resize cursor testing on hosted CI (049b991)
+
+## [1.7.2] - 2026-08-04
+
+### Fixed
+- Preserve resize-handle cursors while adjusting selections and annotations (fef9258, 4179a1d)
+- Disable magnifier lens window animation for immediate updates (865fc8f)
+
+### Changed
+- Remove outdated Star History sections from the README files (09d17f9, 670f949)
+
 ## [1.7.1] - 2026-08-03
 
 ### Fixed
