@@ -609,6 +609,8 @@
 "savePathSubtitle" = "スクリーンショットと録画のデフォルト保存先";
 "askSaveLocationLabel" = "保存先を確認";
 "askSaveLocationHint" = "スクリーンショット保存時にダイアログで場所を選ぶ。オフにすると保存先へ直接保存";
+"rememberLastScreenshotSavePathLabel" = "前回の保存先を記憶";
+"rememberLastScreenshotSavePathHint" = "保存ダイアログで前回選んだフォルダを開く。存在しない場合はスクリーンショットの保存先を使う";
 "autoRevealSavedFilesLabel" = "Finder に表示";
 "autoRevealSavedFilesHint" = "保存に成功したスクリーンショットまたは録画を Finder で選択します";
 "recordingSavePathLabel" = "録画の保存先";

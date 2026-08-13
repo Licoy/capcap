@@ -609,6 +609,8 @@
 "savePathSubtitle" = "配置截图和录制的默认保存位置";
 "askSaveLocationLabel" = "询问保存位置";
 "askSaveLocationHint" = "保存截图时弹出对话框选择位置，关闭后直接保存到截图路径";
+"rememberLastScreenshotSavePathLabel" = "记住上次保存路径";
+"rememberLastScreenshotSavePathHint" = "询问保存位置时默认打开上次选择的文件夹，若该路径不存在则使用截图保存路径";
 "autoRevealSavedFilesLabel" = "在 Finder 中显示";
 "autoRevealSavedFilesHint" = "保存成功后，在 Finder 中选中刚保存的截图或录制";
 "recordingSavePathLabel" = "录制保存路径";

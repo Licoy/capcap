@@ -153,6 +153,8 @@ enum L10n {
     static var savePathSubtitle: String { s("savePathSubtitle") }
     static var askSaveLocationLabel: String { s("askSaveLocationLabel") }
     static var askSaveLocationHint: String { s("askSaveLocationHint") }
+    static var rememberLastScreenshotSavePathLabel: String { s("rememberLastScreenshotSavePathLabel") }
+    static var rememberLastScreenshotSavePathHint: String { s("rememberLastScreenshotSavePathHint") }
     static var autoRevealSavedFilesLabel: String { s("autoRevealSavedFilesLabel") }
     static var autoRevealSavedFilesHint: String { s("autoRevealSavedFilesHint") }
     static var recordingSavePathLabel: String { s("recordingSavePathLabel") }
@@ -1492,6 +1494,42 @@ struct Defaults {
         }
         set {
             defaults.set(newValue, forKey: "askSaveLocation")
+        }
+    }
+
+    /// When true, the screenshot save panel opens on the last chosen folder.
+    /// Off by default so the dialog keeps using `screenshotSaveDirectory`.
+    static var rememberLastScreenshotSavePath: Bool {
+        get {
+            if defaults.object(forKey: "rememberLastScreenshotSavePath") == nil {
+                return false
+            }
+            return defaults.bool(forKey: "rememberLastScreenshotSavePath")
+        }
+        set {
+            defaults.set(newValue, forKey: "rememberLastScreenshotSavePath")
+        }
+    }
+
+    /// Last folder confirmed in the screenshot save panel, if any.
+    static var lastScreenshotSaveDirectory: URL? {
+        get {
+            guard let raw = defaults.string(forKey: "lastScreenshotSaveDirectory") else {
+                return nil
+            }
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return nil }
+            return URL(
+                fileURLWithPath: (trimmed as NSString).expandingTildeInPath,
+                isDirectory: true
+            ).standardizedFileURL
+        }
+        set {
+            if let newValue {
+                defaults.set(newValue.standardizedFileURL.path, forKey: "lastScreenshotSaveDirectory")
+            } else {
+                defaults.removeObject(forKey: "lastScreenshotSaveDirectory")
+            }
         }
     }
 

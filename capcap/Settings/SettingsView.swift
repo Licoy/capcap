@@ -345,6 +345,9 @@ class SettingsView: NSView {
     private var askSaveLocationTitleLabel: NSTextField!
     private var askSaveLocationHintLabel: NSTextField?
     private var askSaveLocationSwitch: NSSwitch!
+    private var rememberLastScreenshotSavePathTitleLabel: NSTextField!
+    private var rememberLastScreenshotSavePathHintLabel: NSTextField?
+    private var rememberLastScreenshotSavePathSwitch: NSSwitch!
     private var autoRevealSavedFilesTitleLabel: NSTextField!
     private var autoRevealSavedFilesHintLabel: NSTextField?
     private var autoRevealSavedFilesSwitch: NSSwitch!
@@ -1848,6 +1851,23 @@ class SettingsView: NSView {
         inner.addArrangedSubview(askSaveDivider)
         askSaveDivider.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
 
+        let rememberLast = makeToggleRow(
+            title: L10n.rememberLastScreenshotSavePathLabel,
+            subtitle: L10n.rememberLastScreenshotSavePathHint,
+            isOn: Defaults.rememberLastScreenshotSavePath,
+            action: #selector(rememberLastScreenshotSavePathToggled(_:))
+        )
+        rememberLastScreenshotSavePathTitleLabel = rememberLast.title
+        rememberLastScreenshotSavePathHintLabel = rememberLast.subtitle
+        rememberLastScreenshotSavePathSwitch = rememberLast.toggle
+        inner.addArrangedSubview(rememberLast.row)
+        rememberLast.row.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+        updateRememberLastScreenshotSavePathControlsEnabled()
+
+        let rememberLastDivider = rowDivider()
+        inner.addArrangedSubview(rememberLastDivider)
+        rememberLastDivider.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
         let autoReveal = makeToggleRow(
             title: L10n.autoRevealSavedFilesLabel,
             subtitle: L10n.autoRevealSavedFilesHint,
@@ -3207,6 +3227,18 @@ class SettingsView: NSView {
 
     @objc private func askSaveLocationToggled(_ sender: NSSwitch) {
         Defaults.askSaveLocation = sender.state == .on
+        updateRememberLastScreenshotSavePathControlsEnabled()
+    }
+
+    @objc private func rememberLastScreenshotSavePathToggled(_ sender: NSSwitch) {
+        Defaults.rememberLastScreenshotSavePath = sender.state == .on
+    }
+
+    private func updateRememberLastScreenshotSavePathControlsEnabled() {
+        let enabled = Defaults.askSaveLocation
+        rememberLastScreenshotSavePathSwitch?.isEnabled = enabled
+        rememberLastScreenshotSavePathTitleLabel?.textColor = NSColor.white.withAlphaComponent(enabled ? 0.94 : 0.4)
+        rememberLastScreenshotSavePathHintLabel?.textColor = NSColor.white.withAlphaComponent(enabled ? 0.58 : 0.35)
     }
 
     @objc private func autoRevealSavedFilesToggled(_ sender: NSSwitch) {
@@ -5561,6 +5593,10 @@ class SettingsView: NSView {
         askSaveLocationTitleLabel?.stringValue = L10n.askSaveLocationLabel
         askSaveLocationHintLabel?.stringValue = L10n.askSaveLocationHint
         askSaveLocationSwitch?.state = Defaults.askSaveLocation ? .on : .off
+        rememberLastScreenshotSavePathTitleLabel?.stringValue = L10n.rememberLastScreenshotSavePathLabel
+        rememberLastScreenshotSavePathHintLabel?.stringValue = L10n.rememberLastScreenshotSavePathHint
+        rememberLastScreenshotSavePathSwitch?.state = Defaults.rememberLastScreenshotSavePath ? .on : .off
+        updateRememberLastScreenshotSavePathControlsEnabled()
         autoRevealSavedFilesTitleLabel?.stringValue = L10n.autoRevealSavedFilesLabel
         autoRevealSavedFilesHintLabel?.stringValue = L10n.autoRevealSavedFilesHint
         autoRevealSavedFilesSwitch?.state = Defaults.autoRevealSavedFiles ? .on : .off

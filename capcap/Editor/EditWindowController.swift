@@ -2024,7 +2024,7 @@ class EditWindowController {
         panel.allowedContentTypes = [.png]
         panel.canCreateDirectories = true
         panel.isExtensionHidden = false
-        panel.directoryURL = Defaults.screenshotSaveDirectory
+        panel.directoryURL = SaveDestination.screenshotSavePanelDirectory()
         panel.nameFieldStringValue = suggestedName
 
         isFilePanelActive = true
@@ -2041,6 +2041,7 @@ class EditWindowController {
                 completion(nil)
                 return
             }
+            SaveDestination.rememberScreenshotSaveDirectory(fromFileURL: url)
             completion(url)
         }
 

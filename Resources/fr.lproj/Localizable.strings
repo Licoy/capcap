@@ -609,6 +609,8 @@
 "savePathSubtitle" = "Emplacements par défaut des captures et enregistrements";
 "askSaveLocationLabel" = "Demander l'emplacement";
 "askSaveLocationHint" = "Afficher une boîte de dialogue pour les captures ; désactiver pour enregistrer directement";
+"rememberLastScreenshotSavePathLabel" = "Mémoriser le dernier dossier";
+"rememberLastScreenshotSavePathHint" = "Ouvrir le dernier dossier choisi dans la boîte de dialogue ; s'il n'existe plus, utiliser le chemin des captures";
 "autoRevealSavedFilesLabel" = "Afficher dans le Finder";
 "autoRevealSavedFilesHint" = "Sélectionner la capture ou l'enregistrement sauvegardé dans Finder après un enregistrement réussi";
 "recordingSavePathLabel" = "Chemin d'enregistrement";

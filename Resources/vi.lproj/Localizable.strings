@@ -609,6 +609,8 @@
 "savePathSubtitle" = "Vị trí lưu mặc định cho ảnh chụp và bản ghi";
 "askSaveLocationLabel" = "Hỏi vị trí lưu";
 "askSaveLocationHint" = "Hiện hộp thoại khi lưu ảnh chụp; tắt để lưu thẳng vào đường dẫn ảnh chụp";
+"rememberLastScreenshotSavePathLabel" = "Ghi nhớ thư mục lưu gần nhất";
+"rememberLastScreenshotSavePathHint" = "Mở thư mục đã chọn lần trước trong hộp thoại; nếu không còn thì dùng đường dẫn ảnh chụp";
 "autoRevealSavedFilesLabel" = "Hiển thị trong Finder";
 "autoRevealSavedFilesHint" = "Chọn ảnh chụp hoặc bản ghi đã lưu trong Finder sau khi lưu thành công";
 "recordingSavePathLabel" = "Đường dẫn lưu bản ghi";

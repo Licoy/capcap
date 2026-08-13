@@ -11,6 +11,9 @@ preserved from upstream history for reference.
 
 ## [Unreleased]
 
+### Added
+- Remember the last screenshot save folder when choosing a location, with a settings toggle that is off by default
+
 ## [1.0.0] - 2026-08-08
 
 ### Changed

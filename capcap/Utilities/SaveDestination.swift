@@ -1,6 +1,45 @@
 import Foundation
 
 enum SaveDestination {
+    /// Directory the screenshot save panel should open on.
+    /// Uses the last chosen folder when memory is enabled and that folder still
+    /// exists; otherwise falls back to the configured screenshot save path.
+    static func screenshotSavePanelDirectory() -> URL {
+        screenshotSavePanelDirectory(
+            rememberLastPath: Defaults.rememberLastScreenshotSavePath,
+            lastDirectory: Defaults.lastScreenshotSaveDirectory,
+            defaultDirectory: Defaults.screenshotSaveDirectory,
+            isExistingDirectory: isExistingDirectory
+        )
+    }
+
+    static func screenshotSavePanelDirectory(
+        rememberLastPath: Bool,
+        lastDirectory: URL?,
+        defaultDirectory: URL,
+        isExistingDirectory: (URL) -> Bool
+    ) -> URL {
+        if rememberLastPath,
+           let lastDirectory,
+           isExistingDirectory(lastDirectory) {
+            return lastDirectory.standardizedFileURL
+        }
+        return defaultDirectory.standardizedFileURL
+    }
+
+    /// Persist the folder of a file the user just picked in the save panel.
+    /// Stored even when memory is off so turning the setting on later can reuse it.
+    static func rememberScreenshotSaveDirectory(fromFileURL url: URL) {
+        let directory = url.deletingLastPathComponent().standardizedFileURL
+        guard !directory.path.isEmpty else { return }
+        Defaults.lastScreenshotSaveDirectory = directory
+    }
+
+    static func isExistingDirectory(_ url: URL) -> Bool {
+        var isDir: ObjCBool = false
+        return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir) && isDir.boolValue
+    }
+
     static func displayPath(_ url: URL) -> String {
         let path = url.standardizedFileURL.path
         let home = URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true).standardizedFileURL.path
