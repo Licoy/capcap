@@ -25,12 +25,10 @@ final class ForkIdentityTests: XCTestCase {
     }
 
     func testAppInfoPlistIdentityAndVersion() throws {
-        let plistURL = repositoryRoot.appendingPathComponent("capcap/App/Info.plist")
-        let dict = try loadPlist(plistURL)
+        let dict = try loadPlist(repositoryRoot.appendingPathComponent("capcap/App/Info.plist"))
 
         XCTAssertEqual(dict["CFBundleIdentifier"] as? String, "com.github.licoy.capcap.desktop")
-        XCTAssertEqual(dict["CFBundleShortVersionString"] as? String, "1.1.0")
-        XCTAssertEqual(dict["CFBundleVersion"] as? String, "1001000")
+        try assertMarketingVersionMatchesBuild(in: dict)
 
         let urlTypes = try XCTUnwrap(dict["CFBundleURLTypes"] as? [[String: Any]])
         let urlName = urlTypes.first?["CFBundleURLName"] as? String
@@ -39,16 +37,39 @@ final class ForkIdentityTests: XCTestCase {
     }
 
     func testShareExtensionInfoPlistIdentityAndVersion() throws {
-        let plistURL = repositoryRoot.appendingPathComponent("capcap-share-extension/Info.plist")
-        let dict = try loadPlist(plistURL)
+        let app = try loadPlist(repositoryRoot.appendingPathComponent("capcap/App/Info.plist"))
+        let dict = try loadPlist(
+            repositoryRoot.appendingPathComponent("capcap-share-extension/Info.plist")
+        )
 
         XCTAssertEqual(
             dict["CFBundleIdentifier"] as? String,
             "com.github.licoy.capcap.desktop.ShareExtension"
         )
-        XCTAssertEqual(dict["CFBundleShortVersionString"] as? String, "1.1.0")
-        XCTAssertEqual(dict["CFBundleVersion"] as? String, "1001000")
         XCTAssertTrue((dict["CFBundleIdentifier"] as? String ?? "").hasPrefix("com.github.licoy.capcap.desktop"))
+        try assertMarketingVersionMatchesBuild(in: dict)
+        XCTAssertEqual(
+            dict["CFBundleShortVersionString"] as? String,
+            app["CFBundleShortVersionString"] as? String
+        )
+        XCTAssertEqual(dict["CFBundleVersion"] as? String, app["CFBundleVersion"] as? String)
+    }
+
+    /// `bump.sh` encodes x.y.z as `major * 1_000_000 + minor * 1_000 + patch`.
+    /// Read the live plists instead of pinning a release number so version
+    /// bumps do not break CI.
+    private func assertMarketingVersionMatchesBuild(
+        in dict: [String: Any],
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws {
+        let version = try XCTUnwrap(dict["CFBundleShortVersionString"] as? String, file: file, line: line)
+        let build = try XCTUnwrap(dict["CFBundleVersion"] as? String, file: file, line: line)
+        let parts = version.split(separator: ".").compactMap { Int($0) }
+        XCTAssertEqual(parts.count, 3, "Expected x.y.z marketing version, got \(version)", file: file, line: line)
+        guard parts.count == 3 else { return }
+        let expectedBuild = parts[0] * 1_000_000 + parts[1] * 1_000 + parts[2]
+        XCTAssertEqual(build, String(expectedBuild), file: file, line: line)
     }
 
     private func loadPlist(_ url: URL) throws -> [String: Any] {
