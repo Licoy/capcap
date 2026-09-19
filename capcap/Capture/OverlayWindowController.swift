@@ -524,9 +524,11 @@ class OverlayWindowController {
         let context = triggerContext
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             var snapshotContext = detectionContext
-            snapshotContext.menuBarExtras = DispatchQueue.main.sync {
-                MenuBarExtraCatalog.frames(displayBounds: displayBounds)
-            }
+            // Read-only AX walk; keep it off the main queue so snapshot
+            // timeouts can still fire during overlay activation.
+            snapshotContext.menuBarExtras = MenuBarExtraCatalog.frames(
+                displayBounds: displayBounds
+            )
             let result = snapshotLoader(snapshotContext)
             context?.mark(.windowEnumerationReady)
             MainRunLoopScheduler.perform {

@@ -816,7 +816,10 @@ final class OverlayPresentationTests: XCTestCase {
             rect: selectionRect(in: view), inView: view,
             isWindowSelection: false, windowID: nil
         )
-        RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+        let timeoutDeadline = Date().addingTimeInterval(1)
+        while !controller.isCaptureSessionEnded, Date() < timeoutDeadline {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.01))
+        }
         XCTAssertTrue(controller.isCaptureSessionEnded)
         XCTAssertFalse(controller.isWaitingForSnapshot)
         provider.emit(.image(displayID: displayID, image: makeImage()))
