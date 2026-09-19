@@ -8,6 +8,10 @@ enum SettingsTab: CaseIterable {
     case general
     case shortcuts
     case toolbar
+    case capture
+    case recording
+    case history
+    case files
     case upload
     case translation
     case permissions
@@ -17,6 +21,10 @@ enum SettingsTab: CaseIterable {
         switch self {
         case .general: return L10n.settingsTabGeneral
         case .shortcuts: return L10n.settingsTabShortcuts
+        case .capture: return L10n.settingsGeneralCapture
+        case .recording: return L10n.settingsGeneralRecording
+        case .history: return L10n.settingsGeneralHistory
+        case .files: return L10n.settingsGeneralFiles
         case .toolbar: return L10n.settingsTabToolbar
         case .upload: return L10n.settingsTabUpload
         case .translation: return L10n.settingsTabTranslation
@@ -29,6 +37,10 @@ enum SettingsTab: CaseIterable {
         switch self {
         case .general: return "gearshape.fill"
         case .shortcuts: return "keyboard"
+        case .capture: return "crop"
+        case .recording: return "record.circle"
+        case .history: return "clock"
+        case .files: return "doc"
         case .toolbar: return "slider.horizontal.3"
         case .upload: return "icloud.and.arrow.up.fill"
         case .translation: return "character.bubble.fill"
@@ -40,12 +52,16 @@ enum SettingsTab: CaseIterable {
     var iconTint: NSColor {
         switch self {
         case .general: return NSColor(calibratedRed: 0.62, green: 0.66, blue: 0.72, alpha: 1.0)
-        case .shortcuts: return NSColor(calibratedRed: 0.36, green: 0.66, blue: 0.98, alpha: 1.0)
-        case .toolbar: return NSColor(calibratedRed: 0.95, green: 0.54, blue: 0.62, alpha: 1.0)
+        case .shortcuts, .capture:
+            return NSColor(calibratedRed: 0.36, green: 0.66, blue: 0.98, alpha: 1.0)
+        case .toolbar, .recording:
+            return NSColor(calibratedRed: 0.95, green: 0.54, blue: 0.62, alpha: 1.0)
         case .upload: return NSColor(calibratedRed: 0.99, green: 0.72, blue: 0.32, alpha: 1.0)
-        case .translation: return NSColor(calibratedRed: 0.38, green: 0.80, blue: 0.78, alpha: 1.0)
+        case .translation, .files:
+            return NSColor(calibratedRed: 0.38, green: 0.80, blue: 0.78, alpha: 1.0)
         case .permissions: return NSColor(calibratedRed: 0.36, green: 0.78, blue: 0.50, alpha: 1.0)
-        case .about: return NSColor(calibratedRed: 0.70, green: 0.56, blue: 0.96, alpha: 1.0)
+        case .about, .history:
+            return NSColor(calibratedRed: 0.70, green: 0.56, blue: 0.96, alpha: 1.0)
         }
     }
 }
@@ -85,6 +101,8 @@ class SettingsView: NSView {
     private var historyPanelModePreview: HistoryPanelModePreviewView!
     private var historyPanelDialogOption: HistoryPanelModeOptionView!
     private var historyPanelNotchOption: HistoryPanelModeOptionView!
+    private var historyNotchTriggerLabel: NSTextField?
+    private var historyNotchTriggerPopup: NSPopUpButton?
     private var countdownSlider: SettingsTickSlider!
     private var countdownValueLabel: NSTextField!
     private var countdownTitleLabel: NSTextField!
@@ -325,8 +343,11 @@ class SettingsView: NSView {
     private var tabButtons: [TabButton] = []
     private var detailTitleLabel: NSTextField!
     private var detailScrollView: NSScrollView!
+    private var historyNotchTriggerRow: NSView?
+
     private var paneContainer: NSView!
     private var paneViews: [SettingsTab: NSView] = [:]
+    private var toolbarPane: ToolbarSettingsPane?
     private var uploadPane: UploadSettingsPane?
     private var filenameRuleCard: FilenameRuleCard?
     private var screenshotQualityTitleLabel: NSTextField!
@@ -479,7 +500,7 @@ class SettingsView: NSView {
         ])
 
         // Build all panes
-        paneViews[.general] = buildGeneralPane()
+        buildCapturePreferencePanes()
         paneViews[.shortcuts] = buildShortcutsPane()
         paneViews[.toolbar] = buildToolbarPane()
         paneViews[.upload] = buildUploadPane()
@@ -527,9 +548,40 @@ class SettingsView: NSView {
         stack.alignment = .leading
         stack.spacing = 6
         stack.translatesAutoresizingMaskIntoConstraints = false
-        panel.addSubview(stack)
+        let navigation = NSScrollView()
+        navigation.translatesAutoresizingMaskIntoConstraints = false
+        navigation.drawsBackground = false
+        navigation.hasVerticalScroller = false
+        navigation.verticalScroller = nil
+        navigation.contentView.postsBoundsChangedNotifications = true
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(sidebarBoundsDidChange),
+            name: NSView.boundsDidChangeNotification,
+            object: navigation.contentView
+        )
+        panel.addSubview(navigation)
+        let document = FlippedView()
+        document.translatesAutoresizingMaskIntoConstraints = false
+        navigation.documentView = document
+        document.addSubview(stack)
+        NSLayoutConstraint.activate([
+            document.topAnchor.constraint(equalTo: navigation.contentView.topAnchor),
+            document.leadingAnchor.constraint(equalTo: navigation.contentView.leadingAnchor),
+            document.widthAnchor.constraint(equalTo: navigation.contentView.widthAnchor),
+            stack.topAnchor.constraint(equalTo: document.topAnchor),
+            stack.leadingAnchor.constraint(equalTo: document.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: document.trailingAnchor),
+            stack.bottomAnchor.constraint(equalTo: document.bottomAnchor),
+        ])
 
         for tab in SettingsTab.allCases {
+            if tab == .capture || tab == .upload {
+                let separator = SidebarSeparatorView()
+                stack.addArrangedSubview(separator)
+                separator.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+                separator.heightAnchor.constraint(equalToConstant: 9).isActive = true
+            }
             let btn = TabButton(tab: tab)
             btn.target = self
             btn.action = #selector(tabClicked(_:))
@@ -541,10 +593,7 @@ class SettingsView: NSView {
 
         // Hairline above the bottom action so the sidebar visually splits
         // navigation from the primary launch/quit affordance.
-        let divider = NSView()
-        divider.wantsLayer = true
-        divider.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.10).cgColor
-        divider.translatesAutoresizingMaskIntoConstraints = false
+        let divider = SidebarSeparatorView()
         panel.addSubview(divider)
 
         let bottomBtn = ActionButton(symbolName: "power", title: L10n.launchApp, tint: .systemGreen)
@@ -555,10 +604,10 @@ class SettingsView: NSView {
         launchButton = bottomBtn
 
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: panel.topAnchor, constant: 14),
-            stack.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 14),
-            stack.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -14),
-            stack.bottomAnchor.constraint(lessThanOrEqualTo: divider.topAnchor, constant: -8),
+            navigation.topAnchor.constraint(equalTo: panel.topAnchor, constant: 14),
+            navigation.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 14),
+            navigation.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -14),
+            navigation.bottomAnchor.constraint(equalTo: divider.topAnchor, constant: -8),
 
             divider.heightAnchor.constraint(equalToConstant: 1),
             divider.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 14),
@@ -571,6 +620,12 @@ class SettingsView: NSView {
         ])
 
         return panel
+    }
+
+    @objc private func sidebarBoundsDidChange() {
+        for button in tabButtons {
+            button.refreshHoverAtCurrentMouseLocation()
+        }
     }
 
     private func appVersionString() -> String {
@@ -622,6 +677,10 @@ class SettingsView: NSView {
         if selectedTab == .upload && tab != .upload {
             uploadPane?.clearLogs()
         }
+        if selectedTab == .toolbar && tab != .toolbar {
+            toolbarPane?.cancelShortcutRecording()
+        }
+        window?.makeFirstResponder(nil)
         selectedTab = tab
         for btn in tabButtons {
             btn.isSelected = (btn.tab == tab)
@@ -629,7 +688,7 @@ class SettingsView: NSView {
         detailTitleLabel?.stringValue = tab.title
 
         // Rebuild the mic device list on every visit so hot-plugs appear.
-        if tab == .general {
+        if tab == .recording {
             refreshMicrophoneDevicePopup()
         }
 
@@ -644,6 +703,9 @@ class SettingsView: NSView {
             pane.trailingAnchor.constraint(equalTo: paneContainer.trailingAnchor),
             pane.bottomAnchor.constraint(equalTo: paneContainer.bottomAnchor),
         ])
+        layoutSubtreeIfNeeded()
+        detailScrollView.contentView.scroll(to: .zero)
+        detailScrollView.reflectScrolledClipView(detailScrollView.contentView)
     }
 
     // MARK: - Detail panel
@@ -678,11 +740,11 @@ class SettingsView: NSView {
         paneContainer = container
 
         NSLayoutConstraint.activate([
+            scroll.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 10),
             title.topAnchor.constraint(equalTo: panel.topAnchor, constant: 18),
             title.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 22),
             title.trailingAnchor.constraint(lessThanOrEqualTo: panel.trailingAnchor, constant: -22),
 
-            scroll.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 10),
             scroll.leadingAnchor.constraint(equalTo: panel.leadingAnchor),
             scroll.trailingAnchor.constraint(equalTo: panel.trailingAnchor),
             scroll.bottomAnchor.constraint(equalTo: panel.bottomAnchor),
@@ -698,18 +760,22 @@ class SettingsView: NSView {
 
     // MARK: - Pane builders
 
-    private func buildGeneralPane() -> NSView {
-        let stack = paneStack()
+    private func buildCapturePreferencePanes() {
+        let basic = paneStack()
+        let capture = paneStack()
+        let recording = paneStack()
+        let history = paneStack()
+        let files = paneStack()
 
-        // Language card
-        let langCard = CardView()
+        let togglesCard = CardView()
+        let togglesInner = verticalInnerStack()
+        togglesCard.addSubview(togglesInner)
+        pin(togglesInner, to: togglesCard, insets: NSEdgeInsets(top: 14, left: 14, bottom: 6, right: 14))
         let langRow = NSStackView()
         langRow.orientation = .horizontal
         langRow.alignment = .centerY
         langRow.spacing = 10
         langRow.translatesAutoresizingMaskIntoConstraints = false
-        langCard.addSubview(langRow)
-        pin(langRow, to: langCard, insets: NSEdgeInsets(top: 14, left: 14, bottom: 14, right: 14))
 
         langTitleLabel = primaryLabel(L10n.languageHeader)
         langRow.addArrangedSubview(langTitleLabel)
@@ -724,15 +790,10 @@ class SettingsView: NSView {
         langPicker.font = NSFont.systemFont(ofSize: 12)
         langRow.addArrangedSubview(langPicker)
 
-        stack.addArrangedSubview(langCard)
-        langCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
-
-        // Toggles card
-        let togglesCard = CardView()
-        let togglesInner = verticalInnerStack()
-        togglesCard.addSubview(togglesInner)
-        pin(togglesInner, to: togglesCard, insets: NSEdgeInsets(top: 6, left: 14, bottom: 6, right: 14))
-
+        togglesInner.addArrangedSubview(langRow)
+        langRow.widthAnchor.constraint(equalTo: togglesInner.widthAnchor).isActive = true
+        togglesInner.setCustomSpacing(14, after: langRow)
+        togglesInner.addArrangedSubview(rowDivider())
         let menuBar = makeToggleRow(
             title: L10n.showMenuBarIcon,
             subtitle: nil,
@@ -755,8 +816,18 @@ class SettingsView: NSView {
         launchAtLoginSwitch = login.toggle
         togglesInner.addArrangedSubview(login.row)
         login.row.widthAnchor.constraint(equalTo: togglesInner.widthAnchor).isActive = true
-        togglesInner.addArrangedSubview(rowDivider())
 
+        basic.addArrangedSubview(togglesCard)
+        togglesCard.widthAnchor.constraint(equalTo: basic.widthAnchor).isActive = true
+
+        buildCountdownCard(into: capture)
+        buildWindowShadowCard(into: capture)
+        buildBeautifyDefaultsCard(into: capture)
+        updateBeautifyControlsEnabled()
+        let pinCard = CardView()
+        let pinInner = verticalInnerStack()
+        pinCard.addSubview(pinInner)
+        pin(pinInner, to: pinCard, insets: NSEdgeInsets(top: 6, left: 14, bottom: 6, right: 14))
         let pinAcrossSpaces = makeToggleRow(
             title: L10n.pinAcrossSpaces,
             subtitle: L10n.pinAcrossSpacesHint,
@@ -766,30 +837,28 @@ class SettingsView: NSView {
         pinAcrossSpacesTitleLabel = pinAcrossSpaces.title
         pinAcrossSpacesSubtitleLabel = pinAcrossSpaces.subtitle
         pinAcrossSpacesSwitch = pinAcrossSpaces.toggle
-        togglesInner.addArrangedSubview(pinAcrossSpaces.row)
-        pinAcrossSpaces.row.widthAnchor.constraint(equalTo: togglesInner.widthAnchor).isActive = true
+        pinInner.addArrangedSubview(pinAcrossSpaces.row)
+        pinAcrossSpaces.row.widthAnchor.constraint(equalTo: pinInner.widthAnchor).isActive = true
 
-        stack.addArrangedSubview(togglesCard)
-        togglesCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        capture.addArrangedSubview(pinCard)
+        pinCard.widthAnchor.constraint(equalTo: capture.widthAnchor).isActive = true
 
-        buildSelectionMoveModifierCard(into: stack)
+        buildSelectionMoveModifierCard(into: capture)
 
-        buildWindowShadowCard(into: stack)
-
-        buildBeautifyDefaultsCard(into: stack)
-
-        buildHistoryAndCountdownCards(into: stack)
-
+        buildRecordingCard(into: recording)
+        buildHistoryCards(into: history)
+        buildSavePathCard(into: files)
+        buildScreenshotQualityCard(into: files)
         let filenameCard = FilenameRuleCard()
         filenameRuleCard = filenameCard
-        stack.addArrangedSubview(filenameCard)
-        filenameCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        files.addArrangedSubview(filenameCard)
+        filenameCard.widthAnchor.constraint(equalTo: files.widthAnchor).isActive = true
 
-        buildScreenshotQualityCard(into: stack)
-
-        buildSavePathCard(into: stack)
-
-        return wrapPane(stack)
+        paneViews[.general] = wrapPane(basic)
+        paneViews[.capture] = wrapPane(capture)
+        paneViews[.recording] = wrapPane(recording)
+        paneViews[.history] = wrapPane(history)
+        paneViews[.files] = wrapPane(files)
     }
 
     private func buildSelectionMoveModifierCard(into stack: NSStackView) {
@@ -1061,6 +1130,16 @@ class SettingsView: NSView {
         card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
     }
 
+    private func updateBeautifyControlsEnabled() {
+        let enabled = Defaults.beautifyAutoEnabled
+        beautifyPaddingSlider?.isEnabled = enabled
+        beautifyShadowSwitch?.isEnabled = enabled
+        for label in [beautifyPresetTitleLabel, beautifyPaddingTitleLabel, beautifyPaddingValueLabel, beautifyShadowTitleLabel] {
+            label?.textColor = NSColor.white.withAlphaComponent(enabled ? 0.94 : 0.4)
+        }
+        for swatch in beautifyPresetSwatches { swatch.isEnabled = enabled }
+    }
+
     private func updateHistoryCacheControlsEnabled() {
         let mediaOn = Defaults.historyCacheEnabled
         historyCacheSlider?.isEnabled = mediaOn
@@ -1085,6 +1164,11 @@ class SettingsView: NSView {
         historyPanelNotchOption?.isEnabled = notchEnabled
         historyPanelDialogOption?.isSelected = mode == .dialog
         historyPanelNotchOption?.isSelected = mode == .notch
+        let triggerEnabled = notchEnabled && mode == .notch
+        historyNotchTriggerPopup?.isEnabled = triggerEnabled
+        historyNotchTriggerPopup?.selectItem(at: Defaults.HistoryNotchTriggerMode.allCases.firstIndex(of: Defaults.historyNotchTriggerMode) ?? 0)
+        historyNotchTriggerRow?.isHidden = mode != .notch
+        historyNotchTriggerLabel?.textColor = NSColor.white.withAlphaComponent(triggerEnabled ? 0.94 : 0.4)
 
         historyPanelDisplayModeTitleLabel?.textColor = NSColor.white.withAlphaComponent(on ? 0.94 : 0.4)
         historyPanelDisplayModeHintLabel?.textColor = NSColor.white.withAlphaComponent(on ? 0.58 : 0.35)
@@ -1101,6 +1185,8 @@ class SettingsView: NSView {
     private func refreshSavePathControls() {
         recordingSavePathValueLabel?.stringValue = SaveDestination.displayPath(Defaults.recordingSaveDirectory)
         screenshotSavePathValueLabel?.stringValue = SaveDestination.displayPath(Defaults.screenshotSaveDirectory)
+        recordingSavePathValueLabel?.toolTip = Defaults.recordingSaveDirectory.path
+        screenshotSavePathValueLabel?.toolTip = Defaults.screenshotSaveDirectory.path
         refreshRecordingSaveFormatPopup()
     }
 
@@ -1109,8 +1195,11 @@ class SettingsView: NSView {
         refreshScreenshotQualityPopup(screenshotQualitySavePopup, selected: Defaults.screenshotSaveQuality)
         refreshScreenshotQualityPopup(screenshotQualityClipboardPopup, selected: Defaults.screenshotClipboardQuality)
         screenshotQualityUploadHintLabel?.stringValue = Defaults.screenshotUploadQuality.localizedHint
+        screenshotQualityUploadPopup?.toolTip = Defaults.screenshotUploadQuality.localizedHint
         screenshotQualitySaveHintLabel?.stringValue = Defaults.screenshotSaveQuality.localizedHint
+        screenshotQualitySavePopup?.toolTip = Defaults.screenshotSaveQuality.localizedHint
         screenshotQualityClipboardHintLabel?.stringValue = Defaults.screenshotClipboardQuality.localizedHint
+        screenshotQualityClipboardPopup?.toolTip = Defaults.screenshotClipboardQuality.localizedHint
     }
 
     private func refreshScreenshotQualityPopup(
@@ -1161,6 +1250,12 @@ class SettingsView: NSView {
         } else {
             popup.selectItem(at: 0)
         }
+    }
+
+    private func updateMicrophoneControlsEnabled() {
+        let enabled = Defaults.recordingMicrophoneEnabled
+        recordingMicrophoneDevicePopup?.isEnabled = enabled
+        recordingMicrophoneDeviceTitleLabel?.textColor = NSColor.white.withAlphaComponent(enabled ? 0.94 : 0.4)
     }
 
     @objc private func recordingMicrophoneDeviceChanged(_ sender: NSPopUpButton) {
@@ -1466,7 +1561,7 @@ class SettingsView: NSView {
         return wrapPane(stack)
     }
 
-    private func buildHistoryAndCountdownCards(into stack: NSStackView) {
+    private func buildHistoryCards(into stack: NSStackView) {
         // History cache card
         let historyCard = CardView()
         let historyInner = NSStackView()
@@ -1579,6 +1674,9 @@ class SettingsView: NSView {
 
         buildHistoryPanelModeCard(into: stack)
 
+    }
+
+    private func buildCountdownCard(into stack: NSStackView) {
         // Countdown card
         let countdownCard = CardView()
         let countdownInner = NSStackView()
@@ -1688,6 +1786,27 @@ class SettingsView: NSView {
         inner.addArrangedSubview(optionRow)
         optionRow.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
 
+        let triggerRow = NSStackView()
+        triggerRow.orientation = .horizontal
+        triggerRow.alignment = .centerY
+        triggerRow.spacing = 10
+        historyNotchTriggerRow = triggerRow
+        let triggerLabel = primaryLabel(L10n.historyNotchTriggerLabel)
+        historyNotchTriggerLabel = triggerLabel
+        triggerRow.addArrangedSubview(triggerLabel)
+        triggerRow.addArrangedSubview(flexSpacer())
+        let triggerPopup = NSPopUpButton(frame: .zero, pullsDown: false)
+        triggerPopup.controlSize = .small
+        triggerPopup.font = NSFont.systemFont(ofSize: 12)
+        triggerPopup.addItems(withTitles: Defaults.HistoryNotchTriggerMode.allCases.map { $0.localizedTitle })
+        triggerPopup.setAccessibilityLabel(L10n.historyNotchTriggerLabel)
+        triggerPopup.target = self
+        triggerPopup.action = #selector(historyNotchTriggerChanged(_:))
+        historyNotchTriggerPopup = triggerPopup
+        triggerRow.addArrangedSubview(triggerPopup)
+        inner.addArrangedSubview(triggerRow)
+        triggerRow.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
         updateHistoryPanelModeControlsEnabled()
 
         stack.addArrangedSubview(card)
@@ -1713,10 +1832,9 @@ class SettingsView: NSView {
         screenshotQualityTitleLabel = primaryLabel(L10n.screenshotQualityTitle)
         screenshotQualitySubtitleLabel = secondaryLabel(L10n.screenshotQualitySubtitle, wrapping: true)
         header.addArrangedSubview(screenshotQualityTitleLabel)
-        header.addArrangedSubview(screenshotQualitySubtitleLabel)
+        screenshotQualityTitleLabel.toolTip = L10n.screenshotQualitySubtitle
         inner.addArrangedSubview(header)
         header.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
-        screenshotQualitySubtitleLabel.widthAnchor.constraint(equalTo: header.widthAnchor).isActive = true
 
         let topDivider = rowDivider()
         inner.addArrangedSubview(topDivider)
@@ -1789,9 +1907,8 @@ class SettingsView: NSView {
         let titleLabel = primaryLabel(title)
         let hintLabel = secondaryLabel(quality.localizedHint, wrapping: true)
         labelStack.addArrangedSubview(titleLabel)
-        labelStack.addArrangedSubview(hintLabel)
         row.addArrangedSubview(labelStack)
-        labelStack.widthAnchor.constraint(greaterThanOrEqualToConstant: 300).isActive = true
+        labelStack.widthAnchor.constraint(greaterThanOrEqualToConstant: 160).isActive = true
 
         row.addArrangedSubview(flexSpacer())
 
@@ -1826,14 +1943,45 @@ class SettingsView: NSView {
         savePathTitleLabel = primaryLabel(L10n.savePathTitle)
         savePathSubtitleLabel = secondaryLabel(L10n.savePathSubtitle, wrapping: true)
         header.addArrangedSubview(savePathTitleLabel)
-        header.addArrangedSubview(savePathSubtitleLabel)
+        savePathTitleLabel.toolTip = L10n.savePathSubtitle
         inner.addArrangedSubview(header)
         header.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
-        savePathSubtitleLabel.widthAnchor.constraint(equalTo: header.widthAnchor).isActive = true
 
         let topDivider = rowDivider()
         inner.addArrangedSubview(topDivider)
         topDivider.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let screenshotPath = makeSavePathRow(
+            title: L10n.screenshotSavePathLabel,
+            chooseAction: #selector(chooseScreenshotSavePathClicked),
+            revealAction: #selector(revealScreenshotSavePathClicked)
+        )
+        screenshotSavePathTitleLabel = screenshotPath.title
+        screenshotSavePathValueLabel = screenshotPath.value
+        screenshotSavePathChooseButton = screenshotPath.chooseButton
+        screenshotSavePathRevealButton = screenshotPath.revealButton
+        inner.addArrangedSubview(screenshotPath.row)
+        screenshotPath.row.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let pathDivider = rowDivider()
+        inner.addArrangedSubview(pathDivider)
+        pathDivider.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let recordingPath = makeSavePathRow(
+            title: L10n.recordingSavePathLabel,
+            chooseAction: #selector(chooseRecordingSavePathClicked),
+            revealAction: #selector(revealRecordingSavePathClicked)
+        )
+        recordingSavePathTitleLabel = recordingPath.title
+        recordingSavePathValueLabel = recordingPath.value
+        recordingSavePathChooseButton = recordingPath.chooseButton
+        recordingSavePathRevealButton = recordingPath.revealButton
+        inner.addArrangedSubview(recordingPath.row)
+        recordingPath.row.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let behaviorDivider = rowDivider()
+        inner.addArrangedSubview(behaviorDivider)
+        behaviorDivider.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
 
         let askSave = makeToggleRow(
             title: L10n.askSaveLocationLabel,
@@ -1844,6 +1992,9 @@ class SettingsView: NSView {
         askSaveLocationTitleLabel = askSave.title
         askSaveLocationHintLabel = askSave.subtitle
         askSaveLocationSwitch = askSave.toggle
+        askSave.subtitle?.isHidden = true
+        askSave.title.toolTip = L10n.askSaveLocationHint
+        askSave.toggle.toolTip = L10n.askSaveLocationHint
         inner.addArrangedSubview(askSave.row)
         askSave.row.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
 
@@ -1877,29 +2028,22 @@ class SettingsView: NSView {
         autoRevealSavedFilesTitleLabel = autoReveal.title
         autoRevealSavedFilesHintLabel = autoReveal.subtitle
         autoRevealSavedFilesSwitch = autoReveal.toggle
+        autoReveal.subtitle?.isHidden = true
+        autoReveal.title.toolTip = L10n.autoRevealSavedFilesHint
+        autoReveal.toggle.toolTip = L10n.autoRevealSavedFilesHint
         inner.addArrangedSubview(autoReveal.row)
         autoReveal.row.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
 
-        let autoRevealDivider = rowDivider()
-        inner.addArrangedSubview(autoRevealDivider)
-        autoRevealDivider.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+        refreshSavePathControls()
+        stack.addArrangedSubview(card)
+        card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+    }
 
-        let recordingPath = makeSavePathRow(
-            title: L10n.recordingSavePathLabel,
-            chooseAction: #selector(chooseRecordingSavePathClicked),
-            revealAction: #selector(revealRecordingSavePathClicked)
-        )
-        recordingSavePathTitleLabel = recordingPath.title
-        recordingSavePathValueLabel = recordingPath.value
-        recordingSavePathChooseButton = recordingPath.chooseButton
-        recordingSavePathRevealButton = recordingPath.revealButton
-        inner.addArrangedSubview(recordingPath.row)
-        recordingPath.row.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
-
-        let formatDivider = rowDivider()
-        inner.addArrangedSubview(formatDivider)
-        formatDivider.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
-
+    private func buildRecordingCard(into stack: NSStackView) {
+        let card = CardView()
+        let inner = paneStack()
+        card.addSubview(inner)
+        pin(inner, to: card, insets: NSEdgeInsets(top: 14, left: 14, bottom: 14, right: 14))
         let formatRow = NSStackView()
         formatRow.orientation = .horizontal
         formatRow.alignment = .centerY
@@ -1979,24 +2123,8 @@ class SettingsView: NSView {
         micDeviceRow.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
         refreshMicrophoneDevicePopup()
 
-        let bottomDivider = rowDivider()
-        inner.addArrangedSubview(bottomDivider)
-        bottomDivider.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
-
-        let screenshotPath = makeSavePathRow(
-            title: L10n.screenshotSavePathLabel,
-            chooseAction: #selector(chooseScreenshotSavePathClicked),
-            revealAction: #selector(revealScreenshotSavePathClicked)
-        )
-        screenshotSavePathTitleLabel = screenshotPath.title
-        screenshotSavePathValueLabel = screenshotPath.value
-        screenshotSavePathChooseButton = screenshotPath.chooseButton
-        screenshotSavePathRevealButton = screenshotPath.revealButton
-        inner.addArrangedSubview(screenshotPath.row)
-        screenshotPath.row.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
-
-        refreshSavePathControls()
-
+        refreshRecordingSaveFormatPopup()
+        updateMicrophoneControlsEnabled()
         stack.addArrangedSubview(card)
         card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
     }
@@ -2008,26 +2136,21 @@ class SettingsView: NSView {
     ) -> (row: NSView, title: NSTextField, value: NSTextField, chooseButton: NSButton, revealButton: NSButton) {
         let row = NSStackView()
         row.orientation = .horizontal
+        row.distribution = .fill
         row.alignment = .centerY
         row.spacing = 10
         row.translatesAutoresizingMaskIntoConstraints = false
 
-        let labelStack = NSStackView()
-        labelStack.orientation = .vertical
-        labelStack.alignment = .leading
-        labelStack.spacing = 3
-        labelStack.translatesAutoresizingMaskIntoConstraints = false
-
         let titleLabel = primaryLabel(title)
+        titleLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
         let valueLabel = secondaryLabel("", wrapping: false)
+        valueLabel.isSelectable = true
         valueLabel.lineBreakMode = .byTruncatingMiddle
         valueLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-
-        labelStack.addArrangedSubview(titleLabel)
-        labelStack.addArrangedSubview(valueLabel)
-        row.addArrangedSubview(labelStack)
-        labelStack.widthAnchor.constraint(greaterThanOrEqualToConstant: 260).isActive = true
-        row.addArrangedSubview(flexSpacer())
+        valueLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        row.addArrangedSubview(titleLabel)
+        row.addArrangedSubview(valueLabel)
+        valueLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 120).isActive = true
 
         let chooseButton = NSButton(title: L10n.savePathChoose, target: self, action: chooseAction)
         chooseButton.bezelStyle = .rounded
@@ -2050,6 +2173,7 @@ class SettingsView: NSView {
         let host = NSView()
         host.translatesAutoresizingMaskIntoConstraints = false
         let pane = ToolbarSettingsPane()
+        toolbarPane = pane
         host.addSubview(pane)
         NSLayoutConstraint.activate([
             pane.topAnchor.constraint(equalTo: host.topAnchor),
@@ -2058,6 +2182,10 @@ class SettingsView: NSView {
             pane.bottomAnchor.constraint(equalTo: host.bottomAnchor),
         ])
         return host
+    }
+
+    func cancelToolbarShortcutRecording() {
+        toolbarPane?.cancelShortcutRecording()
     }
 
     private func buildUploadPane() -> NSView {
@@ -3350,6 +3478,12 @@ class SettingsView: NSView {
         updateHistoryPanelModeControlsEnabled()
     }
 
+    @objc private func historyNotchTriggerChanged(_ sender: NSPopUpButton) {
+        let modes = Defaults.HistoryNotchTriggerMode.allCases
+        guard modes.indices.contains(sender.indexOfSelectedItem) else { return }
+        Defaults.historyNotchTriggerMode = modes[sender.indexOfSelectedItem]
+    }
+
     @objc private func historyPanelModeOptionClicked(_ sender: HistoryPanelModeOptionView) {
         guard Defaults.isHistoryCacheAvailable else { return }
         switch sender.mode {
@@ -3387,6 +3521,7 @@ class SettingsView: NSView {
     @objc private func recordingMicrophoneToggled(_ sender: NSSwitch) {
         let enabled = sender.state == .on
         Defaults.recordingMicrophoneEnabled = enabled
+        updateMicrophoneControlsEnabled()
         guard enabled else { return }
 
         // Once denied, macOS won't re-prompt — bounce to System Settings and
@@ -3397,6 +3532,7 @@ class SettingsView: NSView {
         if AppPermissions.microphoneDenied {
             sender.state = .off
             Defaults.recordingMicrophoneEnabled = false
+            updateMicrophoneControlsEnabled()
             presentMicrophoneDeniedAlert()
             return
         }
@@ -3409,6 +3545,7 @@ class SettingsView: NSView {
             // User declined the prompt or an error occurred. Revert.
             self.recordingMicrophoneSwitch?.state = .off
             Defaults.recordingMicrophoneEnabled = false
+            self.updateMicrophoneControlsEnabled()
             self.refreshPermissionStatus()
         }
     }
@@ -3436,6 +3573,7 @@ class SettingsView: NSView {
 
     @objc private func beautifyAutoToggled(_ sender: NSSwitch) {
         Defaults.beautifyAutoEnabled = sender.state == .on
+        updateBeautifyControlsEnabled()
     }
 
     @objc private func beautifyPresetSwatchClicked(_ sender: BeautifySettingsSwatchView) {
@@ -3525,6 +3663,7 @@ class SettingsView: NSView {
 
     private func startPermissionFlow(_ pane: PermissionFlowPane, from sourceView: NSView) {
         permissionFlowController.setLocaleIdentifier(Defaults.language.lprojName)
+        updateMicrophoneControlsEnabled()
         permissionFlowController.authorize(
             pane: pane,
             suggestedAppURLs: [Bundle.main.bundleURL],
@@ -5569,6 +5708,7 @@ class SettingsView: NSView {
 
     @objc private func updateLocalization() {
         permissionFlowController.setLocaleIdentifier(Defaults.language.lprojName)
+        updateMicrophoneControlsEnabled()
         menuBarTitleLabel?.stringValue = L10n.showMenuBarIcon
         launchAtLoginTitleLabel?.stringValue = L10n.launchAtLogin
         pinAcrossSpacesTitleLabel?.stringValue = L10n.pinAcrossSpaces
@@ -5584,14 +5724,18 @@ class SettingsView: NSView {
         filenameRuleCard?.refreshLocalization()
         screenshotQualityTitleLabel?.stringValue = L10n.screenshotQualityTitle
         screenshotQualitySubtitleLabel?.stringValue = L10n.screenshotQualitySubtitle
+        screenshotQualityTitleLabel?.toolTip = L10n.screenshotQualitySubtitle
         screenshotQualityUploadTitleLabel?.stringValue = L10n.screenshotQualityUploadLabel
         screenshotQualitySaveTitleLabel?.stringValue = L10n.screenshotQualitySaveLabel
         screenshotQualityClipboardTitleLabel?.stringValue = L10n.screenshotQualityClipboardLabel
         refreshScreenshotQualityControls()
         savePathTitleLabel?.stringValue = L10n.savePathTitle
         savePathSubtitleLabel?.stringValue = L10n.savePathSubtitle
+        savePathTitleLabel?.toolTip = L10n.savePathSubtitle
         askSaveLocationTitleLabel?.stringValue = L10n.askSaveLocationLabel
         askSaveLocationHintLabel?.stringValue = L10n.askSaveLocationHint
+        askSaveLocationTitleLabel?.toolTip = L10n.askSaveLocationHint
+        askSaveLocationSwitch?.toolTip = L10n.askSaveLocationHint
         askSaveLocationSwitch?.state = Defaults.askSaveLocation ? .on : .off
         rememberLastScreenshotSavePathTitleLabel?.stringValue = L10n.rememberLastScreenshotSavePathLabel
         rememberLastScreenshotSavePathHintLabel?.stringValue = L10n.rememberLastScreenshotSavePathHint
@@ -5599,6 +5743,8 @@ class SettingsView: NSView {
         updateRememberLastScreenshotSavePathControlsEnabled()
         autoRevealSavedFilesTitleLabel?.stringValue = L10n.autoRevealSavedFilesLabel
         autoRevealSavedFilesHintLabel?.stringValue = L10n.autoRevealSavedFilesHint
+        autoRevealSavedFilesTitleLabel?.toolTip = L10n.autoRevealSavedFilesHint
+        autoRevealSavedFilesSwitch?.toolTip = L10n.autoRevealSavedFilesHint
         autoRevealSavedFilesSwitch?.state = Defaults.autoRevealSavedFiles ? .on : .off
         recordingSavePathTitleLabel?.stringValue = L10n.recordingSavePathLabel
         recordingSaveFormatTitleLabel?.stringValue = L10n.recordingSaveFormatSettingLabel
@@ -5634,6 +5780,11 @@ class SettingsView: NSView {
         historyPanelDialogModeHintLabel?.stringValue = L10n.historyPanelDialogModeHint
         historyPanelNotchModeTitleLabel?.stringValue = L10n.historyPanelNotchMode
         historyPanelNotchModeHintLabel?.stringValue = L10n.historyPanelNotchModeHint
+        historyNotchTriggerLabel?.stringValue = L10n.historyNotchTriggerLabel
+        historyNotchTriggerPopup?.setAccessibilityLabel(L10n.historyNotchTriggerLabel)
+        for (index, mode) in Defaults.HistoryNotchTriggerMode.allCases.enumerated() {
+            historyNotchTriggerPopup?.item(at: index)?.title = mode.localizedTitle
+        }
         updateHistoryPanelModeControlsEnabled()
         windowShadowTitleLabel?.stringValue = L10n.windowShadowToggleLabel
         windowShadowSubtitleLabel?.stringValue = L10n.windowShadowToggleHint
@@ -5645,6 +5796,7 @@ class SettingsView: NSView {
         beautifyPaddingTitleLabel?.stringValue = L10n.beautifyDefaultPaddingLabel
         beautifyShadowTitleLabel?.stringValue = L10n.beautifyShadowEffect
         beautifyAutoSwitch?.state = Defaults.beautifyAutoEnabled ? .on : .off
+        updateBeautifyControlsEnabled()
         beautifyPaddingSlider?.doubleValue = Defaults.lastBeautifyPadding
         beautifyPaddingValueLabel?.stringValue = "\(Int(Defaults.lastBeautifyPadding.rounded()))"
         beautifyShadowSwitch?.state = Defaults.lastBeautifyShadowEnabled ? .on : .off
@@ -5832,6 +5984,42 @@ private final class DetailPanel: NSView {
     }
 }
 
+/// A hairline that fades to transparent at both edges of the sidebar.
+private final class SidebarSeparatorView: NSView {
+    private let gradient = CAGradientLayer()
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        translatesAutoresizingMaskIntoConstraints = false
+        wantsLayer = true
+        gradient.colors = [
+            NSColor.white.withAlphaComponent(0).cgColor,
+            NSColor.white.withAlphaComponent(0.18).cgColor,
+            NSColor.white.withAlphaComponent(0).cgColor,
+        ]
+        gradient.locations = [0, 0.5, 1]
+        gradient.startPoint = CGPoint(x: 0, y: 0.5)
+        gradient.endPoint = CGPoint(x: 1, y: 0.5)
+        layer?.addSublayer(gradient)
+        setAccessibilityElement(false)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func layout() {
+        super.layout()
+        let scale = window?.backingScaleFactor ?? 2
+        let thickness = 1 / scale
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        gradient.frame = CGRect(x: 0, y: (bounds.midY * scale).rounded() / scale,
+                                width: bounds.width, height: thickness)
+        CATransaction.commit()
+    }
+}
+
 // MARK: - Sidebar tab button
 
 private final class TabButton: NSControl {
@@ -5840,6 +6028,7 @@ private final class TabButton: NSControl {
     private let iconView = NSImageView()
     private let label = NSTextField(labelWithString: "")
     private var trackingArea: NSTrackingArea?
+    private var isHovered = false
 
     var isSelected: Bool = false {
         didSet { applyAppearance() }
@@ -5888,6 +6077,9 @@ private final class TabButton: NSControl {
             label.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -12),
         ])
 
+        setAccessibilityElement(true)
+        setAccessibilityRole(.button)
+        setAccessibilityLabel(tab.title)
         applyAppearance()
     }
 
@@ -5897,6 +6089,7 @@ private final class TabButton: NSControl {
 
     func refreshTitle() {
         label.stringValue = tab.title
+        setAccessibilityLabel(tab.title)
     }
 
     private func applyAppearance() {
@@ -5909,7 +6102,9 @@ private final class TabButton: NSControl {
             iconChip.layer?.borderColor = NSColor.white.withAlphaComponent(0.30).cgColor
             iconView.contentTintColor = .white
         } else {
-            layer?.backgroundColor = NSColor.clear.cgColor
+            layer?.backgroundColor = (
+                isHovered ? NSColor.white.withAlphaComponent(0.05) : NSColor.clear
+            ).cgColor
             layer?.borderWidth = 0
             label.textColor = NSColor.white.withAlphaComponent(0.82)
             iconChip.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.06).cgColor
@@ -5934,14 +6129,42 @@ private final class TabButton: NSControl {
     }
 
     override func mouseEntered(with event: NSEvent) {
-        if !isSelected {
-            layer?.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
-        }
+        isHovered = true
+        applyAppearance()
     }
 
     override func mouseExited(with event: NSEvent) {
-        if !isSelected {
-            layer?.backgroundColor = NSColor.clear.cgColor
+        isHovered = false
+        applyAppearance()
+    }
+
+    func refreshHoverAtCurrentMouseLocation() {
+        guard let window else {
+            if isHovered {
+                isHovered = false
+                applyAppearance()
+            }
+            return
+        }
+        let mouseLocation = convert(window.mouseLocationOutsideOfEventStream, from: nil)
+        let shouldHighlight = visibleRect.contains(mouseLocation)
+        guard isHovered != shouldHighlight else { return }
+        isHovered = shouldHighlight
+        applyAppearance()
+    }
+
+    override var acceptsFirstResponder: Bool { isEnabled }
+
+    override func accessibilityPerformPress() -> Bool {
+        guard isEnabled else { return false }
+        return sendAction(action, to: target)
+    }
+
+    override func keyDown(with event: NSEvent) {
+        if event.keyCode == kVK_Space || event.keyCode == kVK_Return {
+            _ = accessibilityPerformPress()
+        } else {
+            super.keyDown(with: event)
         }
     }
 
@@ -5949,7 +6172,6 @@ private final class TabButton: NSControl {
         sendAction(action, to: target)
     }
 
-    override var acceptsFirstResponder: Bool { true }
 }
 
 // MARK: - Action button (sidebar bottom row, mirrors TabButton's chrome)
@@ -6320,6 +6542,14 @@ private final class BeautifySettingsSwatchView: NSView {
     weak var target: AnyObject?
     var action: Selector?
 
+    var isEnabled = true {
+        didSet {
+            alphaValue = isEnabled ? 1 : 0.4
+            setAccessibilityEnabled(isEnabled)
+            window?.invalidateCursorRects(for: self)
+        }
+    }
+
     var isSelected: Bool = false {
         didSet { needsDisplay = true }
     }
@@ -6343,10 +6573,11 @@ private final class BeautifySettingsSwatchView: NSView {
 
     override func resetCursorRects() {
         super.resetCursorRects()
-        addCursorRect(bounds, cursor: .pointingHand)
+        if isEnabled { addCursorRect(bounds, cursor: .pointingHand) }
     }
 
     override func mouseDown(with event: NSEvent) {
+        guard isEnabled else { return }
         if let action {
             _ = target?.perform(action, with: self)
         }

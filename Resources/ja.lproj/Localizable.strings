@@ -15,7 +15,7 @@
 "pinAcrossSpaces" = "ピン画像をすべてのデスクトップに表示";
 "pinAcrossSpacesHint" = "オンにすると新しいピン画像がすべてのデスクトップとフルスクリーン操作スペースに表示されます";
 "historyCacheToggleLabel" = "スクリーンショットをキャッシュ";
-"historyCacheToggleHint" = "最近のスクリーンショット、取得した色、アップロード結果を保存し、メニューバーからすばやく再コピーできます";
+"historyCacheToggleHint" = "最近のスクリーンショット、取得した色、アップロード結果を保存し、履歴パネルからすばやく再コピーできます";
 "clipboardTextCacheToggleLabel" = "クリップボードのテキストをキャッシュ";
 "clipboardTextCacheToggleHint" = "コピーしたテキストを履歴に保存してすばやく再利用できます";
 "clipboardTextHistoryLimitLabel" = "テキスト履歴の上限";
@@ -25,7 +25,7 @@
 "historyPanelDialogMode" = "ダイアログ";
 "historyPanelDialogModeHint" = "メニューまたはショートカットから横スクロールのプレビューパネルを開きます";
 "historyPanelNotchMode" = "ノッチ";
-"historyPanelNotchModeHint" = "上部ノッチにマウスを入れると展開し、離れると自動で隠れます";
+"historyPanelNotchModeHint" = "上部ノッチでホバーまたはクリックして開き、離れると自動で隠れます";
 "countdownLabel" = "カウントダウン秒数";
 "countdownHint" = "⌥ Option を押しながら ⌘ をダブルタップするか、スクリーンショットのショートカットを押すと、撮影前にカウントダウンが始まります。Esc でキャンセル";
 "countdownSecondsSuffix" = "秒";
@@ -54,9 +54,9 @@
 "selectedImagePinShortcutHeader" = "選択画像をピン留め";
 "selectedImagePinShortcutDefaultDisplay" = "未設定";
 "selectedImagePinShortcutClear" = "選択画像ピン留めショートカットを消去";
-"clipboardImagePinShortcutHeader" = "クリップボード画像をピン留め";
+"clipboardImagePinShortcutHeader" = "現在またはクリップボードの画像をピン留め";
 "clipboardImagePinShortcutDefaultDisplay" = "未設定";
-"clipboardImagePinShortcutClear" = "クリップボード画像ピン留めショートカットを消去";
+"clipboardImagePinShortcutClear" = "現在またはクリップボード画像のピン留めショートカットを消去";
 "clipboardTextPinShortcutHeader" = "クリップボードテキストをピン留め";
 "clipboardTextPinShortcutDefaultDisplay" = "未設定";
 "clipboardTextPinShortcutClear" = "クリップボードテキストピン留めショートカットを消去";
@@ -66,6 +66,9 @@
 "pinFromFinderHint" = "Finder の画像をピン留めしました。X キーで閉じる";
 "pinFromClipboardHint" = "クリップボードの画像をピン留めしました。X キーで閉じる";
 "pinFromClipboardTextHint" = "クリップボードのテキストをピン留めしました。ダブルクリックで編集";
+"pinToolbarClose" = "ピン留め画像を閉じる";
+"pinToolbarCopy" = "ピン留め画像をコピー";
+"pinToolbarDrag" = "ピン留め画像をドラッグ";
 "pinToolbarEdit" = "ピン留め画像を編集";
 "pinToolbarEditText" = "テキストを編集";
 
@@ -131,16 +134,24 @@
 "settings" = "設定";
 "quitApp" = "capcap を終了";
 "historyMenu" = "履歴";
-"historyEmpty" = "履歴がありません";
 "historyClear" = "履歴を消去";
 "historyCleared" = "履歴を消去しました";
+"historyEmpty" = "履歴がありません";
 "historyShowInFinder" = "Finder に表示";
+"historyPanelLock" = "履歴パネルをロック";
+"historyPanelUnlock" = "履歴パネルのロックを解除";
+"historyPanelFavorite" = "お気に入り";
+"historyPanelUnfavorite" = "お気に入りから削除";
+"historyPanelItemFavorited" = "お気に入りに追加しました";
+"historyPanelItemUnfavorited" = "お気に入りから削除しました";
 "historyPanelMenu" = "履歴パネル";
 "historyPanelDeleteAll" = "すべての履歴を削除";
 "historyPanelDeleteSelectedOne" = "%d件の項目を削除";
 "historyPanelDeleteSelected" = "%d件の項目を削除";
 "historyPanelDeletedSelectedOne" = "%d件の項目を削除しました";
 "historyPanelDeletedSelected" = "%d件の項目を削除しました";
+"historyPanelFavoriteFailed" = "お気に入りを変更できません";
+"historyDeletedSkippingFavorites" = "項目を%d件削除、お気に入りを%d件スキップ";
 "historyPanelFilterAll" = "すべて";
 "historyPanelFilterScreenshots" = "スクリーンショット";
 "historyPanelFilterGIF" = "GIF";
@@ -333,15 +344,28 @@
 "settingsQuit" = "アプリを終了";
 
 "toolbarSettingsPrimaryTitle" = "メインツールバー";
-"toolbarSettingsPrimaryHint" = "ツールは選択範囲の上または下に表示されます";
+"toolbarSettingsPrimaryHint" = "ツールは選択範囲の上または下に表示されます。ドラッグで位置を調整し、クリックでショートカットを設定します";
 "toolbarSettingsSideTitle" = "サイドツールバー";
-"toolbarSettingsSideHint" = "ツールは選択範囲の左または右に表示されます";
+"toolbarSettingsSideHint" = "ツールは選択範囲の左または右に表示されます。ドラッグで位置を調整し、クリックでショートカットを設定します";
 "toolbarSettingsHiddenTitle" = "非表示のツール";
 "toolbarSettingsHiddenHint" = "ここにドラッグしたツールはどのツールバーにも表示されません";
 "toolbarSettingsFootnote" = "ツールバーは選択範囲の位置に応じて上下／左右のレイアウトに自動で切り替わります";
+"toolbarSettingsShortcutHint" = "ツールをクリックしてショートカットを記録し、ドラッグで移動、右クリックでその他の操作を表示";
+"toolbarSettingsShortcutRecording" = "「%@」の新しいショートカットを押すか Esc でキャンセル";
+"toolbarSettingsShortcutRecord" = "ショートカットを記録";
+"toolbarSettingsShortcutClear" = "ショートカットを消去";
+"toolbarSettingsShortcutRestore" = "デフォルトのショートカットに戻す";
+"toolbarSettingsShortcutResetAll" = "エディタのショートカットをリセット";
+"toolbarSettingsShortcutNone" = "未設定";
+"toolbarSettingsShortcutUnavailable" = "N/A";
+"toolbarSettingsAdditionalShortcuts" = "その他の編集操作";
 "toolbarSettingsReset" = "デフォルトに戻す";
 "toolbarSettingsCancel" = "キャンセル";
 "toolbarSettingsApply" = "適用";
+"editorShortcutSelect" = "選択ツール";
+"editorShortcutShapeFill" = "図形の塗りつぶしを切り替え";
+"editorShortcutConflict" = "このショートカットはすでに「%@」に割り当てられています";
+"editorShortcutReserved" = "このキーはエディタのシステム操作用に予約されているため再割り当てできません";
 
 /* About pane */
 "aboutTagline" = "メニューバー スクリーンショットツール";
@@ -503,7 +527,7 @@
 "ocrTranslating" = "翻訳中";
 "ocrTranslateFailedPrefix" = "失敗";
 "ocrNoProviderTitle" = "翻訳サービスが設定されていません";
-"ocrNoProviderHint" = "設定 → 翻訳 で AI サービスを追加してください";
+"ocrNoProviderHint" = "設定 → 翻訳 で翻訳サービスを有効にしてください";
 "ocrOpenSettings" = "設定を開く";
 "ocrLineCopied" = "行をコピーしました";
 "copyImageTextCopying" = "コピー中";
@@ -538,6 +562,8 @@
 "translationTestFailed" = "テスト失敗";
 "translationTestFailedTitle" = "保存しましたが、接続テストに失敗しました";
 "translationProviderCustom" = "カスタム OpenAI 互換";
+"translationAppleSubtitle" = "Apple のオンデバイスモデルを使用し、言語データのダウンロードが必要な場合があります";
+"translationErrAppleUnavailable" = "Apple Translation には macOS 15 以降が必要です";
 "translationMoveUp" = "上へ移動";
 "translationMoveDown" = "下へ移動";
 
@@ -691,3 +717,15 @@
 "tipClickThrough" = "クリック透過";
 "captureClickThroughOn" = "クリック透過をオン";
 "captureClickThroughOff" = "クリック透過をオフ";
+"historyNotchTriggerLabel" = "ノッチの起動方法";
+"historyNotchTriggerHover" = "ホバーで開く";
+"historyNotchTriggerClick" = "クリックで開く";
+
+/* General settings categories */
+"settingsGeneralBasic" = "基本";
+"settingsGeneralCapture" = "撮影とピン留め";
+"settingsGeneralRecording" = "録画";
+"settingsGeneralHistory" = "履歴";
+"settingsGeneralFiles" = "ファイルと出力";
+
+"historyPreviewTextSaveFailed" = "テキストを保存できませんでした、再試行してください";

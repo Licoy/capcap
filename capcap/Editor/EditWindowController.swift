@@ -70,6 +70,82 @@ enum EditorToolbarPlacement {
     }
 }
 
+struct FixedImageCropGeometry {
+    static func adjustedSourceRect(
+        _ sourceRect: NSRect,
+        from oldViewport: NSRect,
+        to newViewport: NSRect,
+        imageBounds: NSRect
+    ) -> NSRect {
+        guard oldViewport.width > 0, oldViewport.height > 0,
+              sourceRect.width > 0, sourceRect.height > 0,
+              imageBounds.width > 0, imageBounds.height > 0
+        else { return sourceRect }
+
+        let scaleX = sourceRect.width / oldViewport.width
+        let scaleY = sourceRect.height / oldViewport.height
+        let proposed = NSRect(
+            x: sourceRect.minX + (newViewport.minX - oldViewport.minX) * scaleX,
+            y: sourceRect.minY + (newViewport.minY - oldViewport.minY) * scaleY,
+            width: sourceRect.width + (newViewport.width - oldViewport.width) * scaleX,
+            height: sourceRect.height + (newViewport.height - oldViewport.height) * scaleY
+        ).standardized
+        let clipped = proposed.intersection(imageBounds)
+        guard !clipped.isNull, clipped.width > 0, clipped.height > 0 else {
+            return sourceRect
+        }
+        return clipped
+    }
+}
+
+enum FixedImageCropRenderer {
+    static func crop(_ image: NSImage, to sourceRect: NSRect) -> NSImage? {
+        let imageBounds = NSRect(origin: .zero, size: image.size)
+        let clipped = sourceRect.standardized.intersection(imageBounds)
+        guard !clipped.isNull, clipped.width > 0, clipped.height > 0 else { return nil }
+        if clipped.equalTo(imageBounds) {
+            return image
+        }
+
+        guard let cgImage = image.cgImagePreservingBacking() else { return nil }
+        let scaleX = CGFloat(cgImage.width) / imageBounds.width
+        let scaleY = CGFloat(cgImage.height) / imageBounds.height
+        let pixelsWide = max(1, Int(round(clipped.width * scaleX)))
+        let pixelsHigh = max(1, Int(round(clipped.height * scaleY)))
+        guard let bitmap = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: pixelsWide,
+            pixelsHigh: pixelsHigh,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ), let graphicsContext = NSGraphicsContext(bitmapImageRep: bitmap) else {
+            return nil
+        }
+        bitmap.size = clipped.size
+
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = graphicsContext
+        graphicsContext.imageInterpolation = .none
+        image.draw(
+            in: NSRect(origin: .zero, size: clipped.size),
+            from: clipped,
+            operation: .copy,
+            fraction: 1
+        )
+        graphicsContext.flushGraphics()
+        NSGraphicsContext.restoreGraphicsState()
+
+        let result = NSImage(size: clipped.size)
+        result.addRepresentation(bitmap)
+        return result
+    }
+}
+
 class EditWindowController {
     private var canvasView: EditCanvasView?
     private var beautifyContainerView: BeautifyContainerView?
@@ -110,6 +186,8 @@ class EditWindowController {
     /// pipeline as the editor's base image (no live capture, no preSnapshot
     /// crop). Also disables scroll capture, which is a screen-only concept.
     private let overrideBaseImage: NSImage?
+    private var overrideBaseImageCropRect: NSRect?
+    private var croppedOverrideBaseImage: NSImage?
 
     /// Single-window capture with the WindowServer's real alpha silhouette.
     /// Used as the base image and annotation clip mask for clicked-window
@@ -148,6 +226,22 @@ class EditWindowController {
         isScrollCapturing || isScrollCaptureFinalizing
     }
 
+    private var shouldShowSelectionChrome: Bool {
+        Self.shouldShowSelectionChrome(
+            hasPreviewImage: canvasView?.hasPreviewImage == true,
+            isScrollCaptureBusy: isScrollCaptureBusy,
+            isCropping: isCropping
+        )
+    }
+
+    static func shouldShowSelectionChrome(
+        hasPreviewImage: Bool,
+        isScrollCaptureBusy: Bool,
+        isCropping: Bool
+    ) -> Bool {
+        !hasPreviewImage && !isScrollCaptureBusy && !isCropping
+    }
+
     private var isLiveScreenCaptureSession: Bool {
         overrideBaseImage == nil && onRecordingSelection != nil
     }
@@ -159,6 +253,7 @@ class EditWindowController {
     struct RestorableState {
         let canvasState: EditCanvasView.RestorableState
         let beautifyState: BeautifyState
+        let overrideBaseImageCropRect: NSRect?
     }
 
     struct BeautifyState {
@@ -171,6 +266,7 @@ class EditWindowController {
     // Drawing properties
     private var currentColor: NSColor = EditorStyleDefaults.primaryColor
     private var currentLineWidth: CGFloat = EditorStyleDefaults.standardLineWidth
+    private var currentNumberSize: CGFloat = EditorStyleDefaults.numberSize
     private var currentArrowStyle: ArrowStyle = Defaults.lastArrowStyle
     private var currentMosaicBlockSize: CGFloat = CGFloat(Defaults.mosaicBlockSize)
     private var currentFontSize: CGFloat = CGFloat(Defaults.lastTextFontSize)
@@ -220,6 +316,14 @@ class EditWindowController {
         self.hostSelectionView = hostSelectionView
         self.preSnapshot = preSnapshot
         self.overrideBaseImage = overrideBaseImage
+        if let overrideBaseImage {
+            let imageBounds = NSRect(origin: .zero, size: overrideBaseImage.size)
+            self.overrideBaseImageCropRect = imageBounds
+            self.croppedOverrideBaseImage = overrideBaseImage
+        } else {
+            self.overrideBaseImageCropRect = nil
+            self.croppedOverrideBaseImage = nil
+        }
         self.windowBaseImage = windowBaseImage
         self.keepsHostWindowAcrossSpaces = keepsHostWindowAcrossSpaces
         self.isWindowCapture = isWindowCapture
@@ -315,7 +419,7 @@ class EditWindowController {
         canvas.captureRect = captureRect
         canvas.captureScreen = screen
         canvas.preSnapshot = preSnapshot
-        canvas.overrideBaseImage = overrideBaseImage
+        canvas.overrideBaseImage = effectiveOverrideBaseImage
         canvas.windowBaseImage = windowBaseImage
         canvas.autoresizingMask = []
         canvas.shouldUseSelectionMoveCursor = { [weak hostSelectionView] in
@@ -373,6 +477,12 @@ class EditWindowController {
         }
 
         showToolbar()
+        // Activate the upper-layer border and handles on the very first editor
+        // frame. Window capture temporarily disables selection interaction
+        // while its direct image loads, so relying on SelectionView's earlier
+        // backing-store contents can leave the handles absent until a later
+        // redraw.
+        repositionFloatingChrome()
         updateHistoryButtons(canUndo: canvas.canUndo, canRedo: canvas.canRedo)
         if Defaults.beautifyAutoEnabled {
             // Apply beautify silently so the preset/padding/shadow row does
@@ -430,27 +540,68 @@ class EditWindowController {
     /// primary and the side toolbar share the same wiring — a tool behaves
     /// identically regardless of which bar it was dragged to.
     private func wireToolbarCallbacks(_ tv: ToolbarView) {
-        tv.onToolSelected = { [weak self] tool in self?.selectTool(tool) }
-        tv.onUndo = { [weak self] in _ = self?.canvasView?.undo() }
-        tv.onRedo = { [weak self] in _ = self?.canvasView?.redo() }
-        tv.onColorPicker = { [weak self] in self?.runColorPicker() }
-        tv.onScrollCapture = { [weak self] in self?.toggleScrollCapture() }
-        tv.onRefreshCapture = { [weak self] in self?.refreshCapture() }
-        tv.onClickThrough = { [weak self] in self?.toggleCaptureClickThrough() }
-        tv.onBeautify = { [weak self] in self?.toggleBeautify() }
-        tv.onInsertImage = { [weak self] in self?.showInsertImageMenu() }
-        tv.onQRCode = { [weak self] in self?.performQRCodeRecognition() }
-        tv.onOCR = { [weak self] in self?.performOCR() }
-        tv.onScreenshotTranslate = { [weak self] in self?.performScreenshotTranslation() }
-        tv.onSave = { [weak self] in self?.save() }
-        tv.onUpload = { [weak self] in self?.upload() }
-        tv.onPin = { [weak self] in self?.pin() }
-        tv.onRecord = { [weak self] in self?.record() }
-        tv.onClose = { [weak self] in self?.close() }
-        tv.onConfirm = { [weak self] in self?.confirm() }
+        tv.onItemTriggered = { [weak self] item in
+            _ = self?.performToolbarItem(item, togglesSelectedTool: true)
+        }
         tv.onMoveSelectionStart = { [weak self] in self?.handleMoveSelectionStart() }
         tv.onMoveSelectionDrag = { [weak self] delta in self?.handleMoveSelectionDrag(delta: delta) }
         tv.onMoveSelectionEnd = { [weak self] in self?.handleMoveSelectionEnd() }
+    }
+
+    @discardableResult
+    private func performToolbarItem(
+        _ item: ToolbarItemID,
+        togglesSelectedTool: Bool
+    ) -> Bool {
+        if let tool = item.editTool {
+            selectTool(togglesSelectedTool && activeTool == tool ? .none : tool)
+            return true
+        }
+
+        switch item {
+        case .insertImage:
+            showInsertImageMenu()
+        case .colorPicker:
+            runColorPicker()
+        case .undo:
+            _ = canvasView?.undo()
+        case .redo:
+            _ = canvasView?.redo()
+        case .scrollCapture:
+            toggleScrollCapture()
+        case .refreshCapture:
+            refreshCapture()
+        case .clickThrough:
+            toggleCaptureClickThrough()
+        case .beautify:
+            toggleBeautify()
+        case .qrCode:
+            performQRCodeRecognition()
+        case .ocr:
+            performOCR()
+        case .screenshotTranslate:
+            performScreenshotTranslation()
+        case .save:
+            save()
+        case .upload:
+            guard Defaults.hasUsableUploadProvider else { return false }
+            upload()
+        case .pin:
+            pin()
+        case .record:
+            guard onRecordingSelection != nil else { return false }
+            record()
+        case .close:
+            close()
+        case .confirm:
+            confirm()
+        case .moveSelection:
+            return false
+        case .rectangle, .ellipse, .arrow, .line, .pen, .marker, .spotlight,
+             .mosaic, .eraser, .magnifier, .numbered, .text, .emoji:
+            return false
+        }
+        return true
     }
 
     /// Primary + side toolbars currently on screen.
@@ -590,6 +741,26 @@ class EditWindowController {
         self.selectionViewRect = selectionViewRect
         self.captureRect = captureRect
 
+        if let overrideBaseImage,
+           let currentCropRect = overrideBaseImageCropRect {
+            let imageBounds = NSRect(origin: .zero, size: overrideBaseImage.size)
+            let adjustedCropRect = FixedImageCropGeometry.adjustedSourceRect(
+                currentCropRect,
+                from: previousSelectionViewRect,
+                to: selectionViewRect,
+                imageBounds: imageBounds
+            )
+            overrideBaseImageCropRect = adjustedCropRect
+            croppedOverrideBaseImage = FixedImageCropRenderer.crop(
+                overrideBaseImage,
+                to: adjustedCropRect
+            ) ?? croppedOverrideBaseImage
+            canvasView?.overrideBaseImage = effectiveOverrideBaseImage
+            hostSelectionView?.selectionSizeLabelOverride = Self.cropSizeLabelText(
+                adjustedCropRect.size
+            )
+        }
+
         if !isWindowCapture {
             canvasView?.windowBaseImage = nil
         }
@@ -638,7 +809,7 @@ class EditWindowController {
 
     private func canvasContentSize(for viewportSize: NSSize) -> NSSize {
         guard
-            let image = overrideBaseImage,
+            let image = effectiveOverrideBaseImage,
             image.size.width > 0,
             image.size.height > 0,
             viewportSize.width > 0
@@ -651,6 +822,14 @@ class EditWindowController {
             width: viewportSize.width,
             height: max(1, floor(image.size.height * scale))
         )
+    }
+
+    private var effectiveOverrideBaseImage: NSImage? {
+        croppedOverrideBaseImage ?? overrideBaseImage
+    }
+
+    private static func cropSizeLabelText(_ size: NSSize) -> String {
+        "\(max(1, Int(round(size.width)))) x \(max(1, Int(round(size.height))))"
     }
 
     private func selectTool(_ tool: EditTool) {
@@ -698,6 +877,7 @@ class EditWindowController {
     private func pushCurrentStyleToCanvas() {
         canvasView?.currentColor = currentColor
         canvasView?.currentLineWidth = currentLineWidth
+        canvasView?.currentNumberSize = currentNumberSize
         canvasView?.currentArrowStyle = currentArrowStyle
         canvasView?.currentMosaicBlockSize = currentMosaicBlockSize
         canvasView?.currentFontSize = currentFontSize
@@ -772,6 +952,7 @@ class EditWindowController {
             currentLineWidth = l.lineWidth
         case let n as NumberAnnotation:
             currentColor = n.color
+            currentNumberSize = n.size
         case is EmojiAnnotation:
             currentEmoji = nil
             canvasView?.currentEmoji = nil
@@ -874,10 +1055,14 @@ class EditWindowController {
             showEmojiSubToolbar()
         case .numbered:
             showColorSizeSubToolbar(
-                sizes: [],
+                sizes: [CGFloat(Defaults.numberSizeDefault)],
                 dynamicColor: pickedColorSwatch,
-                currentSize: 0,
-                width: pickedColorSwatch == nil ? 200 : 225
+                currentSize: currentNumberSize,
+                sizeMinValue: CGFloat(Defaults.numberSizeMin),
+                sizeMaxValue: CGFloat(Defaults.numberSizeMax),
+                onSize: { [weak self] size in
+                    self?.setCurrentNumberSize(size)
+                }
             )
         case .mosaic:
             showMosaicSubToolbar()
@@ -1204,9 +1389,15 @@ class EditWindowController {
                 in: hostSelectionView.bounds
             )
         }
+        updateSelectionChromePresentation()
+    }
+
+    private func updateSelectionChromePresentation() {
+        let isVisible = shouldShowSelectionChrome
+        selectionChromeOverlay?.isHidden = !isVisible
         selectionChromeOverlay?.update(
             rect: selectionViewRect,
-            active: isBeautifyActive && canvasView?.hasPreviewImage != true
+            active: isVisible
         )
     }
 
@@ -1697,7 +1888,15 @@ class EditWindowController {
         let capturer = ScrollCapturer(
             rect: captureRect,
             screen: screen,
-            excludingWindowNumbers: [CGWindowID(max(0, hintWindow.windowNumber))]
+            // Exclude the entire selection overlay, not just the hint. Its
+            // dimming cutout can leave antialiased pixels at capture edges,
+            // which become horizontal bands when frame bottoms are stitched.
+            // This also protects the final asynchronous capture after the
+            // selection view has returned to its ordinary drawing state.
+            excludingWindowNumbers: Self.scrollCaptureExcludedWindowNumbers(
+                selectionWindow: hostSelectionView?.window,
+                hintWindow: hintWindow
+            )
         )
         capturer.onPreviewUpdated = { [weak self] image in
             self?.updateScrollPreview(image)
@@ -1716,6 +1915,16 @@ class EditWindowController {
             startAutoScroll(capturer: capturer)
         case .manual:
             startManualScrollCapture(capturer: capturer)
+        }
+    }
+
+    static func scrollCaptureExcludedWindowNumbers(
+        selectionWindow: NSWindow?,
+        hintWindow: NSWindow
+    ) -> [CGWindowID] {
+        [selectionWindow, hintWindow].compactMap { window in
+            guard let window, window.windowNumber > 0 else { return nil }
+            return CGWindowID(window.windowNumber)
         }
     }
 
@@ -2284,6 +2493,13 @@ class EditWindowController {
         Defaults.lastEditorLineWidth = Double(size)
     }
 
+    private func setCurrentNumberSize(_ size: CGFloat) {
+        let clamped = min(max(size, CGFloat(Defaults.numberSizeMin)), CGFloat(Defaults.numberSizeMax))
+        currentNumberSize = clamped
+        canvasView?.currentNumberSize = clamped
+        Defaults.lastNumberSize = Double(clamped)
+    }
+
     private func setCurrentMarkerColor(_ color: NSColor) {
         currentMarkerColor = color
         canvasView?.currentMarkerColor = color
@@ -2498,6 +2714,13 @@ class EditWindowController {
         confirm()
     }
 
+    @discardableResult
+    func pinFromKeyboard() -> Bool {
+        guard !isScrollCaptureBusy, !isCropping else { return false }
+        pin()
+        return true
+    }
+
     /// Called by the overlay's local mouse monitor before AppKit dispatches a
     /// left click. This lets the editor preserve the selection's established
     /// double-click-to-copy gesture even while the annotation canvas owns the
@@ -2613,19 +2836,15 @@ class EditWindowController {
 
     func handleEditorShortcutFromKeyboard(for event: NSEvent) -> Bool {
         guard !isScrollCaptureBusy, !isCropping else { return false }
-        guard let shortcut = EditorKeyboardShortcut(event: event) else { return false }
+        guard let shortcut = EditorShortcutRegistry.action(matching: event) else { return false }
 
         switch shortcut {
         case .select:
             selectTool(.none)
-        case .tool(let tool):
-            selectTool(tool)
-        case .fill:
+        case .shapeFill:
             return toggleShapeFillFromKeyboard()
-        case .pin:
-            pin()
-        case .close:
-            close()
+        case .toolbar(let item):
+            return performToolbarItem(item, togglesSelectedTool: false)
         }
         return true
     }
@@ -2738,11 +2957,24 @@ class EditWindowController {
                 presetID: currentBeautifyPreset?.id,
                 padding: currentBeautifyPadding,
                 shadowEnabled: currentBeautifyShadowEnabled
-            )
+            ),
+            overrideBaseImageCropRect: overrideBaseImageCropRect
         )
     }
 
     func restoreState(_ state: RestorableState) {
+        if let overrideBaseImage,
+           let cropRect = state.overrideBaseImageCropRect {
+            overrideBaseImageCropRect = cropRect
+            croppedOverrideBaseImage = FixedImageCropRenderer.crop(
+                overrideBaseImage,
+                to: cropRect
+            ) ?? overrideBaseImage
+            canvasView?.overrideBaseImage = effectiveOverrideBaseImage
+            let canvasSize = canvasContentSize(for: selectionViewRect.size)
+            canvasView?.updateViewportSize(canvasSize)
+            beautifyContainerView?.canvasSizeDidChange()
+        }
         if state.beautifyState.isActive {
             applyBeautifyState(state.beautifyState)
         } else if isBeautifyActive {
@@ -2804,8 +3036,8 @@ class EditWindowController {
             fallbackBaseImage = refreshed
         } else if let external = canvasView?.externalBaseImage {
             fallbackBaseImage = external
-        } else if let overrideBaseImage {
-            fallbackBaseImage = overrideBaseImage
+        } else if let effectiveOverrideBaseImage {
+            fallbackBaseImage = effectiveOverrideBaseImage
         } else if isWindowCapture, let windowBaseImage {
             fallbackBaseImage = windowBaseImage
         } else if let snapshot = preSnapshot {
@@ -2919,8 +3151,9 @@ class EditWindowController {
         // available for any clicks that fall outside the gradient frame so the
         // user can still adjust the selection.
         hostSelectionView?.annotationToolActive = !isBlocked
-        hostSelectionView?.selectionInteractionEnabled = !(isBlocked || hasPreview || hasFixedImage)
+        hostSelectionView?.selectionInteractionEnabled = !(isBlocked || hasPreview)
         canvasScrollView?.isInteractionEnabled = (activeTool != .none) || hasPreview || hasFixedImage || isBeautifyActive
+        updateSelectionChromePresentation()
         hostSelectionView?.needsDisplay = true
     }
 
@@ -2986,41 +3219,6 @@ class EditWindowController {
     }
 }
 
-private enum EditorKeyboardShortcut {
-    case select
-    case tool(EditTool)
-    case fill
-    case pin
-    case close
-
-    init?(event: NSEvent) {
-        let blockedModifiers: NSEvent.ModifierFlags = [.command, .control, .option]
-        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        guard modifiers.intersection(blockedModifiers).isEmpty else { return nil }
-        guard let key = event.charactersIgnoringModifiers?.lowercased(), key.count == 1 else {
-            return nil
-        }
-
-        switch key {
-        case "v": self = .select
-        case "r": self = .tool(.rectangle)
-        case "o": self = .tool(.ellipse)
-        case "l": self = .tool(.line)
-        case "a": self = .tool(.arrow)
-        case "d": self = .tool(.pen)
-        case "h": self = .tool(.marker)
-        case "m": self = .tool(.mosaic)
-        case "e": self = .tool(.eraser)
-        case "f": self = .fill
-        case "t": self = .tool(.text)
-        case "n": self = .tool(.numbered)
-        case "p": self = .pin
-        case "x": self = .close
-        default: return nil
-        }
-    }
-}
-
 // MARK: - Main Toolbar View
 
 let accentGreen = NSColor(red: 0, green: 212.0/255.0, blue: 106.0/255.0, alpha: 1.0)
@@ -3044,7 +3242,25 @@ private final class ClosureMenuItem: NSMenuItem {
     }
 }
 
-private final class EditorScrollView: NSScrollView {
+final class EditorScrollView: NSScrollView {
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        horizontalScrollElasticity = .none
+        verticalScrollElasticity = .none
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func scrollWheel(with event: NSEvent) {
+        // Screen-backed annotations must stay aligned with the frozen desktop.
+        // Only a taller, self-contained image (such as a scroll capture) pans.
+        guard let canvas = editorCanvasView,
+              canvas.hasPreviewImage || canvas.overrideBaseImage != nil,
+              let documentView,
+              documentView.frame.height > contentView.bounds.height + 0.5 else { return }
+        super.scrollWheel(with: event)
+    }
+
     weak var editorCanvasView: EditCanvasView?
     var shouldPassThroughForSelectionMove: (() -> Bool)?
     /// When `true`, every viewport click is captured (drawing tools, long
@@ -3110,24 +3326,7 @@ class ToolbarView: NSView {
         }
     }
 
-    var onToolSelected: ((EditTool) -> Void)?
-    var onUndo: (() -> Void)?
-    var onRedo: (() -> Void)?
-    var onColorPicker: (() -> Void)?
-    var onScrollCapture: (() -> Void)?
-    var onRefreshCapture: (() -> Void)?
-    var onClickThrough: (() -> Void)?
-    var onBeautify: (() -> Void)?
-    var onInsertImage: (() -> Void)?
-    var onQRCode: (() -> Void)?
-    var onOCR: (() -> Void)?
-    var onScreenshotTranslate: (() -> Void)?
-    var onSave: (() -> Void)?
-    var onUpload: (() -> Void)?
-    var onPin: (() -> Void)?
-    var onRecord: (() -> Void)?
-    var onClose: (() -> Void)?
-    var onConfirm: (() -> Void)?
+    var onItemTriggered: ((ToolbarItemID) -> Void)?
     /// Press-and-drag callbacks for the "move selection" handle. The first
     /// fires on mouseDown so the controller can capture the starting rect;
     /// the second fires on every drag with the cumulative window-space
@@ -3139,10 +3338,6 @@ class ToolbarView: NSView {
     /// Every button keyed by its id — drives selection state, enable/disable,
     /// and frame lookups. `MoveSelectionDragHandle` values are not `ToolButton`s.
     private var buttons: [ToolbarItemID: NSView] = [:]
-    /// Last tool the controller selected. Tracked so a second click on the
-    /// already-selected tool button toggles back to "no tool" (adjust mode).
-    private var currentTool: EditTool = .none
-
     init(items: [ToolbarItemID], orientation: Orientation) {
         self.items = items
         self.orientation = orientation
@@ -3158,7 +3353,6 @@ class ToolbarView: NSView {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     func updateSelection(tool: EditTool) {
-        currentTool = tool
         for (id, view) in buttons {
             guard id.kind == .toggleTool, let btn = view as? ToolButton else { continue }
             btn.isSelected = (id.editTool == tool)
@@ -3234,6 +3428,8 @@ class ToolbarView: NSView {
             selectedColor: id.selectedColor
         )
         btn.hoverTip = id.tooltip
+        btn.setAccessibilityLabel(id.tooltip)
+        btn.setAccessibilityIdentifier("capcap.toolbar.\(id.rawValue)")
         btn.target = self
         btn.action = #selector(buttonTapped(_:))
         btn.tag = index
@@ -3255,31 +3451,8 @@ class ToolbarView: NSView {
     @objc private func buttonTapped(_ sender: ToolButton) {
         guard sender.tag >= 0, sender.tag < items.count else { return }
         let id = items[sender.tag]
-        switch id {
-        case .rectangle, .ellipse, .arrow, .line, .pen, .marker, .spotlight, .mosaic, .eraser, .magnifier, .numbered, .text, .emoji:
-            guard let tool = id.editTool else { return }
-            // Click an already-selected tool to deselect it and enter adjust
-            // mode (no tool, but existing marks remain draggable).
-            onToolSelected?(tool == currentTool ? .none : tool)
-        case .insertImage:   onInsertImage?()
-        case .colorPicker:   onColorPicker?()
-        case .undo:          onUndo?()
-        case .redo:          onRedo?()
-        case .scrollCapture: onScrollCapture?()
-        case .refreshCapture: onRefreshCapture?()
-        case .clickThrough:  onClickThrough?()
-        case .beautify:      onBeautify?()
-        case .qrCode:        onQRCode?()
-        case .ocr:           onOCR?()
-        case .screenshotTranslate: onScreenshotTranslate?()
-        case .save:          onSave?()
-        case .upload:        onUpload?()
-        case .pin:           onPin?()
-        case .record:        onRecord?()
-        case .close:         onClose?()
-        case .confirm:       onConfirm?()
-        case .moveSelection: break  // handled by MoveSelectionDragHandle
-        }
+        guard id != .moveSelection else { return }
+        onItemTriggered?(id)
     }
 }
 
@@ -3308,7 +3481,9 @@ class ToolButton: NSButton {
 
         if let img = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil) {
             let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
-            image = img.withSymbolConfiguration(config)
+            // Keep the text tool's Aa glyph independent of the system language.
+            let localizedImage = symbolName == "textformat" ? img.withLocale(Locale(identifier: "en")) : img
+            image = localizedImage.withSymbolConfiguration(config)
         }
 
         contentTintColor = normalColor
@@ -4527,7 +4702,7 @@ private class MosaicSubToolbar: NSView {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     private func setup() {
-        var x = Self.leadingPad
+        let x = Self.leadingPad
         let midY = bounds.midY
 
         let s = HUDSlider(
@@ -6307,7 +6482,12 @@ final class SelectionChromeOverlay: NSView {
         }
 
         // The SelectionView draws its own size label underneath, but the
-        // beautify gradient frame covers it. Re-draw it here, above the frame.
-        SelectionView.drawSizeLabel(context: context, rect: rect)
+        // editor image/beautify frame covers it. Re-draw it here, above the
+        // frame, preserving the original-pixel label used by fixed images.
+        SelectionView.drawSizeLabel(
+            context: context,
+            rect: rect,
+            text: selectionView?.selectionSizeLabelOverride
+        )
     }
 }

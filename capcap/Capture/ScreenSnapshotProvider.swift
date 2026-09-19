@@ -145,12 +145,7 @@ final class ScreenSnapshotProvider: ScreenSnapshotProviding {
         // remain in the frozen desktop image.
         let filter = SCContentFilter(display: display, excludingWindows: [])
 
-        let configuration = SCStreamConfiguration()
-        configuration.width = max(Int(ceil(target.bounds.width * target.scale)), 1)
-        configuration.height = max(Int(ceil(target.bounds.height * target.scale)), 1)
-        configuration.capturesAudio = false
-        configuration.showsCursor = false
-        configuration.captureResolution = .best
+        let configuration = Self.makeStreamConfiguration(for: target)
 
         do {
             let image = try await SCScreenshotManager.captureImage(
@@ -161,6 +156,27 @@ final class ScreenSnapshotProvider: ScreenSnapshotProviding {
         } catch {
             return .failure(displayID: target.displayID, error: error)
         }
+    }
+
+    static func makeStreamConfiguration(
+        for target: ScreenSnapshotTarget
+    ) -> SCStreamConfiguration {
+        let configuration = SCStreamConfiguration()
+        configuration.width = max(Int(ceil(target.bounds.width * target.scale)), 1)
+        configuration.height = max(Int(ceil(target.bounds.height * target.scale)), 1)
+        configuration.capturesAudio = false
+        configuration.showsCursor = false
+        configuration.captureResolution = .best
+        // SCScreenshotManager also consults the single-window flag when
+        // compositing a display on macOS 26. Set both explicitly, otherwise
+        // native window shadows disappear from region screenshots (#167)
+        configuration.ignoreShadowsDisplay = false
+        configuration.ignoreShadowsSingleWindow = false
+        // SCScreenshotManager needs one frame. Keeping the stream default here
+        // leaves multiple full-resolution IOSurfaces resident after a 5K
+        // capture even though no subsequent frame can be consumed.
+        configuration.queueDepth = 1
+        return configuration
     }
 }
 

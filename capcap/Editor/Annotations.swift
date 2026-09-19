@@ -668,12 +668,13 @@ private enum NumberArrowShape {
         unitY: CGFloat,
         length: CGFloat = headLength,
         width: CGFloat = headWidth,
+        strokeWidth: CGFloat = headStrokeWidth,
         in context: CGContext
     ) {
         context.saveGState()
         context.addPath(headPath(tip: tip, unitX: unitX, unitY: unitY, length: length, width: width))
         context.setLineJoin(.round)
-        context.setLineWidth(headStrokeWidth)
+        context.setLineWidth(strokeWidth)
         context.drawPath(using: .fillStroke)
         context.restoreGState()
     }
@@ -2955,11 +2956,41 @@ struct NumberAnnotation: Annotation {
     var controlPoint: NSPoint? = nil
     let number: Int
     let color: NSColor
+    let size: CGFloat
 
-    static let radius: CGFloat = 14
+    private static let baseRadius: CGFloat = 14
+    private static let baseFontSize: CGFloat = 14
+
+    init(
+        center: NSPoint,
+        tip: NSPoint? = nil,
+        controlPoint: NSPoint? = nil,
+        number: Int,
+        color: NSColor,
+        size: CGFloat = CGFloat(Defaults.numberSizeDefault)
+    ) {
+        self.center = center
+        self.tip = tip
+        self.controlPoint = controlPoint
+        self.number = number
+        self.color = color
+        self.size = min(max(size, CGFloat(Defaults.numberSizeMin)), CGFloat(Defaults.numberSizeMax))
+    }
+
+    private var scale: CGFloat {
+        size / CGFloat(Defaults.numberSizeDefault)
+    }
+
+    var radius: CGFloat { Self.baseRadius * scale }
     /// Below this distance from `center` we treat the tip as "no arrow" so
     /// the head won't sit on top of the badge glyph.
-    static let arrowMinDistance: CGFloat = NumberAnnotation.radius + 6
+    var arrowMinDistance: CGFloat { radius + 6 * scale }
+
+    static func arrowMinDistance(for size: CGFloat) -> CGFloat {
+        let clamped = min(max(size, CGFloat(Defaults.numberSizeMin)), CGFloat(Defaults.numberSizeMax))
+        let scale = clamped / CGFloat(Defaults.numberSizeDefault)
+        return baseRadius * scale + 6 * scale
+    }
 
     /// Black on light badges, white on dark — perceived-luminance threshold.
     static func contrastingTextColor(for color: NSColor) -> NSColor {
@@ -2970,15 +3001,15 @@ struct NumberAnnotation: Annotation {
 
     var hasArrow: Bool {
         guard let tip else { return false }
-        return hypot(tip.x - center.x, tip.y - center.y) >= NumberAnnotation.arrowMinDistance
+        return hypot(tip.x - center.x, tip.y - center.y) >= arrowMinDistance
     }
 
     var circleRect: NSRect {
         NSRect(
-            x: center.x - NumberAnnotation.radius,
-            y: center.y - NumberAnnotation.radius,
-            width: NumberAnnotation.radius * 2,
-            height: NumberAnnotation.radius * 2
+            x: center.x - radius,
+            y: center.y - radius,
+            width: radius * 2,
+            height: radius * 2
         )
     }
 
@@ -3014,7 +3045,7 @@ struct NumberAnnotation: Annotation {
         // circle — visually the arrow emerges from the badge's edge while
         // geometrically the bezier starts from the center).
         if hasArrow, let tip {
-            let shaftWidth = NumberArrowShape.shaftWidth
+            let shaftWidth = NumberArrowShape.shaftWidth * scale
             context.setStrokeColor(color.cgColor)
             context.setFillColor(color.cgColor)
             context.setLineWidth(shaftWidth)
@@ -3033,7 +3064,8 @@ struct NumberAnnotation: Annotation {
             if tlen > 0 {
                 let unitX = endTangent.dx / tlen
                 let unitY = endTangent.dy / tlen
-                let headLength = NumberArrowShape.headLength
+                let headLength = NumberArrowShape.headLength * scale
+                let headWidth = NumberArrowShape.headWidth * scale
                 let baseX = tip.x - unitX * headLength
                 let baseY = tip.y - unitY * headLength
 
@@ -3056,7 +3088,15 @@ struct NumberAnnotation: Annotation {
                     context.strokePath()
                 }
 
-                NumberArrowShape.drawHead(tip: tip, unitX: unitX, unitY: unitY, in: context)
+                NumberArrowShape.drawHead(
+                    tip: tip,
+                    unitX: unitX,
+                    unitY: unitY,
+                    length: headLength,
+                    width: headWidth,
+                    strokeWidth: NumberArrowShape.headStrokeWidth * scale,
+                    in: context
+                )
             }
         }
 
@@ -3070,7 +3110,7 @@ struct NumberAnnotation: Annotation {
         let text = "\(number)"
         let attrs: [NSAttributedString.Key: Any] = [
             .foregroundColor: NumberAnnotation.contrastingTextColor(for: color),
-            .font: NSFont.systemFont(ofSize: 14, weight: .bold)
+            .font: NSFont.systemFont(ofSize: Self.baseFontSize * scale, weight: .bold)
         ]
         let size = text.size(withAttributes: attrs)
         let textOrigin = NSPoint(
@@ -3086,7 +3126,7 @@ struct NumberAnnotation: Annotation {
         // Badge hit
         let dx = point.x - center.x
         let dy = point.y - center.y
-        let r = NumberAnnotation.radius
+        let r = radius
         if dx * dx + dy * dy <= r * r {
             return true
         }
@@ -3099,7 +3139,7 @@ struct NumberAnnotation: Annotation {
             } else {
                 line.addLine(to: tip)
             }
-            return strokedPathContains(line, point: point, lineWidth: 4)
+            return strokedPathContains(line, point: point, lineWidth: max(4, 4 * scale))
         }
         return false
     }
@@ -3110,7 +3150,8 @@ struct NumberAnnotation: Annotation {
             tip: tip.map { NSPoint(x: $0.x + delta.x, y: $0.y + delta.y) },
             controlPoint: controlPoint.map { NSPoint(x: $0.x + delta.x, y: $0.y + delta.y) },
             number: number,
-            color: color
+            color: color,
+            size: size
         )
     }
 
@@ -3141,11 +3182,30 @@ struct NumberAnnotation: Annotation {
             tip: tip,
             controlPoint: controlPoint,
             number: number,
-            color: color
+            color: color,
+            size: size
         )
     }
 
     func withColor(_ color: NSColor) -> Annotation {
-        NumberAnnotation(center: center, tip: tip, controlPoint: controlPoint, number: number, color: color)
+        NumberAnnotation(
+            center: center,
+            tip: tip,
+            controlPoint: controlPoint,
+            number: number,
+            color: color,
+            size: size
+        )
+    }
+
+    func withLineWidth(_ lineWidth: CGFloat) -> Annotation {
+        NumberAnnotation(
+            center: center,
+            tip: tip,
+            controlPoint: controlPoint,
+            number: number,
+            color: color,
+            size: lineWidth
+        )
     }
 }

@@ -99,6 +99,7 @@ extension Notification.Name {
     static let recordingSaveDirectoryDidChange = Notification.Name("capcap.recordingSaveDirectoryDidChange")
     static let historyPanelDisplayModesDidChange = Notification.Name("capcap.historyPanelDisplayModesDidChange")
     static let hotkeyDidChange = Notification.Name("capcap.hotkeyDidChange")
+    static let editorShortcutsDidChange = Notification.Name("capcap.editorShortcutsDidChange")
     static let translationConfigDidChange = Notification.Name("capcap.translationConfigDidChange")
     static let selectionSizeLabelClicked = Notification.Name("capcap.selectionSizeLabelClicked")
 }
@@ -135,6 +136,9 @@ enum L10n {
     static var historyPanelDialogModeHint: String { s("historyPanelDialogModeHint") }
     static var historyPanelNotchMode: String { s("historyPanelNotchMode") }
     static var historyPanelNotchModeHint: String { s("historyPanelNotchModeHint") }
+    static var historyNotchTriggerLabel: String { s("historyNotchTriggerLabel") }
+    static var historyNotchTriggerHover: String { s("historyNotchTriggerHover") }
+    static var historyNotchTriggerClick: String { s("historyNotchTriggerClick") }
     static var countdownLabel: String { s("countdownLabel") }
     static var countdownHint: String { s("countdownHint") }
     static var countdownSecondsSuffix: String { s("countdownSecondsSuffix") }
@@ -205,6 +209,9 @@ enum L10n {
     static var pinFromFinderHint: String { s("pinFromFinderHint") }
     static var pinFromClipboardHint: String { s("pinFromClipboardHint") }
     static var pinFromClipboardTextHint: String { s("pinFromClipboardTextHint") }
+    static var pinToolbarClose: String { s("pinToolbarClose") }
+    static var pinToolbarCopy: String { s("pinToolbarCopy") }
+    static var pinToolbarDrag: String { s("pinToolbarDrag") }
     static var pinToolbarEdit: String { s("pinToolbarEdit") }
     static var pinToolbarEditText: String { s("pinToolbarEditText") }
 
@@ -294,10 +301,12 @@ enum L10n {
     static var settings: String { s("settings") }
     static var quitApp: String { s("quitApp") }
     static var historyMenu: String { s("historyMenu") }
-    static var historyEmpty: String { s("historyEmpty") }
     static var historyClear: String { s("historyClear") }
     static var historyCleared: String { s("historyCleared") }
+    static var historyEmpty: String { s("historyEmpty") }
     static var historyShowInFinder: String { s("historyShowInFinder") }
+    static var historyPanelLock: String { s("historyPanelLock") }
+    static var historyPanelUnlock: String { s("historyPanelUnlock") }
     static var historyPanelMenu: String { s("historyPanelMenu") }
     static var historyPanelDeleteAll: String { s("historyPanelDeleteAll") }
     static func historyPanelDeleteSelected(_ count: Int) -> String {
@@ -307,6 +316,14 @@ enum L10n {
     static func historyPanelDeletedSelected(_ count: Int) -> String {
         let key = count == 1 ? "historyPanelDeletedSelectedOne" : "historyPanelDeletedSelected"
         return String(format: s(key), count)
+    }
+    static var historyPanelFavorite: String { s("historyPanelFavorite") }
+    static var historyPanelUnfavorite: String { s("historyPanelUnfavorite") }
+    static var historyPanelItemFavorited: String { s("historyPanelItemFavorited") }
+    static var historyPanelItemUnfavorited: String { s("historyPanelItemUnfavorited") }
+    static var historyPanelFavoriteFailed: String { s("historyPanelFavoriteFailed") }
+    static func historyDeletedSkippingFavorites(removed: Int, skipped: Int) -> String {
+        String(format: s("historyDeletedSkippingFavorites"), removed, skipped)
     }
     static var historyPanelFilterAll: String { s("historyPanelFilterAll") }
     static var historyPanelFilterScreenshots: String { s("historyPanelFilterScreenshots") }
@@ -319,6 +336,7 @@ enum L10n {
     static var historyPanelSearchText: String { s("historyPanelSearchText") }
     static var historyPanelClearSearch: String { s("historyPanelClearSearch") }
     static var historyPanelSearchNoResults: String { s("historyPanelSearchNoResults") }
+    static var historyPreviewTextSaveFailed: String { s("historyPreviewTextSaveFailed") }
     static var historyPreviewCopyText: String { s("historyPreviewCopyText") }
     static var historyPreviewTranslateText: String { s("historyPreviewTranslateText") }
     static var historyPreviewConvertToQRCode: String { s("historyPreviewConvertToQRCode") }
@@ -562,6 +580,11 @@ enum L10n {
 
     // Settings sidebar tabs
     static var settingsTabGeneral: String { s("settingsTabGeneral") }
+    static var settingsGeneralBasic: String { s("settingsGeneralBasic") }
+    static var settingsGeneralCapture: String { s("settingsGeneralCapture") }
+    static var settingsGeneralRecording: String { s("settingsGeneralRecording") }
+    static var settingsGeneralHistory: String { s("settingsGeneralHistory") }
+    static var settingsGeneralFiles: String { s("settingsGeneralFiles") }
     static var settingsTabShortcuts: String { s("settingsTabShortcuts") }
     static var settingsTabPermissions: String { s("settingsTabPermissions") }
     static var settingsTabUpload: String { s("settingsTabUpload") }
@@ -578,9 +601,26 @@ enum L10n {
     static var toolbarSettingsHiddenTitle: String { s("toolbarSettingsHiddenTitle") }
     static var toolbarSettingsHiddenHint: String { s("toolbarSettingsHiddenHint") }
     static var toolbarSettingsFootnote: String { s("toolbarSettingsFootnote") }
+    static var toolbarSettingsShortcutHint: String { s("toolbarSettingsShortcutHint") }
+    static func toolbarSettingsShortcutRecording(_ action: String) -> String {
+        String(format: s("toolbarSettingsShortcutRecording"), action)
+    }
+    static var toolbarSettingsShortcutRecord: String { s("toolbarSettingsShortcutRecord") }
+    static var toolbarSettingsShortcutClear: String { s("toolbarSettingsShortcutClear") }
+    static var toolbarSettingsShortcutRestore: String { s("toolbarSettingsShortcutRestore") }
+    static var toolbarSettingsShortcutResetAll: String { s("toolbarSettingsShortcutResetAll") }
+    static var toolbarSettingsShortcutNone: String { s("toolbarSettingsShortcutNone") }
+    static var toolbarSettingsShortcutUnavailable: String { s("toolbarSettingsShortcutUnavailable") }
+    static var toolbarSettingsAdditionalShortcuts: String { s("toolbarSettingsAdditionalShortcuts") }
     static var toolbarSettingsReset: String { s("toolbarSettingsReset") }
     static var toolbarSettingsCancel: String { s("toolbarSettingsCancel") }
     static var toolbarSettingsApply: String { s("toolbarSettingsApply") }
+    static var editorShortcutSelect: String { s("editorShortcutSelect") }
+    static var editorShortcutShapeFill: String { s("editorShortcutShapeFill") }
+    static func editorShortcutConflict(_ action: String) -> String {
+        String(format: s("editorShortcutConflict"), action)
+    }
+    static var editorShortcutReserved: String { s("editorShortcutReserved") }
 
     // About pane
     static var aboutTagline: String { s("aboutTagline") }
@@ -835,6 +875,8 @@ enum L10n {
     static var translationTestFailed: String { s("translationTestFailed") }
     static var translationTestFailedTitle: String { s("translationTestFailedTitle") }
     static var translationProviderCustom: String { s("translationProviderCustom") }
+    static var translationAppleSubtitle: String { s("translationAppleSubtitle") }
+    static var translationErrAppleUnavailable: String { s("translationErrAppleUnavailable") }
     static var translationMoveUp: String { s("translationMoveUp") }
     static var translationMoveDown: String { s("translationMoveDown") }
 
@@ -1839,6 +1881,9 @@ struct Defaults {
     static let editorLineWidthMin: Double = 1
     static let editorLineWidthMax: Double = 16
     static let markerLineWidthMax: Double = 10
+    static let numberSizeMin: Double = 1
+    static let numberSizeDefault: Double = 5
+    static let numberSizeMax: Double = 25
 
     static var lastEditorColorHex: String? {
         get {
@@ -1862,6 +1907,18 @@ struct Defaults {
         }
         set {
             defaults.set(clampedEditorLineWidth(newValue), forKey: "lastEditorLineWidth")
+        }
+    }
+
+    static var lastNumberSize: Double {
+        get {
+            guard defaults.object(forKey: "lastNumberSize") != nil else {
+                return numberSizeDefault
+            }
+            return clampedNumberSize(defaults.double(forKey: "lastNumberSize"))
+        }
+        set {
+            defaults.set(clampedNumberSize(newValue), forKey: "lastNumberSize")
         }
     }
 
@@ -2030,6 +2087,10 @@ struct Defaults {
 
     private static func clampedEditorLineWidth(_ width: Double) -> Double {
         min(max(width, editorLineWidthMin), editorLineWidthMax)
+    }
+
+    private static func clampedNumberSize(_ size: Double) -> Double {
+        min(max(size, numberSizeMin), numberSizeMax)
     }
 
     private static func clampedMarkerLineWidth(_ width: Double) -> Double {
@@ -2375,7 +2436,7 @@ struct Defaults {
     }
 
     static var isHistoryCacheAvailable: Bool {
-        historyCacheEnabled || clipboardTextCacheEnabled
+        historyCacheEnabled || clipboardTextCacheEnabled || HistoryManager.shared.hasFavoriteEntries()
     }
 
     static let countdownSecondsMin: Int = 3
@@ -2423,6 +2484,25 @@ struct Defaults {
             + ((offset + clipboardTextHistoryLimitStep / 2) / clipboardTextHistoryLimitStep)
             * clipboardTextHistoryLimitStep
         return min(max(snapped, clipboardTextHistoryLimitMin), clipboardTextHistoryLimitMax)
+    }
+
+    enum HistoryNotchTriggerMode: String, CaseIterable {
+        case hover
+        case click
+
+        var localizedTitle: String {
+            switch self {
+            case .hover: return L10n.historyNotchTriggerHover
+            case .click: return L10n.historyNotchTriggerClick
+            }
+        }
+    }
+
+    static var historyNotchTriggerMode: HistoryNotchTriggerMode {
+        get {
+            HistoryNotchTriggerMode(rawValue: defaults.string(forKey: "historyNotchTriggerMode") ?? "") ?? .hover
+        }
+        set { defaults.set(newValue.rawValue, forKey: "historyNotchTriggerMode") }
     }
 
     static var historyPanelDialogEnabled: Bool {

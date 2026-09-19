@@ -13,6 +13,14 @@ preserved from upstream history for reference.
 
 ### Added
 - Remember the last screenshot save folder when choosing a location, with a settings toggle that is off by default
+- Port upstream history favorites, Apple on-device translation, configurable editor shortcuts, Agent schema/validate, adjustable number size, and settings panes
+- Restore pin click-through on the upstream pin toolbar rewrite
+
+### Fixed
+- Port upstream capture and annotation bugfixes from realskyrin/capcap 1.7.5–1.7.15 including even capture dimensions, GIF timing, mosaic re-pixelation, scroll-capture overlay exclusion, and popup-menu capture targets
+
+### Changed
+- Keep menu-bar component capture while adopting upstream popup/utility window targeting
 
 ## [1.0.0] - 2026-08-08
 

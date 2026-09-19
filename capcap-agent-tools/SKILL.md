@@ -1,18 +1,15 @@
 ---
 name: capcap-agent-tools
-description: Use this skill whenever an agent needs to autonomously edit a user-provided image, capture screenshots, enumerate windows, annotate images, or produce visual evidence using capcap's headless `capcap agent` commands. Trigger for requests about editing an attached image, agent screenshots, headless screenshot workflows, visual bug reports, marking UI pixels, drawing arrows/boxes/text on screenshots, or creating final result images without human GUI interaction.
+description: Capture screens or exact macOS windows, inspect screenshots, annotate supplied images, and produce PNG evidence with capcap's headless agent CLI. Use for arrows, boxes, labels, mosaic, magnifiers, spotlight regions, cropping and native beautification. Also documents stable accessibility identifiers for capcap's editor.
 ---
 
 # capcap Agent Tools
 
-Use capcap as a headless visual-output tool for agents. The user does not need to operate the GUI: commands return PNG files and JSON metadata that another agent can inspect, transform, or pass along.
-
-## Binary
-
-Prefer a `CAPCAP` shell variable so the same workflow works for installed users and development checkouts:
+## Start here
 
 ```bash
 CAPCAP="/Applications/capcap.app/Contents/MacOS/capcap"
+"$CAPCAP" agent schema --pretty
 ```
 
 If the app is installed somewhere else, locate it first:
@@ -43,259 +40,152 @@ All commands below use `$CAPCAP`; set it before running the workflow.
 
 ## Core Model
 
-- Commands are headless: they should not open the editor, menus, save panels, or toast UI.
-- If the user has already attached or pasted an image, treat that image as the
-  input to edit. Do not capture the current screen, current window, browser tab,
-  or chat UI to recreate the image unless the user explicitly asks for a fresh
-  screenshot or the provided image is unavailable.
-- Output images are PNG files.
-- Command results are JSON on stdout. Use `--meta path.json` to also write metadata to a file.
-- Capture and annotation metadata use `coordinateSpace: "pixels"` and `origin: "top-left"` for images.
-- Window enumeration uses global CG coordinates with top-left origin.
-- Prefer temporary files under `mktemp -d` for intermediate screenshots and specs.
+Commands return one JSON object on stdout. Errors return JSON on stderr with
+`ok:false`, `error.code`, `error.message`, and `exitCode`; exit 64 is invalid
+arguments, exit 1 is an operation failure. Help is plain text and exits 0.
+Use `--meta FILE` to save result JSON for windows/capture/annotate/validate/run.
+Outputs must be distinct from inputs and from each other, including symlink aliases.
 
-## Recommended Workflows
+## Choose the workflow
 
-### 1. Edit A User-Provided Image
+**User supplied an image:** use that original file. Do not recapture the chat,
+browser, or desktop to recreate it. Inspect it, write a spec, validate, annotate.
 
-Use this when the user has already provided an image and asks to mark,
-highlight, blur, mosaic, magnify, draw around, label, or otherwise edit it. The
-user's image is the source of truth.
+**Fresh screenshot:** discover the exact target, capture once, inspect that PNG,
+then annotate the same PNG. Do not use `run` after inspecting a previous capture:
+it captures a new frame and the content may have moved.
 
 ```bash
-tmpdir=$(mktemp -d)
-input="$tmpdir/input.png"
-# Put the user-provided image at $input using the file/path/reference exposed by
-# the host environment. Do not screenshot the chat or browser to obtain it.
+workdir=$(mktemp -d)
+"$CAPCAP" agent windows --owner Safari --title "Release Studio" --pretty
+# Select the intended ownerPID/title/frame, then use the returned windowID
+"$CAPCAP" agent capture --window-id 12345 --out "$workdir/shot.png" --meta "$workdir/shot.json"
+# Inspect shot.png; author marks.json using its actual pixel dimensions
+"$CAPCAP" agent validate --input "$workdir/shot.png" --spec "$workdir/marks.json" --pretty
+"$CAPCAP" agent annotate --input "$workdir/shot.png" --spec "$workdir/marks.json" --out "$workdir/result.png"
 ```
 
-Inspect the provided image, create `marks.json`, then render:
+**Target and marks already known:** `run` combines capture and annotate. Optional
+`--shot-out` retains the original. An `imageSize` guard rejects an unexpected size.
 
 ```bash
-"$CAPCAP" agent annotate --input "$input" --spec "$tmpdir/marks.json" --out "$tmpdir/result.png" --meta "$tmpdir/result.json" --pretty
+"$CAPCAP" agent run --window-id 12345 --spec marks.json --out result.png --shot-out raw.png
 ```
 
-Return or attach `result.png` as the final edited image. Only ask the user for a
-file path or re-upload when the provided image is visible in the conversation
-but unavailable to tools as an input file.
+All headless commands avoid opening the editor, changing the clipboard, or adding
+history entries. Return the final PNG file to the user and inspect it before
+claiming correct visual placement. Validation is structural/renderability checking,
+not proof that the annotation identifies the intended content.
 
-### 2. Capture, Inspect, Annotate
-
-Use this when the agent needs to look at the screenshot before deciding marks.
-Do not use this workflow when the user already supplied the image to edit.
+## Targets and coordinates
 
 ```bash
-tmpdir=$(mktemp -d)
-"$CAPCAP" agent capture --target mouse-screen --out "$tmpdir/shot.png" --meta "$tmpdir/shot.json" --pretty
+"$CAPCAP" agent displays --pretty
+"$CAPCAP" agent windows --owner capcap --all --pretty
 ```
 
-Inspect `shot.png`, create `marks.json`, then render:
+`displays` returns connected display IDs, zero-based indices, CG bounds, scale,
+and a Screen Recording permission preflight result. It does not request permission.
 
-```bash
-"$CAPCAP" agent annotate --input "$tmpdir/shot.png" --spec "$tmpdir/marks.json" --out "$tmpdir/result.png" --meta "$tmpdir/result.json" --pretty
-```
+- `windows` defaults to normal windows; `--all` includes panels, overlays and menus
+- `--owner` and `--title` are case-insensitive substring filters
+- `--frontmost-only` respects these filters; `--limit N` limits returned results
+- Window IDs are temporary: enumerate again after relaunch or panel transitions
+- An LSUIElement app can show a panel while another app is frontmost
+- For capcap, prefer `windows --owner capcap --all`; never infer its target from frontmost app
 
-Return or attach `result.png` as the final visual evidence.
+Capture targets:
 
-### 3. One-Step Capture And Render
+| Target | Selector |
+|---|---|
+| Exact window | `--window-id ID` (infers `window-id`) |
+| Display | `--screen-index N` or `--display-id ID` (infers `screen`) |
+| Region | `--rect x,y,width,height` (infers `rect`; inside one display) |
+| Cursor display | `--target mouse-screen` (default without selectors) |
+| Cursor window | `--target window-at-cursor` |
+| Active normal window | `--target frontmost-window` |
 
-Use this when the agent already knows the target and marks.
-Do not use this workflow when the user already supplied the image to edit.
+Conflicting or irrelevant selectors are errors. `--target screen` without a
+selector uses the main screen. Explicit target aliases are listed in command help/source.
 
-```bash
-"$CAPCAP" agent run \
-  --target rect \
-  --rect 0,0,800,600 \
-  --spec marks.json \
-  --out result.png \
-  --shot-out shot.png \
-  --meta result.json \
-  --pretty
-```
+**Do not confuse points and pixels.** `windows.frame` and capture `--rect` use
+global CG **points**, top-left of the primary display. Annotation coordinates are
+**pixels in the captured image**, top-left. A 1249 × 836 point window can produce
+a 2498 × 1672 pixel PNG. If an image viewer scales a preview, convert its displayed
+coordinates to the PNG dimensions before writing marks.
 
-`--shot-out` is optional. Use it when the raw screenshot may be useful for debugging or later analysis.
+Read `image.width/height`; do not guess Retina scale. `target.captureMode` (or
+`capture.captureMode` for run) indicates isolated `window` capture or
+`composited-rect` fallback for menu-level surfaces. A composited rect includes
+whatever is visible behind that surface; inspect it before sharing. High-level
+capcap editors are captured as independent windows.
 
-### 4. Window-Targeted Capture
-
-First list windows:
-
-```bash
-"$CAPCAP" agent windows --limit 20 --pretty
-```
-
-Filter if useful:
-
-```bash
-"$CAPCAP" agent windows --owner Safari --limit 10 --pretty
-"$CAPCAP" agent list-windows --frontmost-only --pretty
-```
-
-Capture a returned `windowID`:
-
-```bash
-"$CAPCAP" agent capture --target window-id --window-id 12345 --out shot.png --meta shot.json --pretty
-```
-
-Then annotate with `agent annotate`, or combine target and spec with `agent run`.
-
-## Capture Commands
-
-### List Windows
-
-```bash
-"$CAPCAP" agent windows --pretty
-```
-
-Options:
-
-- `--owner TEXT`: case-insensitive owner app filter
-- `--title TEXT`: case-insensitive title filter
-- `--limit N`: maximum number of windows
-- `--frontmost-only`: return only the frontmost app's top normal window
-- `--all` or `--include-system`: include menu bar, Control Center, popups, and other system surfaces
-- `--meta path.json`: write metadata to a file
-- `--pretty`: pretty-print JSON
-
-Default `windows` output lists normal app windows only (`layer == 0`). Add `--all` only when the target is a menu bar item, popup, or other system surface.
-
-Each window includes:
-
-- `windowID`: pass this to `--window-id`
-- `ownerName`, `ownerPID`, `title`
-- `frame`: global CG rect `[x, y, width, height]`
-- `usesCompositedScreenBackdrop`: true for high-layer system surfaces
-- `captureTarget` and `captureCommand`: ready-to-use capture hints
-
-### Capture Screenshot
-
-```bash
-"$CAPCAP" agent capture --target mouse-screen --out shot.png --pretty
-```
-
-Targets:
-
-- `screen`: full screen; optional `--screen-index N` or `--display-id ID`
-- `mouse-screen`: full screen containing the cursor
-- `rect`: global CG rect, requires `--rect x,y,width,height`
-- `window-id`: exact WindowServer window, requires `--window-id ID`
-- `window-at-cursor`: topmost window under the current cursor
-- `frontmost-window`: top normal window owned by the frontmost app
-
-Examples:
-
-```bash
-"$CAPCAP" agent capture --target rect --rect 0,0,300,200 --out shot.png --meta shot.json --pretty
-"$CAPCAP" agent capture --target frontmost-window --out shot.png --pretty
-"$CAPCAP" agent capture --target window-at-cursor --out shot.png --pretty
-```
-
-For window capture, prefer `windows` -> `window-id` when deterministic selection matters.
-
-## Annotation Spec
-
-Annotation specs are JSON:
+## Annotation contract
 
 ```json
 {
   "version": 1,
   "coordinateSpace": "pixels",
   "origin": "top-left",
+  "imageSize": [1200, 800],
   "annotations": [
-    {
-      "type": "rect",
-      "rect": [80, 80, 280, 120],
-      "color": "#FF3B30",
-      "lineWidth": 5
-    },
-    {
-      "type": "arrow",
-      "from": [520, 240],
-      "to": [350, 140],
-      "color": "#FF3B30",
-      "lineWidth": 6
-    },
-    {
-      "type": "text",
-      "at": [92, 52],
-      "text": "Agent note",
-      "fontSize": 28,
-      "color": "#FF3B30",
-      "stroke": true
-    }
+    {"type":"rect","rect":[80,80,280,120],"strokeStyle":"rounded","color":"#6858EE","lineWidth":4},
+    {"type":"arrow","from":[520,240],"to":[350,140],"style":"tapered","color":"#6858EE"},
+    {"type":"text","at":[80,35],"text":"Review this area","fontSize":28,"color":"#6858EE"}
   ]
 }
 ```
 
-Supported annotation types:
+Use `imageSize` whenever possible: it rejects a spec made for a differently sized
+image. It is a size guard, not a content hash. Unknown fields and excess coordinate
+components are rejected; annotation failures identify their zero-based index.
 
-- `rect`, `rectangle`, `box`: needs `rect`
-- `ellipse`, `oval`, `circle`: needs `rect`
-- `arrow`: needs `from` and `to`; optional `style`, `controlPoint`
-- `line`: needs `from` and `to`
-- `text`, `label`: needs `at` and `text`
-- `number`, `numbered`, `badge`: needs `center`; optional `number`, `tip`
-- `mosaic`, `pixelate`, `blur`: needs `rect`
-- `magnifier`, `loupe`: needs `center`; optional `radius`, `zoom`, `source`
-- `pen`, `path`: needs `points`
-- `marker`, `highlight`, `highlighter`: needs `points`
+- rect/ellipse: `rect`; optional lineWidth, fillMode, strokeStyle, rotation
+- arrow/line: `from`, `to`; arrow supports `controlPoint` and style
+- text: `at`, `text`; optional fontSize, stroke, callout, tip, rotation
+- number: `center`; optional number, tip, controlPoint
+- mosaic: `rect`, optional blockSize; `blur` is **pixelation**, not Gaussian blur
+- magnifier: `center`; optional radius, zoom, source, lineWidth
+- spotlight: `rect`; multiple regions share one dimming overlay, applied last
+- pen/marker: nonempty `points`; marker's visible width is **6 × lineWidth**
 
-Common fields:
+Run `agent schema` for exact per-type fields. Rects are `[x,y,width,height]`,
+points are `[x,y]`; object forms are also accepted. Styles include explicit
+`standard` and `tapered` defaults. Color accepts #RGB, #RRGGBB and #RRGGBBAA;
+marker uses the editor's fixed translucent brush opacity.
 
-- `color`: `#RRGGBB`, `#RGB`, or `#RRGGBBAA`
-- `lineWidth`: positive number
-- `rotationDegrees` or `rotationRadians`: for supported types
-- `fill` or `fillMode`: `none`, `opaque`, `translucent`
-- `strokeStyle`: `standard` or `hand-drawn`
+## Crop and beautify
 
-## Rendering An Existing Image
+Optional document fields use the same native beautify renderer as the GUI:
 
-```bash
-"$CAPCAP" agent annotate \
-  --input shot.png \
-  --spec marks.json \
-  --out result.png \
-  --meta result.json \
-  --pretty
+```json
+{
+  "imageSize": [1200,800],
+  "annotations": [],
+  "crop": [40,40,1120,720],
+  "beautify": {"preset":"blue-purple","padding":64,"shadow":true}
+}
 ```
 
-Use this after the agent has inspected `shot.png` and chosen exact pixel coordinates.
+Order is **annotate → crop → beautify**. Marks and crop always use original
+input pixels. Crop must fit inside the input; padding is an integer 0…512 pixels
+(default 64). `schema` lists preset IDs; wallpaper is intentionally unavailable
+in headless specs. `annotationImage` describes the original coordinate canvas;
+`image` describes the final PNG. `presentation.inputToOutputOffset` translates
+original points to output pixels; cropped-away content remains absent.
 
-## One-Step Run
+## GUI operation when needed
 
-```bash
-"$CAPCAP" agent run \
-  --target mouse-screen \
-  --spec marks.json \
-  --out result.png \
-  --meta result.json \
-  --pretty
-```
+The CLI produces flattened PNGs; it does not create editable GUI sessions, perform
+OCR/translation, upload files, stitch scrolling pages or record video. Use the
+actual interface for those workflows. `open -a /Applications/capcap.app image.png`
+opens an image for editing, with the existing marks flattened into that image.
 
-`agent run` supports the same target options as `agent capture`, plus:
+Lock Computer Use to `/Applications/capcap.app`. Editor controls expose stable
+IDs such as `capcap.toolbar.arrow`, `.mosaic`, `.spotlight`, `.magnifier`,
+`.beautify`, `.ocr`, `.save`, and `.close`, plus localized labels and shortcuts.
+Reacquire the accessibility tree after every UI transition. Do not treat a drag
+as proof of ordinary hover behavior.
 
-- `--spec path.json`
-- `--out result.png`
-- `--shot-out raw.png` for optional raw screenshot output
-
-## Practical Agent Guidance
-
-- When the user attaches or pastes an image with edit instructions, edit that
-  original image with `agent annotate`; do not capture the visible chat message,
-  browser page, or desktop copy of it.
-- For visual bug reports, capture first, inspect the PNG, then annotate. This avoids guessing coordinates.
-- Use `windows --frontmost-only` when the user is clearly referring to the active app.
-- Use `windows --owner NAME` when the target app is known.
-- Use `rect` when another tool already provides exact coordinates.
-- Use red `#FF3B30` for primary marks unless the user asked for another color.
-- Prefer short visible labels; the final image should be useful without a long explanation.
-- Keep all paths absolute or inside a temp directory, and report the final PNG path.
-
-## Troubleshooting
-
-- If capture fails, check macOS Screen Recording permission for the binary being run.
-- If `capcap: command not found`, set `CAPCAP="/Applications/capcap.app/Contents/MacOS/capcap"` or create a shell alias/wrapper.
-- If an installed app does not recognize `agent`, it is an older capcap build. The headless commands require a release that includes the Agent Tools feature.
-- If `window-at-cursor` is unstable, use `agent windows` and capture by `window-id`.
-- If system menu bar items appear before app windows, rerun `agent windows` without `--all`.
-- If a high-layer system surface has `usesCompositedScreenBackdrop: true`, capcap may capture it through a composited rect path instead of direct window capture.
-- If coordinates look vertically flipped, remember specs use image pixels with top-left origin, not AppKit bottom-left coordinates.
+The [README demo](examples/readme-demo/README.md) contains reusable source content,
+annotation specs and a rendering script for an actual end-to-end example.

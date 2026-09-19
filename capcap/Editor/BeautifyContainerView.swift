@@ -62,6 +62,11 @@ final class BeautifyContainerView: NSView {
 
     func setBeautify(preset: BeautifyPreset?) {
         beautifyPreset = preset
+        // A beautify preset owns the area behind the canvas (gradient,
+        // wallpaper, or its own checkerboard). In normal editing the canvas
+        // supplies a stable transparency preview instead of exposing the
+        // frozen desktop snapshot beneath it.
+        canvasView?.drawsTransparencyBackdrop = preset == nil
         relayout()
         needsDisplay = true
     }

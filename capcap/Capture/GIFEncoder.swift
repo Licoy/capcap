@@ -8,6 +8,7 @@ final class GIFEncoder {
     private let url: URL
     private let targetFPS: Int
     private let sourceEstimatedFPS: Int
+    private let keepEvery: Int
     private let frameProperties: [CFString: Any]
     private let gifProperties: [CFString: Any]
     private var destination: CGImageDestination?
@@ -19,8 +20,14 @@ final class GIFEncoder {
         self.url = url
         self.targetFPS = min(max(fps, 1), 15)
         self.sourceEstimatedFPS = max(sourceFPS, self.targetFPS)
+        self.keepEvery = max(1, self.sourceEstimatedFPS / self.targetFPS)
 
-        let delayTime = 1.0 / Float(self.targetFPS)
+        // Each retained frame represents `keepEvery` source frames, so its delay
+        // is the span those frames cover (`keepEvery / sourceEstimatedFPS`),
+        // not a flat `1 / targetFPS`. The flat value only holds when the source
+        // rate is a clean multiple of the target; otherwise the GIF plays in slow
+        // motion because every retained frame is stretched to 1/targetFPS.
+        let delayTime = Float(self.keepEvery) / Float(self.sourceEstimatedFPS)
         frameProperties = [
             kCGImagePropertyGIFDictionary: [
                 kCGImagePropertyGIFDelayTime: delayTime,
@@ -49,7 +56,6 @@ final class GIFEncoder {
         defer { lock.unlock() }
 
         inputFrameCount += 1
-        let keepEvery = max(1, sourceEstimatedFPS / targetFPS)
         guard (inputFrameCount - 1) % keepEvery == 0 else { return }
         guard let destination else { return }
 

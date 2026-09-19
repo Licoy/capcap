@@ -15,7 +15,7 @@
 "pinAcrossSpaces" = "贴图跨桌面显示";
 "pinAcrossSpacesHint" = "开启后新贴图会出现在所有桌面与全屏空间";
 "historyCacheToggleLabel" = "缓存截图";
-"historyCacheToggleHint" = "保存最近截图、取色和上传结果，便于从菜单栏快速再次复制";
+"historyCacheToggleHint" = "保存最近截图、取色和上传结果，便于从历史面板快速再次复制";
 "clipboardTextCacheToggleLabel" = "缓存剪贴板文本";
 "clipboardTextCacheToggleHint" = "将复制的文本保存到历史记录，便于从历史记录快速复用";
 "clipboardTextHistoryLimitLabel" = "文本历史数量";
@@ -25,7 +25,7 @@
 "historyPanelDialogMode" = "弹窗";
 "historyPanelDialogModeHint" = "通过菜单或快捷键打开横向预览面板";
 "historyPanelNotchMode" = "刘海";
-"historyPanelNotchModeHint" = "鼠标进入屏幕顶部刘海自动展开，移出后自动收起";
+"historyPanelNotchModeHint" = "悬停或点击屏幕顶部刘海展开，移出后自动收起";
 "countdownLabel" = "倒计时秒数";
 "countdownHint" = "按住 ⌥ Option 后双击 ⌘ 或按截图快捷键，先弹出倒计时再截图，按 Esc 取消";
 "countdownSecondsSuffix" = "秒";
@@ -54,9 +54,9 @@
 "selectedImagePinShortcutHeader" = "钉起选中的图片";
 "selectedImagePinShortcutDefaultDisplay" = "未设置";
 "selectedImagePinShortcutClear" = "清除钉起选中图片快捷键";
-"clipboardImagePinShortcutHeader" = "钉起剪贴板图片";
+"clipboardImagePinShortcutHeader" = "钉起当前或剪贴板图片";
 "clipboardImagePinShortcutDefaultDisplay" = "未设置";
-"clipboardImagePinShortcutClear" = "清除钉起剪贴板图片快捷键";
+"clipboardImagePinShortcutClear" = "清除钉起当前或剪贴板图片快捷键";
 "clipboardTextPinShortcutHeader" = "钉起剪贴板文本";
 "clipboardTextPinShortcutDefaultDisplay" = "未设置";
 "clipboardTextPinShortcutClear" = "清除钉起剪贴板文本快捷键";
@@ -66,6 +66,9 @@
 "pinFromFinderHint" = "已钉起 Finder 选中的图片，按 X 关闭";
 "pinFromClipboardHint" = "已钉起剪贴板图片，按 X 关闭";
 "pinFromClipboardTextHint" = "已钉起剪贴板文本，双击可编辑";
+"pinToolbarClose" = "关闭钉图";
+"pinToolbarCopy" = "复制钉图";
+"pinToolbarDrag" = "拖拽钉图";
 "pinToolbarEdit" = "编辑钉图";
 "pinToolbarEditText" = "编辑文字";
 
@@ -131,16 +134,24 @@
 "settings" = "设置";
 "quitApp" = "退出 capcap";
 "historyMenu" = "历史";
-"historyEmpty" = "暂无历史";
 "historyClear" = "清除历史";
 "historyCleared" = "历史已清除";
+"historyEmpty" = "暂无历史";
 "historyShowInFinder" = "在 Finder 中显示";
+"historyPanelLock" = "锁定历史面板";
+"historyPanelUnlock" = "解锁历史面板";
+"historyPanelFavorite" = "收藏";
+"historyPanelUnfavorite" = "取消收藏";
+"historyPanelItemFavorited" = "已收藏";
+"historyPanelItemUnfavorited" = "已取消收藏";
 "historyPanelMenu" = "历史面板";
 "historyPanelDeleteAll" = "删除全部历史";
 "historyPanelDeleteSelectedOne" = "删除%d个项目";
 "historyPanelDeleteSelected" = "删除%d个项目";
 "historyPanelDeletedSelectedOne" = "已删除%d个项目";
 "historyPanelDeletedSelected" = "已删除%d个项目";
+"historyPanelFavoriteFailed" = "无法更改收藏";
+"historyDeletedSkippingFavorites" = "已删除 %d 个项目，跳过 %d 个收藏";
 "historyPanelFilterAll" = "全部";
 "historyPanelFilterScreenshots" = "截图";
 "historyPanelFilterGIF" = "GIF";
@@ -333,15 +344,28 @@
 "settingsQuit" = "退出应用";
 
 "toolbarSettingsPrimaryTitle" = "主工具栏";
-"toolbarSettingsPrimaryHint" = "工具会在选区上方或下方显示";
+"toolbarSettingsPrimaryHint" = "工具会在选区上方或下方显示，拖拽调整位置，点击设置快捷键";
 "toolbarSettingsSideTitle" = "侧工具栏";
-"toolbarSettingsSideHint" = "工具会在选区左侧或右侧显示";
+"toolbarSettingsSideHint" = "工具会在选区左侧或右侧显示，拖拽调整位置，点击设置快捷键";
 "toolbarSettingsHiddenTitle" = "隐藏的工具";
 "toolbarSettingsHiddenHint" = "拖到这里的工具不会出现在任何工具栏中";
 "toolbarSettingsFootnote" = "工具栏会根据选区位置自动切换为上下或左右布局";
+"toolbarSettingsShortcutHint" = "点击工具录制快捷键，拖动可调整位置，右键可清除或恢复默认";
+"toolbarSettingsShortcutRecording" = "请按下“%@”的新快捷键，按 Esc 取消";
+"toolbarSettingsShortcutRecord" = "录制快捷键";
+"toolbarSettingsShortcutClear" = "清除快捷键";
+"toolbarSettingsShortcutRestore" = "恢复默认快捷键";
+"toolbarSettingsShortcutResetAll" = "重置编辑器快捷键";
+"toolbarSettingsShortcutNone" = "未设置";
+"toolbarSettingsShortcutUnavailable" = "N/A";
+"toolbarSettingsAdditionalShortcuts" = "其他编辑操作";
 "toolbarSettingsReset" = "重置为默认";
 "toolbarSettingsCancel" = "取消";
 "toolbarSettingsApply" = "应用";
+"editorShortcutSelect" = "选择工具";
+"editorShortcutShapeFill" = "切换形状填充";
+"editorShortcutConflict" = "该快捷键已分配给“%@”";
+"editorShortcutReserved" = "该按键用于编辑器系统操作，不能重新分配";
 
 /* About pane */
 "aboutTagline" = "菜单栏截图工具";
@@ -503,7 +527,7 @@
 "ocrTranslating" = "翻译中";
 "ocrTranslateFailedPrefix" = "翻译失败";
 "ocrNoProviderTitle" = "未配置翻译服务";
-"ocrNoProviderHint" = "前往「设置 → 翻译」添加 AI 服务";
+"ocrNoProviderHint" = "请前往「设置 → 翻译」启用翻译服务";
 "ocrOpenSettings" = "打开设置";
 "ocrLineCopied" = "已复制该行";
 "copyImageTextCopying" = "正在复制";
@@ -538,6 +562,8 @@
 "translationTestFailed" = "测试失败";
 "translationTestFailedTitle" = "已保存，但连接测试失败";
 "translationProviderCustom" = "自定义 OpenAI 兼容";
+"translationAppleSubtitle" = "使用 Apple 设备端模型，可能需要下载语言数据";
+"translationErrAppleUnavailable" = "Apple Translation 需要 macOS 15 或更高版本";
 "translationMoveUp" = "上移";
 "translationMoveDown" = "下移";
 
@@ -691,3 +717,15 @@
 "tipClickThrough" = "截图穿透";
 "captureClickThroughOn" = "已开启截图穿透";
 "captureClickThroughOff" = "已关闭截图穿透";
+"historyNotchTriggerLabel" = "刘海触发方式";
+"historyNotchTriggerHover" = "鼠标悬停打开";
+"historyNotchTriggerClick" = "鼠标点击打开";
+
+/* General settings categories */
+"settingsGeneralBasic" = "基础";
+"settingsGeneralCapture" = "截图与贴图";
+"settingsGeneralRecording" = "录制";
+"settingsGeneralHistory" = "历史记录";
+"settingsGeneralFiles" = "文件与输出";
+
+"historyPreviewTextSaveFailed" = "文本保存失败，请重试";

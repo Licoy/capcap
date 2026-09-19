@@ -1,4 +1,5 @@
 import AppKit
+import Carbon
 
 /// Which toolbar a grid section maps to in `ToolbarLayout`.
 enum ToolbarSection {
@@ -28,7 +29,14 @@ final class ToolbarSettingsPane: NSView {
     private let hiddenTitle = ToolbarSettingsPane.sectionTitleLabel()
     private let hiddenHint = ToolbarSettingsPane.hintLabel()
     private let footnote = ToolbarSettingsPane.hintLabel()
+    private let shortcutHint = ToolbarSettingsPane.hintLabel()
+    private let additionalShortcutsTitle = ToolbarSettingsPane.sectionTitleLabel()
+    private let selectShortcutButton = EditorShortcutActionButton(action: .select)
+    private let shapeFillShortcutButton = EditorShortcutActionButton(action: .shapeFill)
+    private let shortcutResetButton = NSButton()
     private let resetButton = NSButton()
+    private var recordingAction: EditorShortcutAction?
+    private var shortcutRecordingMonitor: Any?
 
     init() {
         super.init(frame: .zero)
@@ -41,13 +49,28 @@ final class ToolbarSettingsPane: NSView {
             name: .languageDidChange,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(onShortcutsChanged),
+            name: .editorShortcutsDidChange,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(onShortcutsChanged),
+            name: .hotkeyDidChange,
+            object: nil
+        )
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
-    deinit { NotificationCenter.default.removeObserver(self) }
+    deinit {
+        cancelShortcutRecording()
+        NotificationCenter.default.removeObserver(self)
+    }
 
     // MARK: - Build
 
@@ -82,6 +105,12 @@ final class ToolbarSettingsPane: NSView {
         hiddenGrid = ToolbarSlotGridView(section: .hidden)
         for grid in [primaryGrid, sideGrid, hiddenGrid] {
             grid?.onLayoutChanged = { [weak self] in self?.collectWorkingLayout() }
+            grid?.onShortcutEdit = { [weak self] item in
+                self?.beginShortcutRecording(for: .toolbar(item))
+            }
+            grid?.onShortcutContextMenu = { [weak self] item, view, event in
+                self?.showShortcutContextMenu(for: .toolbar(item), from: view, event: event)
+            }
             grid?.gridProvider = { [weak self] in
                 [self?.primaryGrid, self?.sideGrid, self?.hiddenGrid].compactMap { $0 }
             }
@@ -111,6 +140,33 @@ final class ToolbarSettingsPane: NSView {
         sectionsStack.addArrangedSubview(footnote)
         footnote.widthAnchor.constraint(equalTo: sectionsStack.widthAnchor).isActive = true
 
+        shortcutHint.lineBreakMode = .byWordWrapping
+        shortcutHint.maximumNumberOfLines = 2
+        sectionsStack.setCustomSpacing(8, after: footnote)
+        sectionsStack.addArrangedSubview(shortcutHint)
+        shortcutHint.widthAnchor.constraint(equalTo: sectionsStack.widthAnchor).isActive = true
+
+        sectionsStack.setCustomSpacing(16, after: shortcutHint)
+        sectionsStack.addArrangedSubview(additionalShortcutsTitle)
+        let additionalRow = NSStackView(views: [selectShortcutButton, shapeFillShortcutButton])
+        additionalRow.orientation = .horizontal
+        additionalRow.alignment = .centerY
+        additionalRow.distribution = .fillEqually
+        additionalRow.spacing = 8
+        additionalRow.translatesAutoresizingMaskIntoConstraints = false
+        sectionsStack.setCustomSpacing(8, after: additionalShortcutsTitle)
+        sectionsStack.addArrangedSubview(additionalRow)
+        additionalRow.widthAnchor.constraint(equalTo: sectionsStack.widthAnchor).isActive = true
+
+        for button in [selectShortcutButton, shapeFillShortcutButton] {
+            button.onActivate = { [weak self] action in
+                self?.beginShortcutRecording(for: action)
+            }
+            button.onContextMenu = { [weak self] action, view, event in
+                self?.showShortcutContextMenu(for: action, from: view, event: event)
+            }
+        }
+
         stack.addArrangedSubview(sectionsCard)
         sectionsCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
@@ -125,9 +181,14 @@ final class ToolbarSettingsPane: NSView {
         resetButton.target = self
         resetButton.action = #selector(resetTapped)
 
+        Self.styleButton(shortcutResetButton, title: "", prominent: false)
+        shortcutResetButton.target = self
+        shortcutResetButton.action = #selector(resetShortcutsTapped)
+
         let spacer = NSView()
         spacer.translatesAutoresizingMaskIntoConstraints = false
         footer.addArrangedSubview(spacer)
+        footer.addArrangedSubview(shortcutResetButton)
         footer.addArrangedSubview(resetButton)
 
         stack.addArrangedSubview(footer)
@@ -149,8 +210,11 @@ final class ToolbarSettingsPane: NSView {
         hint: NSTextField,
         grid: ToolbarSlotGridView
     ) {
+        hint.lineBreakMode = .byWordWrapping
+        hint.maximumNumberOfLines = 2
         stack.addArrangedSubview(title)
         stack.addArrangedSubview(hint)
+        hint.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         stack.setCustomSpacing(2, after: title)
         stack.setCustomSpacing(10, after: hint)
         stack.addArrangedSubview(grid)
@@ -196,8 +260,18 @@ final class ToolbarSettingsPane: NSView {
         Defaults.toolbarLayout = workingLayout
     }
 
+    @objc private func resetShortcutsTapped() {
+        cancelShortcutRecording()
+        EditorShortcutRegistry.restoreAllDefaults()
+        refreshShortcutPresentation()
+    }
+
     @objc private func onLanguageChanged() {
         applyLocalizedStrings()
+    }
+
+    @objc private func onShortcutsChanged() {
+        refreshShortcutPresentation()
     }
 
     private func applyLocalizedStrings() {
@@ -208,10 +282,124 @@ final class ToolbarSettingsPane: NSView {
         hiddenTitle.stringValue = L10n.toolbarSettingsHiddenTitle
         hiddenHint.stringValue = L10n.toolbarSettingsHiddenHint
         footnote.stringValue = L10n.toolbarSettingsFootnote
+        additionalShortcutsTitle.stringValue = L10n.toolbarSettingsAdditionalShortcuts
+        shortcutResetButton.title = L10n.toolbarSettingsShortcutResetAll
         resetButton.title = L10n.toolbarSettingsReset
-        primaryGrid.refreshTooltips()
-        sideGrid.refreshTooltips()
-        hiddenGrid.refreshTooltips()
+        refreshShortcutPresentation()
+    }
+
+    // MARK: - Shortcut editing
+
+    private func beginShortcutRecording(for action: EditorShortcutAction) {
+        if recordingAction == action {
+            cancelShortcutRecording()
+            return
+        }
+        cancelShortcutRecording()
+
+        recordingAction = action
+        HotkeyManager.shared.beginRecording()
+        refreshShortcutPresentation()
+
+        shortcutRecordingMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, let action = self.recordingAction else { return event }
+            let modifiers = HotkeyManager.carbonModifiers(from: event.modifierFlags)
+            if event.keyCode == UInt16(kVK_Escape), modifiers == 0 {
+                self.cancelShortcutRecording()
+                return nil
+            }
+
+            let binding = EditorShortcutBinding(event: event)
+            if let message = EditorShortcutRegistry.validationMessage(for: binding, assigningTo: action) {
+                self.cancelShortcutRecording()
+                self.presentShortcutAlert(message)
+                return nil
+            }
+
+            EditorShortcutRegistry.setBinding(binding, for: action)
+            self.finishShortcutRecording()
+            return nil
+        }
+    }
+
+    private func finishShortcutRecording() {
+        if let shortcutRecordingMonitor {
+            NSEvent.removeMonitor(shortcutRecordingMonitor)
+            self.shortcutRecordingMonitor = nil
+        }
+        recordingAction = nil
+        HotkeyManager.shared.endRecording()
+        refreshShortcutPresentation()
+    }
+
+    func cancelShortcutRecording() {
+        guard recordingAction != nil || shortcutRecordingMonitor != nil else { return }
+        finishShortcutRecording()
+    }
+
+    private func refreshShortcutPresentation() {
+        let recordingItem: ToolbarItemID?
+        if case .toolbar(let item)? = recordingAction {
+            recordingItem = item
+        } else {
+            recordingItem = nil
+        }
+
+        for grid in [primaryGrid, sideGrid, hiddenGrid].compactMap({ $0 }) {
+            grid.setShortcutRecordingItem(recordingItem)
+            grid.refreshTooltips()
+        }
+        selectShortcutButton.isRecordingShortcut = recordingAction == .select
+        shapeFillShortcutButton.isRecordingShortcut = recordingAction == .shapeFill
+        selectShortcutButton.refreshTitle()
+        shapeFillShortcutButton.refreshTitle()
+
+        if let recordingAction {
+            shortcutHint.stringValue = L10n.toolbarSettingsShortcutRecording(recordingAction.localizedTitle)
+        } else {
+            shortcutHint.stringValue = L10n.toolbarSettingsShortcutHint
+        }
+    }
+
+    private func showShortcutContextMenu(
+        for action: EditorShortcutAction,
+        from view: NSView,
+        event: NSEvent
+    ) {
+        cancelShortcutRecording()
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+        menu.addItem(ShortcutClosureMenuItem(title: L10n.toolbarSettingsShortcutRecord) { [weak self] in
+            self?.beginShortcutRecording(for: action)
+        })
+
+        if EditorShortcutRegistry.canDisable(action),
+           EditorShortcutRegistry.binding(for: action) != nil {
+            menu.addItem(ShortcutClosureMenuItem(title: L10n.toolbarSettingsShortcutClear) {
+                EditorShortcutRegistry.disable(action)
+            })
+        }
+
+        if EditorShortcutRegistry.hasOverride(for: action) {
+            menu.addItem(ShortcutClosureMenuItem(title: L10n.toolbarSettingsShortcutRestore) {
+                EditorShortcutRegistry.restoreDefault(for: action)
+            })
+        }
+
+        NSMenu.popUpContextMenu(menu, with: event, for: view)
+    }
+
+    private func presentShortcutAlert(_ message: String) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = L10n.shortcutConflictTitle
+        alert.informativeText = message
+        alert.addButton(withTitle: "OK")
+        if let window {
+            alert.beginSheetModal(for: window)
+        } else {
+            alert.runModal()
+        }
     }
 
     // MARK: - Shared builders
@@ -252,5 +440,65 @@ final class ToolbarSettingsPane: NSView {
         if prominent {
             button.bezelColor = NSColor.controlAccentColor
         }
+    }
+}
+
+private final class EditorShortcutActionButton: NSButton {
+    let shortcutAction: EditorShortcutAction
+    var onActivate: ((EditorShortcutAction) -> Void)?
+    var onContextMenu: ((EditorShortcutAction, NSView, NSEvent) -> Void)?
+    var isRecordingShortcut = false {
+        didSet { refreshTitle() }
+    }
+
+    init(action: EditorShortcutAction) {
+        shortcutAction = action
+        super.init(frame: .zero)
+        bezelStyle = .rounded
+        controlSize = .large
+        target = self
+        self.action = #selector(activate)
+        translatesAutoresizingMaskIntoConstraints = false
+        refreshTitle()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func refreshTitle() {
+        let display = isRecordingShortcut
+            ? "…"
+            : EditorShortcutRegistry.displayString(for: shortcutAction)
+                ?? L10n.toolbarSettingsShortcutNone
+        title = "\(shortcutAction.localizedTitle)  \(display)"
+        toolTip = title
+    }
+
+    override func rightMouseDown(with event: NSEvent) {
+        onContextMenu?(shortcutAction, self, event)
+    }
+
+    @objc private func activate() {
+        onActivate?(shortcutAction)
+    }
+}
+
+private final class ShortcutClosureMenuItem: NSMenuItem {
+    private let handler: () -> Void
+
+    init(title: String, handler: @escaping () -> Void) {
+        self.handler = handler
+        super.init(title: title, action: nil, keyEquivalent: "")
+        target = self
+        action = #selector(runHandler)
+    }
+
+    required init(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    @objc private func runHandler() {
+        handler()
     }
 }

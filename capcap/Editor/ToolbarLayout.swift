@@ -123,67 +123,59 @@ extension ToolbarItemID {
         }
     }
 
-    /// Localized hover-tooltip text.
-    var tooltip: String {
-        let title: String
+    var localizedTitle: String {
         switch self {
-        case .rectangle:     title = L10n.tipRectangle
-        case .ellipse:       title = L10n.tipEllipse
-        case .arrow:         title = L10n.tipArrow
-        case .line:          title = L10n.tipLine
-        case .pen:           title = L10n.tipPen
-        case .marker:        title = L10n.tipMarker
-        case .spotlight:     title = L10n.tipSpotlight
-        case .mosaic:        title = L10n.tipMosaic
-        case .eraser:        title = L10n.tipEraser
-        case .magnifier:     title = L10n.tipMagnifier
-        case .numbered:      title = L10n.tipNumbered
-        case .text:          title = L10n.tipText
-        case .qrCode:        title = L10n.tipQRCode
-        case .emoji:         title = L10n.tipEmoji
-        case .insertImage:   title = L10n.tipInsertImage
-        case .colorPicker:   title = L10n.tipColorPicker
-        case .undo:          title = L10n.tipUndo
-        case .redo:          title = L10n.tipRedo
-        case .moveSelection: title = L10n.tipMoveSelection
-        case .scrollCapture: title = L10n.tipScrollCapture
-        case .refreshCapture: title = L10n.tipRefreshCapture
-        case .clickThrough:  title = L10n.tipClickThrough
-        case .beautify:      title = L10n.tipBeautify
-        case .ocr:           title = L10n.tipOCR
-        case .screenshotTranslate: title = L10n.tipScreenshotTranslate
-        case .save:          title = L10n.tipSave
-        case .upload:        title = L10n.tipUpload
-        case .pin:           title = L10n.tipPin
-        case .record:        title = L10n.tipRecord
-        case .close:         title = L10n.tipCancel
-        case .confirm:       title = L10n.tipConfirm
+        case .rectangle:     return L10n.tipRectangle
+        case .ellipse:       return L10n.tipEllipse
+        case .arrow:         return L10n.tipArrow
+        case .line:          return L10n.tipLine
+        case .pen:           return L10n.tipPen
+        case .marker:        return L10n.tipMarker
+        case .spotlight:     return L10n.tipSpotlight
+        case .mosaic:        return L10n.tipMosaic
+        case .eraser:        return L10n.tipEraser
+        case .magnifier:     return L10n.tipMagnifier
+        case .numbered:      return L10n.tipNumbered
+        case .text:          return L10n.tipText
+        case .qrCode:        return L10n.tipQRCode
+        case .emoji:         return L10n.tipEmoji
+        case .insertImage:   return L10n.tipInsertImage
+        case .colorPicker:   return L10n.tipColorPicker
+        case .undo:          return L10n.tipUndo
+        case .redo:          return L10n.tipRedo
+        case .moveSelection: return L10n.tipMoveSelection
+        case .scrollCapture: return L10n.tipScrollCapture
+        case .refreshCapture: return L10n.tipRefreshCapture
+        case .clickThrough:  return L10n.tipClickThrough
+        case .beautify:      return L10n.tipBeautify
+        case .ocr:           return L10n.tipOCR
+        case .screenshotTranslate: return L10n.tipScreenshotTranslate
+        case .save:          return L10n.tipSave
+        case .upload:        return L10n.tipUpload
+        case .pin:           return L10n.tipPin
+        case .record:        return L10n.tipRecord
+        case .close:         return L10n.tipCancel
+        case .confirm:       return L10n.tipConfirm
         }
-        guard let shortcut = editorShortcutDisplay else { return title }
-        return "\(title) (\(shortcut))"
+    }
+
+    /// Localized hover-tooltip text with the current configured shortcut.
+    var tooltip: String {
+        guard let shortcut = editorShortcutDisplay else { return localizedTitle }
+        return "\(localizedTitle) (\(shortcut))"
     }
 
     var editorShortcutDisplay: String? {
         switch self {
-        case .rectangle: return "R"
-        case .ellipse:   return "O"
-        case .line:      return "L"
-        case .arrow:     return "A"
-        case .pin:       return "P"
-        case .pen:       return "D"
-        case .marker:    return "H"
-        case .mosaic:    return "M"
-        case .eraser:    return "E"
-        case .text:      return "T"
-        case .numbered:  return "N"
-        case .save:      return HotkeyManager.currentFileSaveDisplayString()
-        case .confirm:   return HotkeyManager.currentClipboardDisplayString() ?? L10n.clipboardShortcutDefaultDisplay
-        case .refreshCapture: return "⌘R"
-        case .clickThrough: return HotkeyManager.currentPinClickThroughDisplayString()
-        case .undo:      return "⌘+Z"
-        case .redo:      return "Z"
-        case .close:     return "X"
-        default:         return nil
+        case .clickThrough:
+            return HotkeyManager.currentPinClickThroughDisplayString()
+        case .save:
+            return HotkeyManager.currentFileSaveDisplayString()
+        case .confirm:
+            return HotkeyManager.currentClipboardDisplayString() ?? L10n.clipboardShortcutDefaultDisplay
+        default:
+            guard supportsEditorShortcut else { return nil }
+            return EditorShortcutRegistry.displayString(for: .toolbar(self))
         }
     }
 

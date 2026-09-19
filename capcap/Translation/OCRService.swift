@@ -55,11 +55,13 @@ enum OCRService {
         let configuration = ImageAnalyzer.Configuration(.text)
 
         do {
-            let analysis = try await ImageAnalyzer().analyze(
-                image,
-                orientation: .up,
-                configuration: configuration
-            )
+            let analysis = try await AsyncDeadline.run(seconds: 3) {
+                try await ImageAnalyzer().analyze(
+                    image,
+                    orientation: .up,
+                    configuration: configuration
+                )
+            }
             return analysis.hasResults(for: .text) ? analysis : nil
         } catch {
             return nil
@@ -73,29 +75,26 @@ enum OCRService {
             return []
         }
 
-        return await withCheckedContinuation { continuation in
-            let request = VNRecognizeTextRequest { request, _ in
-                let observations = (request.results as? [VNRecognizedTextObservation]) ?? []
-                continuation.resume(returning: Self.assembleLines(observations))
-            }
-            request.recognitionLevel = .accurate
-            request.usesLanguageCorrection = true
-            // Bias toward CJK + Latin scripts; auto-detect still kicks in for
-            // anything outside this list.
-            request.recognitionLanguages = preferredRecognitionLanguages
-            request.automaticallyDetectsLanguage = true
-
-            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-            DispatchQueue.global(qos: .userInitiated).async {
-                do {
-                    try handler.perform([request])
-                } catch {
-                    // perform() failing means the completion handler never
-                    // ran — resume here so the continuation isn't leaked.
-                    continuation.resume(returning: [])
+        // Read results after synchronous perform returns. Its completion handler
+        // can run before perform throws; resuming from both paths was unsafe.
+        return (try? await AsyncDeadline.run(seconds: 15) {
+            await withCheckedContinuation { continuation in
+                DispatchQueue.global(qos: .userInitiated).async {
+                    let request = VNRecognizeTextRequest()
+                    request.recognitionLevel = .accurate
+                    request.usesLanguageCorrection = true
+                    request.recognitionLanguages = preferredRecognitionLanguages
+                    request.automaticallyDetectsLanguage = true
+                    let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+                    do {
+                        try handler.perform([request])
+                        continuation.resume(returning: Self.assembleLines(request.results ?? []))
+                    } catch {
+                        continuation.resume(returning: [])
+                    }
                 }
             }
-        }
+        }) ?? []
     }
 
     /// Orders observations into natural reading order. Vision bounding boxes

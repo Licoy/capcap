@@ -92,6 +92,7 @@ final class FilenameRuleCard: NSView, NSTextFieldDelegate {
     func refreshLocalization() {
         titleLabel.stringValue = L10n.filenameRuleTitle
         subtitleLabel.stringValue = L10n.filenameRuleSubtitle
+        titleLabel.toolTip = L10n.filenameRuleSubtitle
         presetLabel.stringValue = L10n.filenameRulePresetLabel
         imageLabel.stringValue = L10n.filenameRuleImageLabel
         recordingLabel.stringValue = L10n.filenameRuleRecordingLabel
@@ -131,14 +132,13 @@ final class FilenameRuleCard: NSView, NSTextFieldDelegate {
         subtitleLabel.maximumNumberOfLines = 0
         subtitleLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
-        let header = NSStackView(views: [titleLabel, subtitleLabel])
+        let header = NSStackView(views: [titleLabel])
         header.orientation = .vertical
         header.alignment = .leading
         header.spacing = 3
         header.translatesAutoresizingMaskIntoConstraints = false
         inner.addArrangedSubview(header)
         header.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
-        subtitleLabel.widthAnchor.constraint(equalTo: header.widthAnchor).isActive = true
 
         let headerDivider = rowDivider()
         inner.addArrangedSubview(headerDivider)

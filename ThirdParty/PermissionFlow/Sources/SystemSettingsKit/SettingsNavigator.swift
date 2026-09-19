@@ -24,7 +24,7 @@ final class SettingsNavigator {
     func activateSettings() {
         NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier)
             .first?
-            .activate(options: [.activateIgnoringOtherApps])
+            .activate(options: [])
     }
 }
 #elseif os(iOS)

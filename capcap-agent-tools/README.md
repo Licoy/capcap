@@ -299,3 +299,11 @@ tmpdir="$(mktemp -d)"
 系统菜单、弹窗或高层窗口干扰结果
 
 默认先不用 `--all`。只有确实需要捕获菜单栏、控制中心或系统浮层时，再加 `--all` 或 `--include-system`
+
+## 新版自描述与校验流程
+
+先运行 `"$CAPCAP" agent schema --pretty` 获取安装版本的字段、样式和预设，再用 `agent displays --pretty` 获取显示器与权限状态。建议固定使用窗口 ID 截图，检查 PNG 后，通过 `agent validate --input shot.png --spec marks.json` 校验，再执行 `agent annotate`
+
+新版支持聚光灯、原图尺寸校验、裁剪和原生美化。未知字段、冲突的截图参数与互相覆盖的文件路径会明确报错；失败时 stderr 返回 JSON，方便代理读取原因并重试。编辑器工具栏也提供 `capcap.toolbar.*` 辅助功能标识
+
+可复现的真实案例见 [README 示例图工作流](examples/readme-demo/README.md)

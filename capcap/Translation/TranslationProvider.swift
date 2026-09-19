@@ -110,6 +110,7 @@ enum TranslationLanguage: String, CaseIterable {
 /// Translation providers. OpenAI / DeepSeek / Custom all speak the OpenAI
 /// chat-completions wire format; Claude, DeepL, and DeepLX use their own APIs.
 enum TranslationProviderKind: String, CaseIterable {
+    case apple
     case openai
     case deepseek
     case deepl
@@ -119,6 +120,7 @@ enum TranslationProviderKind: String, CaseIterable {
 
     var displayName: String {
         switch self {
+        case .apple:    return "Apple Translation"
         case .openai:   return "OpenAI"
         case .deepseek: return "DeepSeek"
         case .deepl:    return "DeepL"
@@ -127,6 +129,19 @@ enum TranslationProviderKind: String, CaseIterable {
         case .claude:   return "Claude"
         }
     }
+
+    /// Apple's on-device Translation framework is available starting in macOS 15.
+    var isAvailableOnCurrentSystem: Bool {
+        switch self {
+        case .apple:
+            if #available(macOS 15.0, *) { return true }
+            return false
+        default:
+            return true
+        }
+    }
+
+    var isAppleTranslation: Bool { self == .apple }
 
     /// Claude needs a different request shape and SSE parser.
     var isClaude: Bool { self == .claude }
@@ -137,10 +152,11 @@ enum TranslationProviderKind: String, CaseIterable {
     /// DeepLX uses a non-SSE JSON response instead of chat completions.
     var isDeepLX: Bool { self == .deeplx }
 
-    var isDirectTranslationAPI: Bool { isDeepL || isDeepLX }
+    var isDirectTranslationAPI: Bool { isDeepL || isDeepLX || isAppleTranslation }
 
     var defaultEndpoint: String {
         switch self {
+        case .apple:    return ""
         case .openai:   return "https://api.openai.com/v1/chat/completions"
         case .deepseek: return "https://api.deepseek.com/chat/completions"
         case .deepl:    return "https://api.deepl.com/v2/translate"
@@ -152,6 +168,7 @@ enum TranslationProviderKind: String, CaseIterable {
 
     var defaultModel: String {
         switch self {
+        case .apple:    return ""
         case .openai:   return "gpt-4o-mini"
         case .deepseek: return "deepseek-v4-flash"
         case .deepl:    return ""
@@ -166,7 +183,7 @@ enum TranslationProviderKind: String, CaseIterable {
     var endpointRequired: Bool { self == .custom }
 
     /// DeepLX can be self-hosted without an API key.
-    var isAPIKeyRequired: Bool { !isDeepLX }
+    var isAPIKeyRequired: Bool { !isDeepLX && !isAppleTranslation }
 }
 
 extension TranslationLanguage {
@@ -329,6 +346,7 @@ enum TranslationConfigStore {
 
     /// True when the saved config has the fields a request needs.
     static func isConfigured(_ kind: TranslationProviderKind) -> Bool {
+        if kind.isAppleTranslation { return kind.isAvailableOnCurrentSystem }
         let cfg = load(kind)
         if kind.isAPIKeyRequired {
             guard !cfg.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
@@ -341,7 +359,7 @@ enum TranslationConfigStore {
 
     /// Enabled AND configured — the providers shown in the OCR panel.
     static func isUsable(_ kind: TranslationProviderKind) -> Bool {
-        isEnabled(kind) && isConfigured(kind)
+        kind.isAvailableOnCurrentSystem && isEnabled(kind) && isConfigured(kind)
     }
 
     static func orderedKinds() -> [TranslationProviderKind] {
@@ -350,12 +368,15 @@ enum TranslationConfigStore {
         var result: [TranslationProviderKind] = []
 
         for raw in saved {
-            guard let kind = TranslationProviderKind(rawValue: raw), !seen.contains(kind) else { continue }
+            guard let kind = TranslationProviderKind(rawValue: raw),
+                  kind.isAvailableOnCurrentSystem,
+                  !seen.contains(kind) else { continue }
             result.append(kind)
             seen.insert(kind)
         }
 
-        for kind in TranslationProviderKind.allCases where !seen.contains(kind) {
+        for kind in TranslationProviderKind.allCases
+            where kind.isAvailableOnCurrentSystem && !seen.contains(kind) {
             result.append(kind)
             seen.insert(kind)
         }

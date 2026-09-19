@@ -52,6 +52,7 @@ class OverlayWindowController {
         let selectionSizeLabelOverride: String?
         let selectionLocked: Bool
         let selectionInteractionEnabled: Bool
+        let selectionAdjustmentBounds: NSRect?
         let preSnapshot: CGImage?
         let overrideBaseImage: NSImage?
         let windowBaseImage: NSImage?
@@ -100,6 +101,9 @@ class OverlayWindowController {
     private var expectedSnapshotDisplayIDs = Set<CGDirectDisplayID>()
     private var failedSnapshotDisplayIDs = Set<CGDirectDisplayID>()
     private var snapshotCancellation: ScreenSnapshotCancellation?
+    private var snapshotDeadline: DispatchWorkItem?
+    private var snapshotTimeout: TimeInterval = 8
+    private var windowCaptureTimeout: TimeInterval = 2
     private var windowCaptureTask: Task<Void, Never>?
     private var pendingWindowCapture: PendingWindowCapture?
     private var snapshotCaptureFinished = false
@@ -166,27 +170,32 @@ class OverlayWindowController {
         let selectionSizeLabelOverride: String?
         let selectionLocked: Bool
         let selectionInteractionEnabled: Bool
+        let selectionAdjustmentBounds: NSRect?
 
         init(selectionView: SelectionView) {
             selectionSizeLabelOverride = selectionView.selectionSizeLabelOverride
             selectionLocked = selectionView.selectionLocked
             selectionInteractionEnabled = selectionView.selectionInteractionEnabled
+            selectionAdjustmentBounds = selectionView.selectionAdjustmentBounds
         }
 
         init(
             selectionSizeLabelOverride: String?,
             selectionLocked: Bool,
-            selectionInteractionEnabled: Bool
+            selectionInteractionEnabled: Bool,
+            selectionAdjustmentBounds: NSRect? = nil
         ) {
             self.selectionSizeLabelOverride = selectionSizeLabelOverride
             self.selectionLocked = selectionLocked
             self.selectionInteractionEnabled = selectionInteractionEnabled
+            self.selectionAdjustmentBounds = selectionAdjustmentBounds
         }
 
         func apply(to selectionView: SelectionView) {
             selectionView.selectionSizeLabelOverride = selectionSizeLabelOverride
             selectionView.selectionLocked = selectionLocked
             selectionView.selectionInteractionEnabled = selectionInteractionEnabled
+            selectionView.selectionAdjustmentBounds = selectionAdjustmentBounds
         }
     }
 
@@ -212,6 +221,11 @@ class OverlayWindowController {
     /// editor while the overlay is active. No-op when the editor isn't up yet.
     func confirmFromKeyboard() {
         editController?.confirmFromKeyboard()
+    }
+
+    @discardableResult
+    func pinFromKeyboard() -> Bool {
+        editController?.pinFromKeyboard() ?? false
     }
 
     static func prewarmPresentationSurfaces() {
@@ -242,6 +256,8 @@ class OverlayWindowController {
                 pointSize: pointSize
             )
         },
+        snapshotTimeout: TimeInterval = 8,
+        windowCaptureTimeout: TimeInterval = 2,
         eventTrackingStateProvider: @escaping () -> Bool = {
             OverlayWindowController.isRunningEventTrackingMode
         },
@@ -274,6 +290,8 @@ class OverlayWindowController {
         self.snapshotProvider = snapshotProvider
         self.windowSnapshotLoader = windowSnapshotLoader
         self.windowImageLoader = windowImageLoader
+        self.snapshotTimeout = snapshotTimeout
+        self.windowCaptureTimeout = windowCaptureTimeout
         self.eventTrackingStateProvider = eventTrackingStateProvider
         self.eventTrackingDismissal = eventTrackingDismissal
         self.colorSamplerActiveProvider = colorSamplerActiveProvider
@@ -453,6 +471,15 @@ class OverlayWindowController {
               !sessionEnded else { return }
         triggerContext?.mark(.snapshotCaptureStarted)
         let context = triggerContext
+        let deadline = DispatchWorkItem { [weak self] in
+            guard let self, self.presentationGeneration == generation,
+                  !self.sessionEnded, !self.snapshotCaptureFinished else { return }
+            self.snapshotCancellation?()
+            self.snapshotCancellation = nil
+            self.handleSnapshotEvent(.finished, generation: generation)
+        }
+        snapshotDeadline = deadline
+        DispatchQueue.main.asyncAfter(deadline: .now() + snapshotTimeout, execute: deadline)
         snapshotCancellation = snapshotProvider.capture(targets: targets) { [weak self] event in
             context?.mark(.snapshotResultReady)
             MainRunLoopScheduler.perform {
@@ -517,7 +544,8 @@ class OverlayWindowController {
     }
 
     private func handleSnapshotEvent(_ event: ScreenSnapshotEvent, generation: Int) {
-        guard generation == presentationGeneration, !sessionEnded else { return }
+        guard generation == presentationGeneration, !sessionEnded,
+              !snapshotCaptureFinished else { return }
         triggerContext?.mark(.snapshotResultApplied)
 
         switch event {
@@ -547,6 +575,8 @@ class OverlayWindowController {
                 generation: generation
             )
         case .finished:
+            snapshotDeadline?.cancel()
+            snapshotDeadline = nil
             snapshotCaptureFinished = true
             if let pendingSelection,
                screenSnapshots[pendingSelection.displayID] == nil {
@@ -667,7 +697,14 @@ class OverlayWindowController {
                     displayID: displayID
                 )
             }
-            if let displayID = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID,
+            if let draft = suspendedDraft,
+               screen == screenForSuspendedDraft(draft),
+               let snapshot = draft.preSnapshot {
+                // Restore the frozen desktop before presenting the overlay. The
+                // editor exports from this same snapshot, not the live windows
+                // that may have moved or scrolled while the draft was suspended.
+                selectionView.setBackgroundSnapshot(cgImage: snapshot, pointSize: screen.frame.size)
+            } else if let displayID = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID,
                let snapshot = screenSnapshots[displayID] {
                 selectionView.setBackgroundSnapshot(cgImage: snapshot, pointSize: screen.frame.size)
             }
@@ -1420,9 +1457,12 @@ class OverlayWindowController {
             imageSize: presetImage.size,
             displaySize: displayMetrics.canvasSize
         )
-        // Lock immediately so user can't drag/resize a fixed-image canvas.
+        // Keep clicks outside the image from starting a new selection. For a
+        // fixed image the existing frame remains adjustable, and its original
+        // bounds cap how far crop handles can reveal content.
         selectionView.selectionLocked = true
-        selectionView.selectionInteractionEnabled = false
+        selectionView.selectionInteractionEnabled = true
+        selectionView.selectionAdjustmentBounds = viewRect
 
         // Drive the same path as a real selection completion. The captureRect
         // is irrelevant because the editor uses overrideBaseImage, but we
@@ -1466,6 +1506,7 @@ class OverlayWindowController {
         selectionView.selectionSizeLabelOverride = suspendedDraft.selectionSizeLabelOverride
         selectionView.selectionLocked = suspendedDraft.selectionLocked
         selectionView.selectionInteractionEnabled = suspendedDraft.selectionInteractionEnabled
+        selectionView.selectionAdjustmentBounds = suspendedDraft.selectionAdjustmentBounds
 
         activeSelectionView = selectionView
         activeScreen = screen
@@ -1608,6 +1649,7 @@ class OverlayWindowController {
             selectionSizeLabelOverride: selectionViewState.selectionSizeLabelOverride,
             selectionLocked: selectionViewState.selectionLocked,
             selectionInteractionEnabled: selectionViewState.selectionInteractionEnabled,
+            selectionAdjustmentBounds: selectionViewState.selectionAdjustmentBounds,
             preSnapshot: context.preSnapshot,
             overrideBaseImage: context.overrideBaseImage,
             windowBaseImage: context.windowBaseImage,
@@ -1626,6 +1668,8 @@ class OverlayWindowController {
         presentationGeneration += 1
         snapshotCancellation?()
         snapshotCancellation = nil
+        snapshotDeadline?.cancel()
+        snapshotDeadline = nil
         windowCaptureTask?.cancel()
         windowCaptureTask = nil
         pendingWindowCapture = nil
@@ -1980,10 +2024,13 @@ extension OverlayWindowController: SelectionViewDelegate {
             request: request,
             preSnapshot: preSnapshot
         )
+        let timeout = windowCaptureTimeout
         windowCaptureTask = Task.detached(priority: .userInitiated) { [weak self] in
             let result: Result<NSImage?, Error>
             do {
-                result = .success(try await windowImageLoader(windowID, pointSize))
+                result = .success(try await AsyncDeadline.run(seconds: timeout) {
+                    try await windowImageLoader(windowID, pointSize)
+                })
             } catch {
                 result = .failure(error)
             }
@@ -2253,7 +2300,8 @@ extension OverlayWindowController: SelectionViewDelegate {
             displaySize: displayMetrics.canvasSize
         )
         selectionView.selectionLocked = true
-        selectionView.selectionInteractionEnabled = false
+        selectionView.selectionInteractionEnabled = true
+        selectionView.selectionAdjustmentBounds = viewRect
 
         activeSelectionView = selectionView
         activeScreen = screen
@@ -2369,7 +2417,8 @@ extension OverlayWindowController: SelectionViewDelegate {
                 selectionViewState: SelectionViewState(
                     selectionSizeLabelOverride: nil,
                     selectionLocked: false,
-                    selectionInteractionEnabled: true
+                    selectionInteractionEnabled: true,
+                    selectionAdjustmentBounds: context.selectionViewState.selectionAdjustmentBounds
                 ),
                 preSnapshot: context.preSnapshot,
                 overrideBaseImage: context.overrideBaseImage,
@@ -2454,13 +2503,17 @@ extension OverlayWindowController: SelectionViewDelegate {
             screen: screen,
             preSnapshot: preSnapshot
         ) {
-            if let usableDirectImage {
-                let maskedImage = WindowEffects.applyingAlphaMask(from: usableDirectImage, to: snapshotWindowImage)
-                if let maskedImage {
-                    return maskedImage
-                }
+            guard let displayID = screen.deviceDescription[
+                NSDeviceDescriptionKey("NSScreenNumber")
+            ] as? CGDirectDisplayID else {
+                return WindowEffects.roundedCorners(snapshotWindowImage)
             }
-            return WindowEffects.roundedCorners(snapshotWindowImage)
+            return WindowEffects.compositedWindowImage(
+                snapshotImage: snapshotWindowImage,
+                directWindowImage: usableDirectImage,
+                captureRect: captureRect,
+                displayBounds: CGDisplayBounds(displayID)
+            )
         }
 
         return usableDirectImage

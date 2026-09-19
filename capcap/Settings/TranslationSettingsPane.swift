@@ -197,6 +197,7 @@ private final class TranslationProviderCard: NSView {
     private let apiKeyLabel = NSTextField(labelWithString: "")
     private let modelLabel = NSTextField(labelWithString: "")
     private let endpointLabel = NSTextField(labelWithString: "")
+    private let appleSubtitleLabel = NSTextField(wrappingLabelWithString: "")
     private let saveButton = NSButton(title: "", target: nil, action: nil)
     private let clearButton = NSButton(title: "", target: nil, action: nil)
     private let bodyContainer = ClippingView()
@@ -206,7 +207,8 @@ private final class TranslationProviderCard: NSView {
 
     init(kind: TranslationProviderKind) {
         self.kind = kind
-        self.isExpanded = TranslationConfigStore.isEnabled(kind)
+        let isEnabled = TranslationConfigStore.isEnabled(kind)
+        self.isExpanded = kind.isAppleTranslation || isEnabled
         super.init(frame: .zero)
         wantsLayer = true
         layer?.cornerRadius = 12
@@ -216,7 +218,7 @@ private final class TranslationProviderCard: NSView {
         layer?.borderWidth = 1
         buildUI()
         loadFromStore()
-        enableSwitch.state = isExpanded ? .on : .off
+        enableSwitch.state = isEnabled ? .on : .off
         bodyContainer.alphaValue = isExpanded ? 1 : 0
     }
 
@@ -284,37 +286,47 @@ private final class TranslationProviderCard: NSView {
             }(),
         ])
 
-        body.addArrangedSubview(makeFieldRow(apiKeyLabel, apiKeyField,
-                                             label: apiKeyLabelText(),
-                                             placeholder: "API key", width: body))
-        if !kind.isDirectTranslationAPI {
-            body.addArrangedSubview(makeFieldRow(modelLabel, modelField,
-                                                 label: L10n.translationModel,
-                                                 placeholder: modelPlaceholder(), width: body))
+        if kind.isAppleTranslation {
+            appleSubtitleLabel.stringValue = L10n.translationAppleSubtitle
+            appleSubtitleLabel.font = NSFont.systemFont(ofSize: 11)
+            appleSubtitleLabel.textColor = NSColor.white.withAlphaComponent(0.62)
+            appleSubtitleLabel.maximumNumberOfLines = 0
+            appleSubtitleLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+            body.addArrangedSubview(appleSubtitleLabel)
+            appleSubtitleLabel.widthAnchor.constraint(equalTo: body.widthAnchor).isActive = true
+        } else {
+            body.addArrangedSubview(makeFieldRow(apiKeyLabel, apiKeyField,
+                                                 label: apiKeyLabelText(),
+                                                 placeholder: "API key", width: body))
+            if !kind.isDirectTranslationAPI {
+                body.addArrangedSubview(makeFieldRow(modelLabel, modelField,
+                                                     label: L10n.translationModel,
+                                                     placeholder: modelPlaceholder(), width: body))
+            }
+            body.addArrangedSubview(makeFieldRow(endpointLabel, endpointField,
+                                                 label: endpointLabelText(),
+                                                 placeholder: endpointPlaceholder(), width: body))
+
+            saveButton.title = L10n.translationSave
+            saveButton.bezelStyle = .rounded
+            saveButton.controlSize = .small
+            saveButton.target = self
+            saveButton.action = #selector(saveTapped)
+
+            clearButton.title = L10n.translationClear
+            clearButton.bezelStyle = .rounded
+            clearButton.controlSize = .small
+            clearButton.target = self
+            clearButton.action = #selector(clearTapped)
+
+            let footer = NSStackView(views: [flexSpacer(), clearButton, saveButton])
+            footer.orientation = .horizontal
+            footer.alignment = .centerY
+            footer.spacing = 8
+            footer.translatesAutoresizingMaskIntoConstraints = false
+            body.addArrangedSubview(footer)
+            footer.widthAnchor.constraint(equalTo: body.widthAnchor).isActive = true
         }
-        body.addArrangedSubview(makeFieldRow(endpointLabel, endpointField,
-                                             label: endpointLabelText(),
-                                             placeholder: endpointPlaceholder(), width: body))
-
-        saveButton.title = L10n.translationSave
-        saveButton.bezelStyle = .rounded
-        saveButton.controlSize = .small
-        saveButton.target = self
-        saveButton.action = #selector(saveTapped)
-
-        clearButton.title = L10n.translationClear
-        clearButton.bezelStyle = .rounded
-        clearButton.controlSize = .small
-        clearButton.target = self
-        clearButton.action = #selector(clearTapped)
-
-        let footer = NSStackView(views: [flexSpacer(), clearButton, saveButton])
-        footer.orientation = .horizontal
-        footer.alignment = .centerY
-        footer.spacing = 8
-        footer.translatesAutoresizingMaskIntoConstraints = false
-        body.addArrangedSubview(footer)
-        footer.widthAnchor.constraint(equalTo: body.widthAnchor).isActive = true
 
         outer.addArrangedSubview(bodyContainer)
         bodyContainer.widthAnchor.constraint(equalTo: outer.widthAnchor).isActive = true
@@ -402,6 +414,11 @@ private final class TranslationProviderCard: NSView {
 
     @objc private func switchToggled() {
         let on = enableSwitch.state == .on
+        if kind.isAppleTranslation {
+            setExpanded(true, animated: false)
+            TranslationConfigStore.setEnabled(on, for: kind)
+            return
+        }
         let config = currentConfig()
         if on {
             TranslationConfigStore.save(config, for: kind)
@@ -415,6 +432,7 @@ private final class TranslationProviderCard: NSView {
     }
 
     @objc private func toggleExpanded() {
+        guard !kind.isAppleTranslation else { return }
         setExpanded(!isExpanded, animated: true)
     }
 
@@ -624,6 +642,7 @@ private final class TranslationProviderCard: NSView {
         apiKeyLabel.stringValue = apiKeyLabelText()
         modelLabel.stringValue = L10n.translationModel
         endpointLabel.stringValue = endpointLabelText()
+        appleSubtitleLabel.stringValue = L10n.translationAppleSubtitle
         saveButton.title = L10n.translationSave
         clearButton.title = L10n.translationClear
         moveUpButton.toolTip = L10n.translationMoveUp

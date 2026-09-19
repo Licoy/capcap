@@ -47,6 +47,9 @@ struct AgentRunOptions {
                 guard index + 1 < arguments.count else {
                     throw AgentCLIError.usage("Missing value for \(token)")
                 }
+                guard !arguments[index + 1].hasPrefix("--"), arguments[index + 1] != "-h" else {
+                    throw AgentCLIError.usage("Missing value for \(token)")
+                }
                 value = arguments[index + 1]
                 index += 2
             }
@@ -81,6 +84,7 @@ struct AgentRunOptions {
         guard let spec else { throw AgentCLIError.usage("Missing --spec") }
         guard let output else { throw AgentCLIError.usage("Missing --out") }
 
+        try AgentIO.validatePaths(inputs: [spec], outputs: [output] + [shotOutput, meta].compactMap { $0 })
         let outputURL = AgentIO.fileURL(from: output)
         let shotOutputURL = shotOutput.map(AgentIO.fileURL(from:))
         if let shotOutputURL, shotOutputURL == outputURL {

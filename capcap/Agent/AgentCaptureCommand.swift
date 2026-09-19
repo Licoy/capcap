@@ -43,6 +43,9 @@ struct AgentCaptureOptions {
                 guard index + 1 < arguments.count else {
                     throw AgentCLIError.usage("Missing value for \(token)")
                 }
+                guard !arguments[index + 1].hasPrefix("--"), arguments[index + 1] != "-h" else {
+                    throw AgentCLIError.usage("Missing value for \(token)")
+                }
                 value = arguments[index + 1]
                 index += 2
             }
@@ -71,6 +74,7 @@ struct AgentCaptureOptions {
         }
 
         guard let output else { throw AgentCLIError.usage("Missing --out") }
+        try AgentIO.validatePaths(inputs: [], outputs: [output] + [meta].compactMap { $0 })
         let target = try AgentCaptureTarget.resolve(
             targetName: targetName,
             rect: rect,
@@ -113,7 +117,7 @@ struct AgentCaptureOptions {
     """
 
     static func parseRect(_ value: String) throws -> CGRect {
-        let parts = value.split(separator: ",").map {
+        let parts = value.split(separator: ",", omittingEmptySubsequences: false).map {
             Double($0.trimmingCharacters(in: .whitespacesAndNewlines))
         }
         guard parts.count == 4,
@@ -168,9 +172,23 @@ enum AgentCaptureTarget {
             .lowercased()
             .replacingOccurrences(of: "_", with: "-")
 
+        let selectorCount = [rect != nil, windowID != nil, screenIndex != nil || displayID != nil].filter { $0 }.count
+        guard selectorCount <= 1, !(screenIndex != nil && displayID != nil) else {
+            throw AgentCLIError.usage("Capture selectors conflict; choose one rect, window ID, screen index, or display ID")
+        }
+        if let normalized {
+            let allowed: Bool
+            if rect != nil { allowed = ["rect", "region"].contains(normalized) }
+            else if windowID != nil { allowed = ["window-id", "window"].contains(normalized) }
+            else if screenIndex != nil || displayID != nil { allowed = ["screen", "full-screen", "fullscreen"].contains(normalized) }
+            else { allowed = true }
+            guard allowed else { throw AgentCLIError.usage("Capture selector does not match --target") }
+        }
+
         if normalized == nil {
             if let rect { return .rect(rect) }
             if let windowID { return .windowID(windowID) }
+            if screenIndex != nil || displayID != nil { return .screen(screenIndex: screenIndex, displayID: displayID) }
             return .mouseScreen
         }
 
@@ -401,7 +419,9 @@ struct AgentWindowInfo {
     let frame: CGRect
 
     var usesCompositedScreenBackdrop: Bool {
-        layer >= 20
+        // Screen-saver-level editors/overlays must be isolated from other apps.
+        // Only menu-level system surfaces need the composited backdrop fallback.
+        layer >= 20 && layer < Int(CGWindowLevelForKey(.screenSaverWindow))
     }
 
     var metadata: [String: Any] {
@@ -432,8 +452,6 @@ enum AgentWindowCatalog {
         }
 
         let ownPID = ProcessInfo.processInfo.processIdentifier
-        let primaryFrame = NSScreen.screens.first?.frame ?? .zero
-        let screenArea = primaryFrame.width * primaryFrame.height
 
         return infoList.compactMap { info in
             guard let pid = info[kCGWindowOwnerPID as String] as? pid_t,
@@ -455,10 +473,6 @@ enum AgentWindowCatalog {
                 return nil
             }
             guard rect.width > 1, rect.height > 1 else { return nil }
-
-            if layer >= 20 && screenArea > 0 && rect.width * rect.height > screenArea * 0.8 {
-                return nil
-            }
 
             let ownerName = info[kCGWindowOwnerName as String] as? String ?? ""
             let title = info[kCGWindowName as String] as? String ?? ""
@@ -487,7 +501,18 @@ enum AgentWindowCatalog {
     }
 }
 
-private enum AgentScreenCatalog {
+enum AgentScreenCatalog {
+    static var metadata: [String: Any] {
+        ["ok": true, "command": "agent displays", "coordinateSpace": "global-cg", "unit": "points", "origin": "top-left",
+         "screenRecordingPermission": CGPreflightScreenCaptureAccess(),
+         "displays": NSScreen.screens.enumerated().compactMap { index, screen -> [String: Any]? in
+             guard let id = displayID(for: screen) else { return nil }
+             let rect = CGDisplayBounds(id)
+             return ["screenIndex": index, "displayID": Int(id), "name": screen.localizedName,
+                     "scale": Double(screen.backingScaleFactor), "rect": [rect.minX, rect.minY, rect.width, rect.height]]
+         }]
+    }
+
     static func screen(index: Int?, displayID: CGDirectDisplayID?) throws -> NSScreen {
         if let displayID {
             guard let screen = NSScreen.screens.first(where: { self.displayID(for: $0) == displayID }) else {

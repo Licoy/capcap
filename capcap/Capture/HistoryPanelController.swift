@@ -10,14 +10,22 @@ private enum HistoryPanelLayout {
     static let verticalGap: CGFloat = 12
     static let searchFieldWidth: CGFloat = 252
     static let searchTransitionDuration: TimeInterval = 0.26
-    static let actionsHiddenOffset: CGFloat = 152
+    static let actionsHiddenOffset: CGFloat = 188
     static let searchHiddenOffset: CGFloat = searchFieldWidth + 20
+    static let filterFadeWidth: CGFloat = 20
+}
+
+enum HistoryPanelDismissalPolicy {
+    static func shouldDismissAutomatically(isLocked: Bool) -> Bool {
+        !isLocked
+    }
 }
 
 final class HistoryPanelController {
     private let onEditEntry: (HistoryEntry) -> Void
     private var dialogPanel: NSPanel?
     private var dialogOutsideMonitors: [Any] = []
+    private var isDialogLocked = false
     private var notchController: HistoryNotchWindowController?
 
     init(onEditEntry: @escaping (HistoryEntry) -> Void) {
@@ -145,7 +153,10 @@ final class HistoryPanelController {
 
         let content = HistoryPanelContentView(
             presentation: .dialog,
-            onRequestDismiss: { [weak self] in self?.closeDialog() },
+            onRequestDismiss: { [weak self] in self?.requestCloseDialog() },
+            onLockStateChanged: { [weak self] isLocked in
+                self?.isDialogLocked = isLocked
+            },
             onEditEntry: onEditEntry
         )
         content.frame = chrome.bounds
@@ -164,13 +175,19 @@ final class HistoryPanelController {
         stopDialogOutsideMonitoring()
         dialogPanel?.orderOut(nil)
         dialogPanel = nil
+        isDialogLocked = false
+    }
+
+    private func requestCloseDialog() {
+        guard HistoryPanelDismissalPolicy.shouldDismissAutomatically(isLocked: isDialogLocked) else { return }
+        closeDialog()
     }
 
     private func startDialogOutsideMonitoring(for panel: NSPanel) {
         let local = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self, weak panel] event in
             guard let self, let panel else { return event }
             if !self.event(event, isInside: panel) {
-                self.closeDialog()
+                self.requestCloseDialog()
             }
             return event
         }
@@ -182,7 +199,7 @@ final class HistoryPanelController {
             DispatchQueue.main.async {
                 guard let self, let panel else { return }
                 if !self.event(event, isInside: panel) {
-                    self.closeDialog()
+                    self.requestCloseDialog()
                 }
             }
         }
@@ -233,12 +250,14 @@ private final class HistoryPanelChromeView: NSView {
 private final class HistoryNotchWindowController: NSWindowController {
     private let rootView: HistoryNotchRootView
     private var hoverSampler: DispatchSourceTimer?
+    private var clickMonitors: [Any] = []
     private var expandWorkItem: DispatchWorkItem?
     private var collapseWorkItem: DispatchWorkItem?
     private var isCollapsing = false
     private var suppressCollapseUntil: Date?
     private var holdsOpenUntilMouseEntersHoverRegion = false
     private var commandOpenedMouseHasEnteredHoverRegion = false
+    private var isLocked = false
 
     private let expandDelay: TimeInterval = 0.03
     private let collapseDelay: TimeInterval = 0.35
@@ -273,7 +292,10 @@ private final class HistoryNotchWindowController: NSWindowController {
 
         super.init(window: panel)
         rootView.onRequestDismiss = { [weak self] in
-            self?.collapse()
+            self?.requestCollapse()
+        }
+        rootView.onLockStateChanged = { [weak self] isLocked in
+            self?.lockStateDidChange(isLocked)
         }
         panel.orderFrontRegardless()
         startMouseMonitoring()
@@ -302,6 +324,7 @@ private final class HistoryNotchWindowController: NSWindowController {
 
     func toggleFromUserRequest(holdOpenUntilMouseEnters: Bool = false) {
         if rootView.isExpanded {
+            rootView.setLocked(false)
             collapse()
         } else {
             expand(holdOpenUntilMouseEnters: holdOpenUntilMouseEnters)
@@ -334,11 +357,54 @@ private final class HistoryNotchWindowController: NSWindowController {
         }
     }
 
+    private func requestCollapse() {
+        guard HistoryPanelDismissalPolicy.shouldDismissAutomatically(isLocked: isLocked) else { return }
+        collapse()
+    }
+
+    private func lockStateDidChange(_ isLocked: Bool) {
+        self.isLocked = isLocked
+        if isLocked {
+            cancelCollapse()
+        } else {
+            handleMouseMove()
+        }
+    }
+
     private func startMouseMonitoring() {
         startHoverSampler()
+        if let local = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown, handler: { [weak self] event in
+            self?.handleNotchClick()
+            return event
+        }) {
+            clickMonitors.append(local)
+        }
+        if let global = NSEvent.addGlobalMonitorForEvents(matching: .leftMouseDown, handler: { [weak self] _ in
+            self?.handleNotchClick()
+        }) {
+            clickMonitors.append(global)
+        }
+    }
+
+    private func handleNotchClick() {
+        guard Defaults.historyNotchTriggerMode == .click,
+              !rootView.isExpanded,
+              collapsedHitRect().contains(NSEvent.mouseLocation) else { return }
+        // Finish dispatching the opening click before making the panel interactive
+        // so it cannot also activate an item in the newly expanded panel
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.window?.isVisible == true,
+                  Defaults.historyNotchTriggerMode == .click,
+                  !self.rootView.isExpanded else { return }
+            self.cancelExpand()
+            self.expand()
+            self.suppressCollapseUntil = Date().addingTimeInterval(self.postExpandGrace)
+        }
     }
 
     private func stopMouseMonitoring() {
+        clickMonitors.forEach(NSEvent.removeMonitor)
+        clickMonitors.removeAll()
         stopHoverSampler()
         cancelExpand()
         cancelCollapse()
@@ -365,6 +431,11 @@ private final class HistoryNotchWindowController: NSWindowController {
         guard let window else { return }
         let mouse = NSEvent.mouseLocation
         if rootView.isExpanded {
+            if isLocked {
+                cancelCollapse()
+                rootView.syncHoverStateWithCurrentMouse()
+                return
+            }
             let rect = expandedHoverRect(in: window)
             if rect.contains(mouse) {
                 commandOpenedMouseHasEnteredHoverRegion = true
@@ -378,6 +449,10 @@ private final class HistoryNotchWindowController: NSWindowController {
                 scheduleCollapse()
             }
         } else {
+            guard Defaults.historyNotchTriggerMode == .hover else {
+                cancelExpand()
+                return
+            }
             let rect = collapsedHitRect()
             if rect.contains(mouse) {
                 cancelCollapse()
@@ -408,6 +483,7 @@ private final class HistoryNotchWindowController: NSWindowController {
         let workItem = DispatchWorkItem { [weak self] in
             guard let self else { return }
             self.expandWorkItem = nil
+            guard Defaults.historyNotchTriggerMode == .hover else { return }
             self.expand()
             self.suppressCollapseUntil = Date().addingTimeInterval(self.postExpandGrace)
         }
@@ -420,7 +496,7 @@ private final class HistoryNotchWindowController: NSWindowController {
         guard collapseWorkItem == nil else { return }
         let workItem = DispatchWorkItem { [weak self] in
             self?.collapseWorkItem = nil
-            self?.collapse()
+            self?.requestCollapse()
         }
         collapseWorkItem = workItem
         DispatchQueue.main.asyncAfter(deadline: .now() + collapseDelay, execute: workItem)
@@ -475,10 +551,11 @@ private final class HistoryNotchWindowController: NSWindowController {
     }
 }
 
-private struct HistoryNotchGeometry {
+struct HistoryNotchGeometry {
     var notchWidth: CGFloat
     var notchHeight: CGFloat
     var screenWidth: CGFloat
+    var notchLeadingX: CGFloat
 
     let expandedHorizontalMargin: CGFloat = 24
     let expandedBottomInset: CGFloat = 0
@@ -487,19 +564,22 @@ private struct HistoryNotchGeometry {
         let screenFrame = screen?.frame ?? NSRect(x: 0, y: 0, width: 1200, height: 800)
         let safeTop = screen?.safeAreaInsets.top ?? 0
         var notchWidth: CGFloat = 200
+        var notchLeadingX = (screenFrame.width - notchWidth) / 2
 
         if let screen, safeTop > 0 {
             let leftWidth = screen.auxiliaryTopLeftArea?.width ?? 0
             let rightWidth = screen.auxiliaryTopRightArea?.width ?? 0
             if leftWidth > 0, rightWidth > 0 {
                 notchWidth = max(120, screenFrame.width - leftWidth - rightWidth)
+                notchLeadingX = leftWidth
             }
         }
 
         return HistoryNotchGeometry(
             notchWidth: notchWidth,
             notchHeight: safeTop > 0 ? safeTop : 24,
-            screenWidth: screenFrame.width
+            screenWidth: screenFrame.width,
+            notchLeadingX: notchLeadingX
         )
     }
 
@@ -517,6 +597,33 @@ private struct HistoryNotchGeometry {
 
     var expandedSize: NSSize {
         NSSize(width: expandedWidth, height: contentHeight + expandedBottomInset)
+    }
+
+    func filterViewportWidth(headerInset: CGFloat) -> CGFloat {
+        let expandedLeadingX = (screenWidth - expandedWidth) / 2
+        let notchLeadingInExpandedPanel = notchLeadingX - expandedLeadingX
+        return max(1, floor(notchLeadingInExpandedPanel - headerInset))
+    }
+}
+
+enum HistoryPanelFilterRevealAnchor: Equatable {
+    case leading
+    case trailing
+    case nearest
+}
+
+enum HistoryPanelFilterRevealPolicy {
+    static func anchor(selectedIndex: Int, filterCount: Int) -> HistoryPanelFilterRevealAnchor {
+        guard filterCount >= 4, selectedIndex >= 0, selectedIndex < filterCount else {
+            return .nearest
+        }
+        if selectedIndex == 1 {
+            return .leading
+        }
+        if selectedIndex == filterCount - 2 {
+            return .trailing
+        }
+        return .nearest
     }
 }
 
@@ -539,6 +646,12 @@ private final class HistoryNotchRootView: NSView {
     var onRequestDismiss: (() -> Void)? {
         didSet {
             contentView.onRequestDismiss = onRequestDismiss
+        }
+    }
+
+    var onLockStateChanged: ((Bool) -> Void)? {
+        didSet {
+            contentView.onLockStateChanged = onLockStateChanged
         }
     }
 
@@ -565,6 +678,7 @@ private final class HistoryNotchRootView: NSView {
         contentView.alphaValue = 0
         contentView.isHidden = true
         shellView.addSubview(contentView)
+        contentView.updateNotchGeometry(geometry)
 
         collapsedLabel.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
         collapsedLabel.textColor = NSColor.white.withAlphaComponent(0.90)
@@ -605,6 +719,7 @@ private final class HistoryNotchRootView: NSView {
 
     func updateGeometry(for screen: NSScreen?) {
         geometry = HistoryNotchGeometry.geometry(for: screen)
+        contentView.updateNotchGeometry(geometry)
         currentSize = isExpanded ? expandedSize : collapsedSize
         needsLayout = true
         layoutSubtreeIfNeeded()
@@ -658,6 +773,10 @@ private final class HistoryNotchRootView: NSView {
     func syncHoverStateWithCurrentMouse() {
         guard isExpanded else { return }
         contentView.syncHoverStateWithCurrentMouse()
+    }
+
+    func setLocked(_ isLocked: Bool) {
+        contentView.setLocked(isLocked)
     }
 
     private func layoutShell(animated: Bool) {
@@ -891,8 +1010,28 @@ private enum HistoryPanelPresentation {
     }
 }
 
-private enum HistoryPanelFilter: CaseIterable {
+enum HistoryFavoritePolicy {
+    static let minimumFavoriteCountForFilter = 1
+
+    static func shouldShowFilter(for entries: [HistoryEntry]) -> Bool {
+        entries.lazy
+            .filter { HistoryManager.isFavorite(url: $0.fileURL) }
+            .prefix(minimumFavoriteCountForFilter)
+            .count >= minimumFavoriteCountForFilter
+    }
+
+    static func toggleTargets(clicked: HistoryEntry, selected: [HistoryEntry]) -> [HistoryEntry] {
+        selected.count > 1 ? selected : [clicked]
+    }
+
+    static func nextFavoriteState(for entries: [HistoryEntry]) -> Bool {
+        entries.contains { !HistoryManager.isFavorite(url: $0.fileURL) }
+    }
+}
+
+enum HistoryPanelFilter: CaseIterable, Equatable {
     case all
+    case favorites
     case screenshots
     case gif
     case mp4
@@ -902,6 +1041,7 @@ private enum HistoryPanelFilter: CaseIterable {
     var title: String {
         switch self {
         case .all: return L10n.historyPanelFilterAll
+        case .favorites: return L10n.historyPanelFavorite
         case .screenshots: return L10n.historyPanelFilterScreenshots
         case .gif: return L10n.historyPanelFilterGIF
         case .mp4: return L10n.historyPanelFilterMP4
@@ -910,9 +1050,16 @@ private enum HistoryPanelFilter: CaseIterable {
         }
     }
 
+    var symbolName: String? {
+        switch self {
+        case .favorites: return "star.fill"
+        case .all, .screenshots, .gif, .mp4, .colors, .text: return nil
+        }
+    }
+
     var searchScope: HistorySearchScope? {
         switch self {
-        case .all:
+        case .all, .favorites:
             return .colorsAndText
         case .colors:
             return .colors
@@ -925,7 +1072,7 @@ private enum HistoryPanelFilter: CaseIterable {
 
     var searchPlaceholder: String? {
         switch self {
-        case .all:
+        case .all, .favorites:
             return L10n.historyPanelSearchColorsAndText
         case .colors:
             return L10n.historyPanelSearchColors
@@ -937,15 +1084,185 @@ private enum HistoryPanelFilter: CaseIterable {
     }
 }
 
-private final class HistoryPanelScrollView: NSScrollView {
+final class HistoryPanelScrollView: NSScrollView {
+    // NSCollectionView enables the horizontal scroller when its flow layout is
+    // attached. Hiding that scroller still reserves 17 points in legacy mode,
+    // making the clip view shorter than the cards. Keep it disabled at the
+    // property boundary so both scroller styles preserve the full viewport.
+    override var hasHorizontalScroller: Bool {
+        get { super.hasHorizontalScroller }
+        set { super.hasHorizontalScroller = false }
+    }
+}
+
+private final class HistoryPanelFilterDocumentView: NSView {
+    override var isFlipped: Bool { true }
+}
+
+private final class HistoryPanelFilterScrollView: NSScrollView {
+    private let documentContainer = HistoryPanelFilterDocumentView()
+    private let toolbar = NSStackView()
+    private let fadeMaskLayer = CAGradientLayer()
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+
+        drawsBackground = false
+        borderType = .noBorder
+        hasHorizontalScroller = false
+        hasVerticalScroller = false
+        horizontalScroller = nil
+        verticalScroller = nil
+        autohidesScrollers = false
+        horizontalScrollElasticity = .allowed
+        verticalScrollElasticity = .none
+        usesPredominantAxisScrolling = false
+        contentView.postsBoundsChangedNotifications = true
+        documentView = documentContainer
+
+        toolbar.orientation = .horizontal
+        toolbar.alignment = .centerY
+        toolbar.spacing = 8
+        toolbar.setContentHuggingPriority(.required, for: .horizontal)
+        documentContainer.addSubview(toolbar)
+
+        wantsLayer = true
+        fadeMaskLayer.startPoint = CGPoint(x: 0, y: 0.5)
+        fadeMaskLayer.endPoint = CGPoint(x: 1, y: 0.5)
+        layer?.mask = fadeMaskLayer
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override var intrinsicContentSize: NSSize {
+        let contentSize = toolbar.fittingSize
+        return NSSize(width: contentSize.width, height: 28)
+    }
+
     override func layout() {
         super.layout()
-        horizontalScroller?.isHidden = true
+        layoutDocument()
     }
 
     override func reflectScrolledClipView(_ cView: NSClipView) {
         super.reflectScrolledClipView(cView)
-        horizontalScroller?.isHidden = true
+        updateFadeMask()
+    }
+
+    func addFilterButton(_ button: NSView) {
+        toolbar.addArrangedSubview(button)
+        contentDidChange()
+    }
+
+    func contentDidChange() {
+        toolbar.needsLayout = true
+        toolbar.layoutSubtreeIfNeeded()
+        invalidateIntrinsicContentSize()
+        needsLayout = true
+    }
+
+    func reveal(_ view: NSView) {
+        layoutSubtreeIfNeeded()
+        let visibleFilters = toolbar.arrangedSubviews.filter { !$0.isHidden }
+        if let selectedIndex = visibleFilters.firstIndex(where: { $0 === view }) {
+            switch HistoryPanelFilterRevealPolicy.anchor(
+                selectedIndex: selectedIndex,
+                filterCount: visibleFilters.count
+            ) {
+            case .leading:
+                scroll(toX: 0)
+                return
+            case .trailing:
+                scroll(toX: .greatestFiniteMagnitude)
+                return
+            case .nearest:
+                break
+            }
+        }
+
+        let visibleBounds = contentView.bounds
+        let viewFrame = view.convert(view.bounds, to: documentContainer)
+        let leadingPadding: CGFloat = 4
+        let trailingPadding = HistoryPanelLayout.filterFadeWidth + 4
+        var targetX = visibleBounds.origin.x
+
+        if viewFrame.minX < visibleBounds.minX + leadingPadding {
+            targetX = viewFrame.minX - leadingPadding
+        } else if viewFrame.maxX > visibleBounds.maxX - trailingPadding {
+            targetX = viewFrame.maxX - visibleBounds.width + trailingPadding
+        }
+
+        scroll(toX: targetX)
+    }
+
+    private func layoutDocument() {
+        toolbar.layoutSubtreeIfNeeded()
+        let toolbarSize = toolbar.fittingSize
+        let viewportSize = contentView.bounds.size
+        let documentWidth = max(viewportSize.width, toolbarSize.width)
+        documentContainer.frame = NSRect(
+            x: 0,
+            y: 0,
+            width: documentWidth,
+            height: viewportSize.height
+        )
+        toolbar.frame = NSRect(
+            x: 0,
+            y: max(0, (viewportSize.height - toolbarSize.height) / 2),
+            width: toolbarSize.width,
+            height: toolbarSize.height
+        )
+
+        scroll(toX: contentView.bounds.origin.x)
+        updateFadeMask()
+    }
+
+    private func scroll(toX proposedX: CGFloat) {
+        let maximumX = max(0, documentContainer.bounds.width - contentView.bounds.width)
+        let clampedX = min(max(0, proposedX), maximumX)
+        guard abs(contentView.bounds.origin.x - clampedX) > 0.5 else {
+            updateFadeMask()
+            return
+        }
+        contentView.scroll(to: NSPoint(x: clampedX, y: 0))
+        super.reflectScrolledClipView(contentView)
+        updateFadeMask()
+    }
+
+    private func updateFadeMask() {
+        let width = bounds.width
+        guard width > 0 else { return }
+
+        let maximumX = max(0, documentContainer.bounds.width - contentView.bounds.width)
+        let originX = contentView.bounds.origin.x
+        let hasContentBefore = originX > 0.5
+        let hasContentAfter = originX < maximumX - 0.5
+        let opaque = NSColor.black.cgColor
+        let transparent = NSColor.clear.cgColor
+        let fadeFraction = min(0.45, HistoryPanelLayout.filterFadeWidth / width)
+
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        switch (hasContentBefore, hasContentAfter) {
+        case (true, true):
+            fadeMaskLayer.colors = [transparent, opaque, opaque, transparent]
+            fadeMaskLayer.locations = [0, NSNumber(value: fadeFraction), NSNumber(value: 1 - fadeFraction), 1]
+        case (true, false):
+            fadeMaskLayer.colors = [transparent, opaque, opaque]
+            fadeMaskLayer.locations = [0, NSNumber(value: fadeFraction), 1]
+        case (false, true):
+            fadeMaskLayer.colors = [opaque, opaque, transparent]
+            fadeMaskLayer.locations = [0, NSNumber(value: 1 - fadeFraction), 1]
+        case (false, false):
+            fadeMaskLayer.colors = [opaque, opaque]
+            fadeMaskLayer.locations = [0, 1]
+        }
+
+        fadeMaskLayer.frame = bounds
+        fadeMaskLayer.contentsScale = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
+        CATransaction.commit()
     }
 }
 
@@ -962,9 +1279,11 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
     private let presentation: HistoryPanelPresentation
     private let onEditEntry: (HistoryEntry) -> Void
     var onRequestDismiss: (() -> Void)?
+    var onLockStateChanged: ((Bool) -> Void)?
 
     private var selectedFilter: HistoryPanelFilter = .all
     private var filterButtons: [HistoryPanelFilter: HistoryPanelFilterButton] = [:]
+    private let filterScrollView = HistoryPanelFilterScrollView()
     private let entriesQueue = DispatchQueue(label: "capcap.historyPanelEntries", qos: .userInitiated)
     private let scrollView = HistoryPanelScrollView()
     private let collectionView = NSCollectionView()
@@ -976,6 +1295,7 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
         accessibilityLabel: L10n.historyPanelShortcutGuide
     )
     private let finderButton = HistoryPanelActionButton(symbolName: "folder", accessibilityLabel: L10n.historyShowInFinder)
+    private let lockButton = HistoryPanelActionButton(symbolName: "lock", accessibilityLabel: L10n.historyPanelLock)
     private let settingsButton = HistoryPanelActionButton(symbolName: "gearshape", accessibilityLabel: L10n.settings)
     private let actionButtonsContainer = NSStackView()
     private let searchField = HistoryPanelSearchField()
@@ -1007,6 +1327,7 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
     private var hoverSyncWorkItem: DispatchWorkItem?
     private var isScrollingContent = false
     private var isShowingShortcutGuide = false
+    private var isLocked = false
     private var isSearchMode = false
     private var isSearchInputActive = false
     private var searchMouseMovementMonitor: Any?
@@ -1016,14 +1337,17 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
     private var searchApplyWorkItem: DispatchWorkItem?
     private var searchGeneration = 0
     private var searchAnimationGeneration = 0
+    private var filterViewportWidthConstraint: NSLayoutConstraint?
 
     init(
         presentation: HistoryPanelPresentation,
         onRequestDismiss: (() -> Void)? = nil,
+        onLockStateChanged: ((Bool) -> Void)? = nil,
         onEditEntry: @escaping (HistoryEntry) -> Void = { _ in }
     ) {
         self.presentation = presentation
         self.onRequestDismiss = onRequestDismiss
+        self.onLockStateChanged = onLockStateChanged
         self.onEditEntry = onEditEntry
         shortcutGuideView = HistoryPanelShortcutGuideView(presentation: presentation)
         super.init(frame: .zero)
@@ -1069,24 +1393,30 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
         updateCollectionLayout()
     }
 
+    func updateNotchGeometry(_ geometry: HistoryNotchGeometry) {
+        guard presentation == .notch else { return }
+        filterViewportWidthConstraint?.constant = geometry.filterViewportWidth(
+            headerInset: presentation.headerInset
+        )
+        needsLayout = true
+    }
+
     private func setupUI() {
         let header = NSView()
         header.translatesAutoresizingMaskIntoConstraints = false
         addSubview(header)
 
-        let toolbar = NSStackView()
-        toolbar.orientation = .horizontal
-        toolbar.alignment = .centerY
-        toolbar.spacing = 8
-        toolbar.translatesAutoresizingMaskIntoConstraints = false
-        header.addSubview(toolbar)
+        filterScrollView.translatesAutoresizingMaskIntoConstraints = false
+        filterScrollView.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        filterScrollView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        header.addSubview(filterScrollView)
 
         for filter in HistoryPanelFilter.allCases {
             let button = HistoryPanelFilterButton(filter: filter)
             button.target = self
             button.action = #selector(filterClicked(_:))
             filterButtons[filter] = button
-            toolbar.addArrangedSubview(button)
+            filterScrollView.addFilterButton(button)
         }
         updateFilterAvailability(availableFilters: [.all])
 
@@ -1095,6 +1425,9 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
 
         infoButton.target = self
         infoButton.action = #selector(toggleShortcutGuideClicked)
+
+        lockButton.target = self
+        lockButton.action = #selector(toggleLockClicked)
 
         settingsButton.target = self
         settingsButton.action = #selector(openSettingsClicked)
@@ -1109,6 +1442,7 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
         actionButtonsContainer.addArrangedSubview(deleteButton)
         actionButtonsContainer.addArrangedSubview(infoButton)
         actionButtonsContainer.addArrangedSubview(finderButton)
+        actionButtonsContainer.addArrangedSubview(lockButton)
         actionButtonsContainer.addArrangedSubview(settingsButton)
         header.addSubview(actionButtonsContainer)
 
@@ -1181,6 +1515,9 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
             equalTo: header.trailingAnchor,
             constant: HistoryPanelLayout.searchHiddenOffset
         )
+        let filterViewportWidth = filterScrollView.widthAnchor.constraint(equalToConstant: 1)
+        filterViewportWidth.isActive = presentation == .notch
+        filterViewportWidthConstraint = filterViewportWidth
         actionButtonsTrailingConstraint = actionButtonsTrailing
         searchFieldTrailingConstraint = searchFieldTrailing
         NSLayoutConstraint.activate([
@@ -1189,10 +1526,17 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
             header.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -headerInset),
             header.heightAnchor.constraint(equalToConstant: HistoryPanelLayout.headerHeight),
 
-            toolbar.leadingAnchor.constraint(equalTo: header.leadingAnchor),
-            toolbar.centerYAnchor.constraint(equalTo: header.centerYAnchor),
-            toolbar.trailingAnchor.constraint(lessThanOrEqualTo: actionButtonsContainer.leadingAnchor, constant: -12),
-            toolbar.trailingAnchor.constraint(lessThanOrEqualTo: searchField.leadingAnchor, constant: -12),
+            filterScrollView.leadingAnchor.constraint(equalTo: header.leadingAnchor),
+            filterScrollView.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+            filterScrollView.heightAnchor.constraint(equalToConstant: 28),
+            filterScrollView.trailingAnchor.constraint(
+                lessThanOrEqualTo: actionButtonsContainer.leadingAnchor,
+                constant: -12
+            ),
+            filterScrollView.trailingAnchor.constraint(
+                lessThanOrEqualTo: searchField.leadingAnchor,
+                constant: -12
+            ),
 
             deleteWidth,
             deleteButton.heightAnchor.constraint(equalToConstant: 28),
@@ -1239,12 +1583,15 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
         for (filter, button) in filterButtons {
             button.title = filter.title
         }
+        filterScrollView.contentDidChange()
+        visibleCollectionTiles.forEach { $0.refreshFavoriteState() }
         updateDeleteButtonPresentation()
         infoButton.updateAccessibilityLabel(
             isShowingShortcutGuide ? L10n.historyPanelShortcutGuideHide : L10n.historyPanelShortcutGuide
         )
         shortcutGuideView.reload()
         finderButton.updateAccessibilityLabel(L10n.historyShowInFinder)
+        updateLockButtonPresentation()
         settingsButton.updateAccessibilityLabel(L10n.settings)
         searchField.clearAccessibilityLabel = L10n.historyPanelClearSearch
         updateSearchPlaceholder()
@@ -1272,6 +1619,13 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
             isScrollingContent = false
             clearActiveHoverTile()
         }
+    }
+
+    func setLocked(_ isLocked: Bool) {
+        guard self.isLocked != isLocked else { return }
+        self.isLocked = isLocked
+        updateLockButtonPresentation()
+        onLockStateChanged?(isLocked)
     }
 
     @objc private func historyDidUpdate() {
@@ -1528,12 +1882,16 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
         for (filter, button) in filterButtons {
             button.isHidden = !availableFilters.contains(filter)
         }
+        filterScrollView.contentDidChange()
         updateFilterSelection()
     }
 
     private func updateFilterSelection() {
         for (filter, button) in filterButtons {
             button.isSelected = filter == selectedFilter
+        }
+        if let selectedButton = filterButtons[selectedFilter], !selectedButton.isHidden {
+            filterScrollView.reveal(selectedButton)
         }
     }
 
@@ -1548,14 +1906,23 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
                     clearSelection()
                     return
                 }
-                HistoryManager.shared.remove(entriesToDelete) { removedCount in
-                    guard removedCount > 0 else { return }
-                    ToastWindow.show(message: L10n.historyPanelDeletedSelected(removedCount))
+                HistoryManager.shared.remove(entriesToDelete) { removedCount, skippedCount in
+                    if skippedCount > 0 {
+                        ToastWindow.show(message: L10n.historyDeletedSkippingFavorites(
+                            removed: removedCount, skipped: skippedCount))
+                    } else if removedCount > 0 {
+                        ToastWindow.show(message: L10n.historyPanelDeletedSelected(removedCount))
+                    }
                 }
                 clearSelection()
             } else {
-                HistoryManager.shared.clearAll {
-                    ToastWindow.show(message: L10n.historyCleared)
+                HistoryManager.shared.clearAll { removedCount, skippedCount in
+                    if skippedCount > 0 {
+                        ToastWindow.show(message: L10n.historyDeletedSkippingFavorites(
+                            removed: removedCount, skipped: skippedCount))
+                    } else {
+                        ToastWindow.show(message: L10n.historyCleared)
+                    }
                 }
             }
             onRequestDismiss?()
@@ -1567,6 +1934,17 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
     @objc private func toggleShortcutGuideClicked() {
         setDeleteConfirmation(false, animated: true)
         setShortcutGuideVisible(!isShowingShortcutGuide)
+    }
+
+    @objc private func toggleLockClicked() {
+        setDeleteConfirmation(false, animated: true)
+        setLocked(!isLocked)
+    }
+
+    private func updateLockButtonPresentation() {
+        lockButton.isSelected = isLocked
+        lockButton.updateAccessibilityLabel(isLocked ? L10n.historyPanelUnlock : L10n.historyPanelLock)
+        lockButton.updateSymbol(isLocked ? "lock.fill" : "lock")
     }
 
     private func setShortcutGuideVisible(_ visible: Bool) {
@@ -1756,6 +2134,40 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
             }
         }
         return selected.isEmpty ? [tile.entry] : selected
+    }
+
+    private func handleFavoriteToggle(for tile: HistoryPanelTileView) {
+        window?.makeKey()
+        setDeleteConfirmation(false, animated: true)
+
+        let targets = HistoryFavoritePolicy.toggleTargets(
+            clicked: tile.entry,
+            selected: selectedEntries()
+        )
+        let shouldFavorite = HistoryFavoritePolicy.nextFavoriteState(for: targets)
+        var didChangeAnyEntry = false
+        var didFail = false
+
+        for entry in targets {
+            let isFavorite = HistoryManager.isFavorite(url: entry.fileURL)
+            guard isFavorite != shouldFavorite else { continue }
+            if HistoryManager.setFavorite(shouldFavorite, on: entry.fileURL) {
+                didChangeAnyEntry = true
+            } else {
+                didFail = true
+            }
+        }
+
+        if didFail {
+            ToastWindow.show(message: L10n.historyPanelFavoriteFailed)
+        } else if didChangeAnyEntry {
+            ToastWindow.show(message: shouldFavorite
+                ? L10n.historyPanelItemFavorited
+                : L10n.historyPanelItemUnfavorited)
+        }
+
+        availableFilters = Self.availableFilters(for: allEntries)
+        applySelectedFilter(resetScrollPosition: false)
     }
 
     private func selectedImageEntries() -> [HistoryEntry] {
@@ -2059,6 +2471,7 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
         guard !previewEntries.isEmpty else { return }
         HotkeyManager.shared.unregisterHistoryPreview()
         previewController?.close()
+        guard previewController?.window?.isVisible != true else { return }
         let controller = HistoryPreviewWindowController(
             entries: previewEntries,
             initialEntry: entry,
@@ -2151,7 +2564,11 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
     private static func availableFilters(for entries: [HistoryEntry]) -> Set<HistoryPanelFilter> {
         var filters: Set<HistoryPanelFilter> = [.all]
         for filter in HistoryPanelFilter.allCases where filter != .all {
-            if entries.contains(where: { entryMatches($0, filter: filter) }) {
+            if filter == .favorites {
+                if HistoryFavoritePolicy.shouldShowFilter(for: entries) {
+                    filters.insert(filter)
+                }
+            } else if entries.contains(where: { entryMatches($0, filter: filter) }) {
                 filters.insert(filter)
             }
         }
@@ -2162,6 +2579,8 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
         switch filter {
         case .all:
             return true
+        case .favorites:
+            return HistoryManager.isFavorite(url: entry.fileURL)
         case .screenshots:
             guard case .image = entry.kind else { return false }
             return entry.fileURL.pathExtension.lowercased() != "gif"
@@ -2370,6 +2789,9 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
             },
             onPrimaryClick: { [weak self] tile, event in
                 self?.handlePrimaryClick(for: tile, event: event)
+            },
+            onFavoriteToggle: { [weak self] tile in
+                self?.handleFavoriteToggle(for: tile)
             },
             dragEntriesProvider: { [weak self] tile in
                 self?.dragEntries(for: tile) ?? [tile.entry]
@@ -2860,7 +3282,7 @@ private final class HistoryPanelShortcutRowView: NSView {
 }
 
 private final class HistorySelectionBadgeView: NSView {
-    private static let size: CGFloat = 18
+    private static let size = HistoryItemCornerControlMetrics.size
     private let label = NSTextField(labelWithString: "")
 
     var order: Int? {
@@ -3274,6 +3696,12 @@ private final class HistoryPanelActionButton: NSControl {
         setAccessibilityLabel(label)
     }
 
+    func updateSymbol(_ symbolName: String) {
+        let config = NSImage.SymbolConfiguration(pointSize: 12, weight: .semibold)
+        iconView.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: toolTip)?
+            .withSymbolConfiguration(config)
+    }
+
     override func mouseDown(with event: NSEvent) {
         sendAction(action, to: target)
     }
@@ -3293,11 +3721,14 @@ private final class HistoryPanelActionButton: NSControl {
 private final class HistoryPanelFilterButton: NSControl {
     let filter: HistoryPanelFilter
     private let label = NSTextField(labelWithString: "")
+    private let iconView = NSImageView()
 
     var title: String {
         get { label.stringValue }
         set {
             label.stringValue = newValue
+            toolTip = newValue
+            setAccessibilityLabel(newValue)
             invalidateIntrinsicContentSize()
         }
     }
@@ -3319,11 +3750,29 @@ private final class HistoryPanelFilterButton: NSControl {
         label.isSelectable = false
         addSubview(label)
 
+        iconView.imageScaling = .scaleProportionallyDown
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(iconView)
+
+        if let symbolName = filter.symbolName {
+            let config = NSImage.SymbolConfiguration(pointSize: 12, weight: .semibold)
+            iconView.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)?
+                .withSymbolConfiguration(config)
+            iconView.image?.isTemplate = true
+            label.isHidden = true
+        } else {
+            iconView.isHidden = true
+        }
+
         NSLayoutConstraint.activate([
             heightAnchor.constraint(equalToConstant: 28),
             label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 18),
             label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -18),
             label.centerYAnchor.constraint(equalTo: centerYAnchor),
+            iconView.centerXAnchor.constraint(equalTo: centerXAnchor),
+            iconView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: 14),
+            iconView.heightAnchor.constraint(equalToConstant: 14),
         ])
 
         title = filter.title
@@ -3335,16 +3784,21 @@ private final class HistoryPanelFilterButton: NSControl {
     }
 
     override var intrinsicContentSize: NSSize {
-        NSSize(width: label.intrinsicContentSize.width + 36, height: 28)
+        NSSize(
+            width: filter.symbolName == nil ? label.intrinsicContentSize.width + 36 : 40,
+            height: 28
+        )
     }
 
     private func applyAppearance() {
         if isSelected {
             layer?.backgroundColor = accentGreen.withAlphaComponent(0.95).cgColor
             label.textColor = .black
+            iconView.contentTintColor = .black
         } else {
             layer?.backgroundColor = NSColor.white.withAlphaComponent(0.10).cgColor
             label.textColor = NSColor.white.withAlphaComponent(0.66)
+            iconView.contentTintColor = NSColor.white.withAlphaComponent(0.72)
         }
     }
 
@@ -3558,6 +4012,7 @@ private final class HistoryPanelCollectionItem: NSCollectionViewItem {
         onHoverChanged: @escaping (HistoryPanelTileView, Bool) -> Void,
         onSelectionToggle: @escaping (HistoryPanelTileView, NSEvent) -> Void,
         onPrimaryClick: @escaping (HistoryPanelTileView, NSEvent) -> Void,
+        onFavoriteToggle: @escaping (HistoryPanelTileView) -> Void,
         dragEntriesProvider: @escaping (HistoryPanelTileView) -> [HistoryEntry]
     ) {
         if let tileView {
@@ -3572,6 +4027,7 @@ private final class HistoryPanelCollectionItem: NSCollectionViewItem {
             onHoverChanged: onHoverChanged,
             onSelectionToggle: onSelectionToggle,
             onPrimaryClick: onPrimaryClick,
+            onFavoriteToggle: onFavoriteToggle,
             dragEntriesProvider: dragEntriesProvider
         )
         tile.frame = view.bounds
@@ -3605,11 +4061,13 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
     private let onHoverChanged: ((HistoryPanelTileView, Bool) -> Void)?
     private let onSelectionToggle: ((HistoryPanelTileView, NSEvent) -> Void)?
     private let onPrimaryClick: ((HistoryPanelTileView, NSEvent) -> Void)?
+    private let onFavoriteToggle: ((HistoryPanelTileView) -> Void)?
     private let dragEntriesProvider: ((HistoryPanelTileView) -> [HistoryEntry])?
     private let imageView = NSImageView()
     private let textPreviewLabel = HistoryPanelCenteredTextView()
     private let overlayLabel = HistoryPanelCenteredTextView()
     private let cloudBadgeView = HistoryCloudBadgeView()
+    private let favoriteButton = HistoryFavoriteButton()
     private let cloudActionBarView = HistoryCloudActionBarView()
     private let badgeView = HistoryMediaBadgeView()
     private let selectionBadgeView = HistorySelectionBadgeView()
@@ -3634,6 +4092,7 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
         onHoverChanged: ((HistoryPanelTileView, Bool) -> Void)? = nil,
         onSelectionToggle: ((HistoryPanelTileView, NSEvent) -> Void)? = nil,
         onPrimaryClick: ((HistoryPanelTileView, NSEvent) -> Void)? = nil,
+        onFavoriteToggle: ((HistoryPanelTileView) -> Void)? = nil,
         dragEntriesProvider: ((HistoryPanelTileView) -> [HistoryEntry])? = nil
     ) {
         self.entry = entry
@@ -3642,6 +4101,7 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
         self.onHoverChanged = onHoverChanged
         self.onSelectionToggle = onSelectionToggle
         self.onPrimaryClick = onPrimaryClick
+        self.onFavoriteToggle = onFavoriteToggle
         self.dragEntriesProvider = dragEntriesProvider
         super.init(frame: .zero)
         wantsLayer = true
@@ -3690,6 +4150,10 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
         cloudBadgeView.isHidden = entry.cloudURL == nil
         addSubview(cloudBadgeView)
 
+        favoriteButton.target = self
+        favoriteButton.action = #selector(favoriteButtonClicked)
+        addSubview(favoriteButton)
+
         cloudActionBarView.isHidden = true
         cloudActionBarView.alphaValue = 0
         addSubview(cloudActionBarView)
@@ -3727,9 +4191,29 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
     override var isFlipped: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
+    @objc private func favoriteButtonClicked() {
+        onFavoriteToggle?(self)
+    }
+
+    func refreshFavoriteState() {
+        let isFavorite = HistoryManager.isFavorite(url: entry.fileURL)
+        favoriteButton.isFavorite = isFavorite
+        favoriteButton.updateAccessibilityLabel(
+            isFavorite ? L10n.historyPanelUnfavorite : L10n.historyPanelFavorite
+        )
+        favoriteButton.isHidden = !HistoryFavoriteButton.shouldBeVisible(
+            isFavorite: isFavorite,
+            isHovered: isHovered
+        )
+        needsLayout = true
+    }
+
     override func hitTest(_ point: NSPoint) -> NSView? {
         guard !isHidden, alphaValue > 0, frame.contains(point) else { return nil }
         let localPoint = convert(point, from: superview)
+        if !favoriteButton.isHidden, favoriteButton.frame.contains(localPoint) {
+            return favoriteButton
+        }
         if cloudActionKind(at: localPoint) != nil {
             return self
         }
@@ -3767,7 +4251,8 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
         }
         let selectionSize = selectionBadgeView.intrinsicContentSize
         selectionBadgeView.frame = NSRect(
-            x: imageView.frame.maxX - selectionSize.width + 5,
+            x: imageView.frame.maxX - selectionSize.width
+                + HistoryItemCornerControlMetrics.horizontalPreviewOverlap,
             y: imageView.frame.minY - 5,
             width: selectionSize.width,
             height: selectionSize.height
@@ -3775,12 +4260,20 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
         if !badgeView.isHidden {
             let badgeSize = badgeView.intrinsicContentSize
             badgeView.frame = NSRect(
-                x: imageView.frame.minX + 7,
-                y: imageView.frame.maxY - badgeSize.height - 7,
+                x: imageView.frame.minX - HistoryItemCornerControlMetrics.horizontalPreviewOverlap,
+                y: imageView.frame.maxY - badgeSize.height
+                    + HistoryItemCornerControlMetrics.favoritePreviewOverlap,
                 width: badgeSize.width,
                 height: badgeSize.height
             )
         }
+        let favoriteSize = favoriteButton.intrinsicContentSize
+        favoriteButton.frame = NSRect(
+            x: selectionBadgeView.frame.midX - favoriteSize.width / 2,
+            y: imageView.frame.maxY - favoriteSize.height + HistoryItemCornerControlMetrics.favoritePreviewOverlap,
+            width: favoriteSize.width,
+            height: favoriteSize.height
+        )
         metaLabel.frame = NSRect(
             x: padding,
             y: imageView.frame.maxY + 9,
@@ -3835,6 +4328,7 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
         if !hovered {
             cloudActionBarView.setPressedActionKind(nil)
         }
+        refreshFavoriteState()
         updateSelectionBadgeVisibility()
     }
 
@@ -3899,6 +4393,7 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
         layer?.borderColor = selectedBorderColor
         layer?.borderWidth = 1
         layer?.backgroundColor = NSColor.white.withAlphaComponent(0.075).cgColor
+        refreshFavoriteState()
 
         mouseDownPoint = nil
         mouseDownHitSelectionBadge = false
@@ -4484,6 +4979,9 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
     private let titlebarPositionLabel = NSTextField(labelWithString: "")
     private let titlebarActionStack = NSStackView()
     private let tooltipController = HistoryPreviewTooltipController()
+    private var editButton: HistoryPreviewActionButton?
+    private var isEditingText = false
+    private var isTextLoaded = false
     private var uploadButton: NSButton?
     private weak var hoveredActionButton: HistoryPreviewActionButton?
     private var qrCodeButton: HistoryPreviewActionButton?
@@ -4493,6 +4991,7 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
     private var videoPlayer: AVPlayer?
     private var currentIndex: Int
     private var loadGeneration = 0
+    private var windowSizingTask: Task<Void, Never>?
     private var placementScreen: NSScreen?
     var onClose: (() -> Void)?
 
@@ -4557,6 +5056,9 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
     }
 
     override func close() {
+        guard saveTextBeforeClosing() else { return }
+        windowSizingTask?.cancel()
+        windowSizingTask = nil
         stopVideoPlayback()
         stopPreviewKeyMonitoring()
         stopActionHoverTracking()
@@ -4565,7 +5067,19 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         super.close()
     }
 
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        saveTextBeforeClosing()
+    }
+
+    private func saveTextBeforeClosing() -> Bool {
+        guard isEditingText else { return true }
+        guard window?.attachedSheet == nil else { return false }
+        return saveCurrentText()
+    }
+
     func windowWillClose(_ notification: Notification) {
+        windowSizingTask?.cancel()
+        windowSizingTask = nil
         stopVideoPlayback()
         stopPreviewKeyMonitoring()
         stopActionHoverTracking()
@@ -4603,6 +5117,7 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         textScrollView.isHidden = true
 
         textView.isEditable = false
+        textView.allowsUndo = true
         textView.isSelectable = true
         textView.isRichText = false
         textView.drawsBackground = false
@@ -4667,6 +5182,7 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
             ]
         case .text:
             actions = [
+                ("pencil", L10n.imageMergeContinueEditing, "E", #selector(editCurrent)),
                 ("doc.on.doc", L10n.historyPreviewCopyText, "C", #selector(copyCurrent)),
                 ("character.bubble", L10n.historyPreviewTranslateText, "T", #selector(translateCurrent)),
                 ("qrcode", L10n.historyPreviewConvertToQRCode, "Q", #selector(showQRCodeCurrent)),
@@ -4689,7 +5205,9 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
             button.heightAnchor.constraint(equalToConstant: 24).isActive = true
             stack.addArrangedSubview(button)
             actionButtons.append(button)
-            if action.3 == #selector(uploadCurrent) {
+            if action.3 == #selector(editCurrent) {
+                editButton = button
+            } else if action.3 == #selector(uploadCurrent) {
                 uploadButton = button
             } else if action.3 == #selector(showQRCodeCurrent) {
                 qrCodeButton = button
@@ -4706,6 +5224,19 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
 
     private func handleKeyDown(_ event: NSEvent) -> Bool {
         let blockingModifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
+        guard window?.attachedSheet == nil, NSApp.modalWindow == nil else { return false }
+        if isEditingText {
+            if blockingModifiers == .command,
+               event.charactersIgnoringModifiers?.lowercased() == "s" {
+                saveCurrentText()
+                return true
+            }
+            if blockingModifiers.isEmpty, Int(event.keyCode) == kVK_Escape {
+                window?.performClose(nil)
+                return true
+            }
+            return false
+        }
         guard blockingModifiers.isEmpty else { return false }
         switch Int(event.keyCode) {
         case kVK_LeftArrow:
@@ -4715,7 +5246,7 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         case kVK_Escape, kVK_Space:
             close()
         case kVK_ANSI_E:
-            guard contentKind == .image else { return false }
+            guard contentKind == .image || contentKind == .text else { return false }
             editCurrent()
         case kVK_ANSI_P:
             guard contentKind == .image else { return false }
@@ -4738,7 +5269,7 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
     }
 
     private func move(by offset: Int) {
-        guard entries.count > 1 else { return }
+        guard !isEditingText, entries.count > 1 else { return }
         currentIndex = (currentIndex + offset + entries.count) % entries.count
         updateWindowFrame(for: currentEntry, on: placementScreen, animated: true)
         loadCurrentContent()
@@ -4754,6 +5285,8 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         case .video:
             loadCurrentVideo()
         case .text(let text):
+            isTextLoaded = false
+            editButton?.isEnabled = false
             text.load { [weak self] value in
                 guard let self, self.loadGeneration == generation else { return }
                 self.loadCurrentText(value)
@@ -4810,6 +5343,9 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
     }
 
     private func loadCurrentText(_ text: String) {
+        isTextLoaded = true
+        editButton?.isEnabled = true
+        textView.undoManager?.removeAllActions()
         stopVideoPlayback()
         videoView.isHidden = true
         imageView.image = nil
@@ -4838,6 +5374,8 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         on screen: NSScreen?,
         animated: Bool
     ) {
+        windowSizingTask?.cancel()
+        windowSizingTask = nil
         guard let window,
               let targetScreen = screen ?? window.screen ?? NSScreen.main ?? NSScreen.screens.first else { return }
         let visibleFrame = targetScreen.visibleFrame
@@ -4853,9 +5391,29 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
             window.setFrame(NSRect(origin: origin, size: frameSize), display: true, animate: animated)
             return
         }
-        let pixelSize = Self.pixelSize(for: entry)
+
+        if case .video = entry.kind {
+            let url = entry.fileURL
+            let expectedIndex = currentIndex
+            windowSizingTask = Task { @MainActor [weak self] in
+                guard let pixelSize = try? await VideoAssetMetadata.pixelSize(for: url),
+                      !Task.isCancelled,
+                      let self,
+                      self.currentIndex == expectedIndex else { return }
+                self.applyWindowFrame(pixelSize: pixelSize, on: targetScreen, animated: animated)
+            }
+            return
+        }
+
+        let pixelSize = Self.imagePixelSize(for: entry)
         guard pixelSize.width > 0, pixelSize.height > 0 else { return }
 
+        applyWindowFrame(pixelSize: pixelSize, on: targetScreen, animated: animated)
+    }
+
+    private func applyWindowFrame(pixelSize: NSSize, on targetScreen: NSScreen, animated: Bool) {
+        guard let window else { return }
+        let visibleFrame = targetScreen.visibleFrame
         let titlebarHeight = max(0, window.frameRect(forContentRect: NSRect(x: 0, y: 0, width: 100, height: 100)).height - 100)
         let horizontalMargin = max(64, floor(visibleFrame.width * 0.08))
         let verticalMargin: CGFloat = 32
@@ -4887,14 +5445,7 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         window.setFrame(NSRect(origin: origin, size: frameSize), display: true, animate: animated)
     }
 
-    private static func pixelSize(for entry: HistoryEntry) -> NSSize {
-        if case .video = entry.kind {
-            let asset = AVURLAsset(url: entry.fileURL)
-            guard let track = asset.tracks(withMediaType: .video).first else { return .zero }
-            let transformedSize = track.naturalSize.applying(track.preferredTransform)
-            return NSSize(width: abs(transformedSize.width), height: abs(transformedSize.height))
-        }
-
+    private static func imagePixelSize(for entry: HistoryEntry) -> NSSize {
         let url = entry.fileURL
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
               let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
@@ -4996,6 +5547,7 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
             origin: .zero,
             size: NSSize(width: width, height: 24)
         )
+
     }
 
     private func updateTitlebarActionStackSize() {
@@ -5010,7 +5562,58 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         )
     }
 
+    private func updateTextEditingControls() {
+        textView.isEditable = isEditingText
+        window?.isMovableByWindowBackground = !isEditingText
+        let title = isEditingText ? L10n.tipSave : L10n.imageMergeContinueEditing
+        editButton?.image = NSImage(
+            systemSymbolName: isEditingText ? "checkmark" : "pencil",
+            accessibilityDescription: title
+        )?.withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 13, weight: .medium))
+        editButton?.contentTintColor = isEditingText ? .systemGreen : .secondaryLabelColor
+        editButton?.setAccessibilityLabel(title)
+        editButton?.hoverTip = Self.shortcutTooltip(title, key: isEditingText ? "⌘S" : "E")
+        for button in actionButtons where button !== editButton {
+            button.isEnabled = !isEditingText
+        }
+        tooltipController.hide()
+        hoveredActionButton = nil
+    }
+
+    @discardableResult
+    private func saveCurrentText() -> Bool {
+        guard isEditingText, case .text(let content) = currentEntry.kind else { return false }
+        do {
+            try content.save(textView.string)
+            isEditingText = false
+            updateTextEditingControls()
+            loadCurrentText(textView.string)
+            NotificationCenter.default.post(name: .historyDidUpdate, object: nil)
+            return true
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = L10n.historyPreviewTextSaveFailed
+            alert.addButton(withTitle: L10n.tipCancel)
+            if let window { alert.beginSheetModal(for: window) }
+            return false
+        }
+    }
+
     @objc private func editCurrent() {
+        if contentKind == .text {
+            guard isTextLoaded else { return }
+            if isEditingText {
+                saveCurrentText()
+            } else {
+                isEditingText = true
+                updateTextEditingControls()
+                window?.makeFirstResponder(textView)
+                let endRange = NSRange(location: (textView.string as NSString).length, length: 0)
+                textView.setSelectedRange(endRange)
+                textView.scrollRangeToVisible(endRange)
+            }
+            return
+        }
         let entry = currentEntry
         close()
         onEdit(entry)

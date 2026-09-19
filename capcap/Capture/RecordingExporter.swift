@@ -10,9 +10,16 @@ enum RecordingExporter {
         fps: Int = 15,
         completion: @escaping (Result<Void, Error>) -> Void
     ) {
-        DispatchQueue.global(qos: .userInitiated).async {
-            let result: Result<Void, Error> = Result {
-                try exportGIFSynchronously(from: videoURL, to: destinationURL, fps: fps)
+        Task {
+            let exportTask = Task.detached(priority: .userInitiated) {
+                try await exportGIFInBackground(from: videoURL, to: destinationURL, fps: fps)
+            }
+            let result: Result<Void, Error>
+            do {
+                try await exportTask.value
+                result = .success(())
+            } catch {
+                result = .failure(error)
             }
             DispatchQueue.main.async {
                 completion(result)
@@ -20,14 +27,15 @@ enum RecordingExporter {
         }
     }
 
-    private static func exportGIFSynchronously(from videoURL: URL, to destinationURL: URL, fps: Int) throws {
+    private static func exportGIFInBackground(from videoURL: URL, to destinationURL: URL, fps: Int) async throws {
         do {
             try? FileManager.default.removeItem(at: destinationURL)
 
             let asset = AVURLAsset(url: videoURL)
-            guard let videoTrack = asset.tracks(withMediaType: .video).first else {
+            guard let videoTrack = try await VideoAssetMetadata.loadFirstVideoTrack(in: asset) else {
                 throw ExportError.missingVideoTrack
             }
+            let nominalFrameRate = try await videoTrack.load(.nominalFrameRate)
 
             let reader = try AVAssetReader(asset: asset)
             let output = AVAssetReaderTrackOutput(
@@ -43,7 +51,7 @@ enum RecordingExporter {
             }
             reader.add(output)
 
-            let sourceFPS = normalizedSourceFPS(videoTrack.nominalFrameRate)
+            let sourceFPS = normalizedSourceFPS(nominalFrameRate)
             let encoder = GIFEncoder(url: destinationURL, fps: fps, sourceFPS: sourceFPS)
 
             guard reader.startReading() else {

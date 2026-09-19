@@ -5,6 +5,7 @@ enum TranslationError: LocalizedError {
     case badEndpoint
     case http(Int, String)
     case badResponse
+    case appleTranslationUnavailable
 
     var errorDescription: String? {
         switch self {
@@ -14,6 +15,8 @@ enum TranslationError: LocalizedError {
             return L10n.translationErrBadEndpoint
         case .badResponse:
             return L10n.translationErrBadResponse
+        case .appleTranslationUnavailable:
+            return L10n.translationErrAppleUnavailable
         case let .http(code, body):
             let detail = body.isEmpty ? "" : " — \(body)"
             return "HTTP \(code)\(detail)"
@@ -32,12 +35,21 @@ enum TranslationService {
         text: String,
         target: TranslationLanguage,
         kind: TranslationProviderKind,
-        config: TranslationConfig
+        config: TranslationConfig,
+        appleProvider: AppleTranslationSessionProviding? = nil
     ) -> AsyncThrowingStream<String, Error> {
         let resolvedTarget = TranslationDirectionResolver.target(
             for: text,
             preferredTarget: target
         )
+
+        if kind.isAppleTranslation {
+            return streamAppleTranslation(
+                text: text,
+                target: resolvedTarget,
+                provider: appleProvider
+            )
+        }
 
         if kind.isDirectTranslationAPI {
             return streamDirectTranslation(
@@ -54,6 +66,32 @@ enum TranslationService {
             kind: kind,
             config: config
         )
+    }
+
+    private static func streamAppleTranslation(
+        text: String,
+        target: TranslationLanguage,
+        provider: AppleTranslationSessionProviding?
+    ) -> AsyncThrowingStream<String, Error> {
+        AsyncThrowingStream { continuation in
+            guard let provider else {
+                continuation.finish(throwing: TranslationError.appleTranslationUnavailable)
+                return
+            }
+
+            let work = Task { @MainActor in
+                do {
+                    let translated = try await provider.translate(text: text, target: target)
+                    if !translated.isEmpty {
+                        continuation.yield(translated)
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in work.cancel() }
+        }
     }
 
     private static func streamDirectTranslation(
@@ -94,7 +132,7 @@ enum TranslationService {
             return try await DeepLTranslationProvider.translate(text: text, target: target, config: config)
         case .deeplx:
             return try await DeepLXTranslationProvider.translate(text: text, target: target, config: config)
-        case .openai, .deepseek, .custom, .claude:
+        case .apple, .openai, .deepseek, .custom, .claude:
             throw TranslationError.badResponse
         }
     }

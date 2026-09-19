@@ -39,7 +39,7 @@ struct HistoryImagePreview {
 
         do {
             let cgImage = try generator.copyCGImage(at: .zero, actualTime: nil)
-            let size = videoPixelSize(for: asset) ?? CGSize(width: cgImage.width, height: cgImage.height)
+            let size = videoPixelSize(for: url) ?? CGSize(width: cgImage.width, height: cgImage.height)
             return HistoryImagePreview(
                 cgImage: cgImage,
                 pixelWidth: Int(round(size.width)),
@@ -66,12 +66,41 @@ struct HistoryImagePreview {
         return formatter
     }()
 
-    private static func videoPixelSize(for asset: AVAsset) -> CGSize? {
-        guard let track = asset.tracks(withMediaType: .video).first else { return nil }
-        let transformed = track.naturalSize.applying(track.preferredTransform)
-        let size = CGSize(width: abs(transformed.width), height: abs(transformed.height))
-        guard size.width > 0, size.height > 0 else { return nil }
-        return size
+    private static func videoPixelSize(for url: URL) -> CGSize? {
+        let result = BlockingAsyncResult<CGSize?>()
+        Task.detached {
+            result.complete(try? await VideoAssetMetadata.pixelSize(for: url))
+        }
+        return result.wait()
+    }
+}
+
+private final class BlockingAsyncResult<Value>: @unchecked Sendable {
+    private enum State {
+        case pending
+        case completed(Value)
+    }
+
+    private let condition = NSCondition()
+    private var state: State = .pending
+
+    func complete(_ value: Value) {
+        condition.lock()
+        state = .completed(value)
+        condition.broadcast()
+        condition.unlock()
+    }
+
+    func wait() -> Value {
+        condition.lock()
+        defer { condition.unlock() }
+        while case .pending = state {
+            condition.wait()
+        }
+        guard case .completed(let value) = state else {
+            preconditionFailure("BlockingAsyncResult reached an invalid state")
+        }
+        return value
     }
 }
 

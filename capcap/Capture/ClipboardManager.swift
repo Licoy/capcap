@@ -16,8 +16,10 @@ enum ClipboardColorParser {
 }
 
 struct ClipboardManager {
-    static func copyToClipboard(image: NSImage) {
-        let pasteboard = NSPasteboard.general
+    static func copyToClipboard(
+        image: NSImage,
+        pasteboard: NSPasteboard = .general
+    ) {
         pasteboard.clearContents()
 
         if let pngData = image.pngDataPreservingBacking() {

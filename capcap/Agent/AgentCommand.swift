@@ -21,10 +21,10 @@ enum AgentCommand {
             AgentIO.writeStdout(text)
             return 0
         } catch let error as AgentCLIError {
-            AgentIO.writeStderr("capcap agent error: \(error.message)")
+            AgentIO.writeError(message: error.message, exitCode: error.exitCode)
             return error.exitCode
         } catch {
-            AgentIO.writeStderr("capcap agent error: \(error.localizedDescription)")
+            AgentIO.writeError(message: error.localizedDescription, exitCode: 1)
             return 1
         }
     }
@@ -50,6 +50,23 @@ private struct AgentCLI {
         }
 
         switch subcommand {
+        case "displays":
+            guard arguments.dropFirst().allSatisfy({ $0 == "--pretty" }) else {
+                throw AgentCLIError.usage("Usage: capcap agent displays [--pretty]")
+            }
+            return AgentResponse(metadata: AgentScreenCatalog.metadata, pretty: arguments.contains("--pretty"))
+
+        case "schema":
+            guard arguments.dropFirst().allSatisfy({ $0 == "--pretty" }) else {
+                throw AgentCLIError.usage("Usage: capcap agent schema [--pretty]")
+            }
+            return AgentResponse(metadata: AgentSpecification.schema, pretty: arguments.contains("--pretty"))
+
+        case "validate":
+            let options = try AgentAnnotateOptions.parse(Array(arguments.dropFirst()), validationOnly: true)
+            let result = try AgentAnnotator.annotate(options: options, validationOnly: true)
+            return AgentResponse(metadata: result.metadata, metadataURL: options.metaURL, pretty: options.pretty)
+
         case "annotate":
             let options = try AgentAnnotateOptions.parse(Array(arguments.dropFirst()))
             let result = try AgentAnnotator.annotate(options: options)
@@ -100,6 +117,9 @@ private struct AgentCLI {
       capcap agent capture --target mouse-screen --out shot.png
       capcap agent run --target mouse-screen --spec marks.json --out result.png
       capcap agent windows --pretty
+      capcap agent displays --pretty
+      capcap agent schema --pretty
+      capcap agent validate --input image.png --spec marks.json
 
     Options
       --input, -i    Source PNG or image file
@@ -108,6 +128,10 @@ private struct AgentCLI {
       --meta         Optional metadata JSON file
       --pretty       Pretty print JSON output
 
+    Discover the complete annotation contract with agent schema
+    Validate against the exact image before rendering with agent validate
+    Image coordinates are pixels; capture rects/window frames are global CG points
+    Errors are JSON on stderr; exit 64 means invalid arguments, exit 1 means operation failed
     Coordinates are pixels with a top-left origin
     """
 }
@@ -143,7 +167,7 @@ private struct AgentAnnotateOptions {
     let metaURL: URL?
     let pretty: Bool
 
-    static func parse(_ arguments: [String]) throws -> AgentAnnotateOptions {
+    static func parse(_ arguments: [String], validationOnly: Bool = false) throws -> AgentAnnotateOptions {
         var input: String?
         var spec: String?
         var output: String?
@@ -160,7 +184,9 @@ private struct AgentAnnotateOptions {
                 continue
             }
             if token == "--help" || token == "-h" {
-                throw AgentCLIError.help(Self.usageText)
+                throw AgentCLIError.help(validationOnly
+                    ? "Usage: capcap agent validate --input image.png --spec marks.json [--meta result.json] [--pretty]"
+                    : Self.usageText)
             }
 
             let key: String
@@ -173,6 +199,9 @@ private struct AgentAnnotateOptions {
             } else {
                 key = token
                 guard index + 1 < arguments.count else {
+                    throw AgentCLIError.usage("Missing value for \(token)")
+                }
+                guard !arguments[index + 1].hasPrefix("--"), arguments[index + 1] != "-h" else {
                     throw AgentCLIError.usage("Missing value for \(token)")
                 }
                 value = arguments[index + 1]
@@ -195,12 +224,15 @@ private struct AgentAnnotateOptions {
 
         guard let input else { throw AgentCLIError.usage("Missing --input") }
         guard let spec else { throw AgentCLIError.usage("Missing --spec") }
-        guard let output else { throw AgentCLIError.usage("Missing --out") }
+        if validationOnly, output != nil { throw AgentCLIError.usage("validate does not accept --out") }
+        guard validationOnly || output != nil else { throw AgentCLIError.usage("Missing --out") }
+        let resolvedOutput = output ?? input
+        try AgentIO.validatePaths(inputs: [input, spec], outputs: (validationOnly ? [] : [resolvedOutput]) + [meta].compactMap { $0 })
 
         return AgentAnnotateOptions(
             inputURL: AgentIO.fileURL(from: input),
             specURL: AgentIO.fileURL(from: spec),
-            outputURL: AgentIO.fileURL(from: output),
+            outputURL: AgentIO.fileURL(from: resolvedOutput),
             metaURL: meta.map(AgentIO.fileURL(from:)),
             pretty: pretty
         )
@@ -223,7 +255,7 @@ private struct AgentAnnotateOptions {
       arrow, line, text, label
       number, numbered, badge
       mosaic, pixelate, blur
-      magnifier, loupe
+      magnifier, loupe, spotlight
       pen, path
       marker, highlight, highlighter
 
@@ -236,7 +268,7 @@ struct AgentAnnotateResult {
 }
 
 enum AgentAnnotator {
-    fileprivate static func annotate(options: AgentAnnotateOptions) throws -> AgentAnnotateResult {
+    fileprivate static func annotate(options: AgentAnnotateOptions, validationOnly: Bool = false) throws -> AgentAnnotateResult {
         let inputData: Data
         do {
             inputData = try Data(contentsOf: options.inputURL)
@@ -257,7 +289,8 @@ enum AgentAnnotator {
             specURL: options.specURL,
             outputURL: options.outputURL,
             command: "agent annotate",
-            extraMetadata: [:]
+            extraMetadata: [:],
+            validationOnly: validationOnly
         )
     }
 
@@ -267,7 +300,8 @@ enum AgentAnnotator {
         specURL: URL,
         outputURL: URL,
         command: String,
-        extraMetadata: [String: Any]
+        extraMetadata: [String: Any],
+        validationOnly: Bool = false
     ) throws -> AgentAnnotateResult {
         let specData: Data
         do {
@@ -276,28 +310,38 @@ enum AgentAnnotator {
             throw AgentCLIError.failure("Could not read spec \(specURL.path)")
         }
 
-        let document: AgentAnnotationDocument
-        do {
-            document = try JSONDecoder().decode(AgentAnnotationDocument.self, from: specData)
-        } catch {
-            throw AgentCLIError.failure("Could not parse spec \(error.localizedDescription)")
-        }
+        try AgentSpecification.validateKeys(specData)
+        let document = try AgentIO.decode(AgentAnnotationDocument.self, from: specData)
 
         try document.validate()
+        let finish = try AgentIO.decode(AgentImageFinish.self, from: specData)
+        try finish.validate(imageSize: baseImage.size)
+        if let size = document.imageSize, size != [Int(baseImage.size.width), Int(baseImage.size.height)] {
+            throw AgentCLIError.failure("imageSize does not match input pixels; inspect the current image and regenerate the spec")
+        }
         let mapper = AgentCoordinateMapper(imageSize: baseImage.size)
         let annotations = try document.annotations.enumerated().map { index, spec in
-            try spec.makeAnnotation(
-                mapper: mapper,
-                baseImage: baseImage,
-                index: index
-            )
+            do {
+                return try spec.makeAnnotation(mapper: mapper, baseImage: baseImage, index: index)
+            } catch {
+                let message = (error as? AgentCLIError)?.message ?? error.localizedDescription
+                throw AgentCLIError.failure("annotations[\(index)]: \(message)")
+            }
         }
 
-        let rendered = try AgentAnnotationRenderer.render(
+        if validationOnly {
+            return AgentAnnotateResult(metadata: ["ok": true, "command": "agent validate", "input": inputDescription,
+                "spec": specURL.path, "annotations": annotations.count,
+                "image": ["width": Int(baseImage.size.width), "height": Int(baseImage.size.height)],
+                "coordinateSpace": "pixels", "origin": "top-left"])
+        }
+
+        let annotated = try AgentAnnotationRenderer.render(
             baseImage: baseImage,
             annotations: annotations
         )
 
+        let rendered = try finish.render(annotated)
         guard let pngData = rendered.pngDataPreservingBacking() else {
             throw AgentCLIError.failure("Could not encode output PNG")
         }
@@ -325,7 +369,9 @@ enum AgentAnnotator {
             ],
             "coordinateSpace": "pixels",
             "origin": "top-left",
-            "annotations": annotations.count
+            "annotations": annotations.count,
+            "annotationImage": ["width": Int(baseImage.size.width), "height": Int(baseImage.size.height)],
+            "presentation": finish.metadata
         ]
         for (key, value) in extraMetadata {
             metadata[key] = value
@@ -337,6 +383,7 @@ enum AgentAnnotator {
 
 private struct AgentAnnotationDocument: Decodable {
     let version: Int?
+    let imageSize: [Int]?
     let coordinateSpace: String?
     let origin: String?
     let annotations: [AgentAnnotationSpec]
@@ -469,6 +516,9 @@ private struct AgentAnnotationSpec: Decodable {
                 color: try resolvedColor(default: AgentColor.defaultRed)
             )
 
+        case "spotlight":
+            return SpotlightAnnotation(rect: try requireRect().canvasRect(using: mapper))
+
         case "mosaic", "pixelate", "blur":
             let canvasRect = try requireRect().canvasRect(using: mapper)
             let blockSize = try positive(blockSize, fallback: 12, name: "blockSize")
@@ -589,6 +639,8 @@ private struct AgentAnnotationSpec: Decodable {
     private func resolvedStrokeStyle() throws -> ShapeStrokeStyle {
         guard let strokeStyle else { return .standard }
         switch strokeStyle.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "standard":
+            return .standard
         case "rounded", "round", "roundedrect", "rounded-rect", "roundedrectangle", "rounded-rectangle":
             return .rounded
         case "handdrawn", "hand-drawn", "rough":
@@ -601,6 +653,8 @@ private struct AgentAnnotationSpec: Decodable {
     private func resolvedArrowStyle() throws -> ArrowStyle {
         guard let style else { return .tapered }
         switch style.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "tapered":
+            return .tapered
         case "doubleended", "double-ended", "double":
             return .doubleEnded
         case "line":
@@ -779,9 +833,15 @@ private enum AgentAnnotationRenderer {
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = graphicsContext
 
+        var spotlightRects: [NSRect] = []
         for annotation in annotations {
-            annotation.drawApplyingTransforms(in: context, bounds: imageBounds)
+            if let spotlight = annotation as? SpotlightAnnotation {
+                spotlightRects.append(spotlight.rect)
+            } else {
+                annotation.drawApplyingTransforms(in: context, bounds: imageBounds)
+            }
         }
+        SpotlightAnnotation.drawDimmingOverlay(highlightRects: spotlightRects, in: context, bounds: imageBounds)
         graphicsContext.flushGraphics()
         NSGraphicsContext.restoreGraphicsState()
 
@@ -822,6 +882,49 @@ private enum AgentColor {
 }
 
 enum AgentIO {
+    static func decode<T: Decodable>(_ type: T.Type, from data: Data) throws -> T {
+        do {
+            return try JSONDecoder().decode(type, from: data)
+        } catch {
+            let context: DecodingError.Context
+            let detail: String
+            switch error {
+            case DecodingError.keyNotFound(let key, let value):
+                context = value
+                detail = "missing \(key.stringValue)"
+            case DecodingError.typeMismatch(_, let value), DecodingError.valueNotFound(_, let value), DecodingError.dataCorrupted(let value):
+                context = value
+                detail = value.debugDescription
+            default:
+                throw AgentCLIError.failure("Invalid spec: \(error.localizedDescription)")
+            }
+            let path = context.codingPath.reduce("spec") { result, key in
+                key.intValue.map { "\(result)[\($0)]" } ?? "\(result).\(key.stringValue)"
+            }
+            throw AgentCLIError.failure("\(path): \(detail)")
+        }
+    }
+
+    static func validatePaths(inputs: [String], outputs: [String]) throws {
+        guard (inputs + outputs).allSatisfy({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) else {
+            throw AgentCLIError.usage("File paths must not be empty")
+        }
+        let inputURLs = inputs.map { fileURL(from: $0).resolvingSymlinksInPath() }
+        let outputURLs = outputs.map { fileURL(from: $0).resolvingSymlinksInPath() }
+        guard Set(outputURLs).count == outputURLs.count,
+              !outputURLs.contains(where: { inputURLs.contains($0) }) else {
+            throw AgentCLIError.usage("Output paths must be distinct from inputs and each other")
+        }
+    }
+
+    static func writeError(message: String, exitCode: Int32) {
+        let object: [String: Any] = ["ok": false, "error": ["code": exitCode == 64 ? "invalid_arguments" : "operation_failed", "message": message], "exitCode": Int(exitCode)]
+        if let data = try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys]),
+           let text = String(data: data, encoding: .utf8) {
+            writeStderr(text)
+        }
+    }
+
     static func fileURL(from path: String) -> URL {
         let expanded = (path as NSString).expandingTildeInPath
         if expanded.hasPrefix("/") {

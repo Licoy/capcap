@@ -1,0 +1,1 @@
+{"version":1,"imageSize":[2498,1672],"crop":[1080,890,1360,700],"beautify":{"preset":"blue-purple","padding":64},"annotations":[{"type":"magnifier","center":[2170,1150],"source":[1260,1105],"radius":180,"zoom":2,"color":"#6858EE","lineWidth":6},{"type":"text","at":[1850,1430],"text":"Every detail, in focus","color":"#6858EE","fontSize":30}]}

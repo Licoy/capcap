@@ -86,6 +86,18 @@ class EditCanvasView: NSView {
     /// (without it, normal screenshots show only gradient because the editor
     /// overlay is transparent over the desktop passthrough).
     var externalBaseImage: NSImage?
+    /// Normal editing sits above the frozen desktop snapshot. Give images
+    /// with an alpha channel an opaque, preview-only surface so their
+    /// translucent pixels are composited exactly once instead of revealing
+    /// the original window (and its shadow) underneath. Beautify disables
+    /// this because its container supplies the intended preview background.
+    var drawsTransparencyBackdrop = true {
+        didSet {
+            if oldValue != drawsTransparencyBackdrop {
+                needsDisplay = true
+            }
+        }
+    }
 
     // Current drawing properties (set by toolbar)
     var currentColor: NSColor = EditorStyleDefaults.primaryColor {
@@ -104,6 +116,7 @@ class EditCanvasView: NSView {
     /// Border style for newly drawn rectangles/ellipses.
     var currentShapeStrokeStyle: ShapeStrokeStyle = Defaults.lastShapeStrokeStyle
     var currentLineWidth: CGFloat = EditorStyleDefaults.standardLineWidth
+    var currentNumberSize: CGFloat = EditorStyleDefaults.numberSize
     var currentArrowStyle: ArrowStyle = Defaults.lastArrowStyle
     /// Base width for the marker brush. Drawn at `× MarkerAnnotation.brushScale`.
     var currentMarkerLineWidth: CGFloat = EditorStyleDefaults.markerLineWidth
@@ -281,7 +294,33 @@ class EditCanvasView: NSView {
         if let text = annotation as? TextAnnotation {
             return text.translatedBodyPreservingCalloutTip(by: delta)
         }
+        if let mosaic = annotation as? MosaicAnnotation {
+            return translatedMosaic(mosaic, by: delta)
+        }
         return annotation.translated(by: delta)
+    }
+
+    /// Move a mosaic by re-pixelating the underlying image at the new frame
+    /// position. The mosaic is an edited region of the screenshot, not a
+    /// movable texture, so the frame itself decides what gets pixelated.
+    private func translatedMosaic(_ mosaic: MosaicAnnotation, by delta: NSPoint) -> Annotation {
+        let newRect = mosaic.rect.offsetBy(dx: delta.x, dy: delta.y)
+        guard
+            let baseImage = resolveBaseImageForEditing(),
+            let region = MosaicTool.createMosaicRegion(
+                rect: newRect,
+                imageSize: bounds.size,
+                baseImage: baseImage,
+                blockSize: mosaic.blockSize
+            )
+        else {
+            return mosaic.translated(by: delta)
+        }
+        return MosaicAnnotation(
+            rect: region.rect,
+            pixelatedImage: region.pixelatedImage,
+            blockSize: mosaic.blockSize
+        )
     }
 
     private struct PendingTextCreate {
@@ -636,7 +675,12 @@ class EditCanvasView: NSView {
         }
         recordUndo()
         for idx in indexes {
-            annotations[idx] = annotations[idx].translated(by: delta)
+            let annotation = annotations[idx]
+            if let mosaic = annotation as? MosaicAnnotation {
+                annotations[idx] = translatedMosaic(mosaic, by: delta)
+            } else {
+                annotations[idx] = annotation.translated(by: delta)
+            }
         }
         needsDisplay = true
         refreshCursorAtCurrentLocation()
@@ -692,7 +736,12 @@ class EditCanvasView: NSView {
             return false
         }
         let offset = pasteOffset(forPasting: sources)
-        let pasted = sources.map { $0.translated(by: offset) }
+        let pasted = sources.map { source in
+            if let mosaic = source as? MosaicAnnotation {
+                return translatedMosaic(mosaic, by: offset)
+            }
+            return source.translated(by: offset)
+        }
         let firstNewIndex = annotations.count
         recordUndo()
         annotations.append(contentsOf: pasted)
@@ -989,7 +1038,7 @@ class EditCanvasView: NSView {
         if let a = a as? NumberAnnotation, let b = b as? NumberAnnotation {
             return a.center == b.center && a.tip == b.tip
                 && a.controlPoint == b.controlPoint && a.number == b.number
-                && a.color == b.color
+                && a.color == b.color && a.size == b.size
         }
         if let a = a as? MosaicAnnotation, let b = b as? MosaicAnnotation {
             return a.rect == b.rect && a.blockSize == b.blockSize
@@ -1308,7 +1357,7 @@ class EditCanvasView: NSView {
                 pending.current.x - pending.start.x,
                 pending.current.y - pending.start.y
             )
-            let tip: NSPoint? = dragDist >= NumberAnnotation.arrowMinDistance
+            let tip: NSPoint? = dragDist >= NumberAnnotation.arrowMinDistance(for: currentNumberSize)
                 ? pending.current
                 : nil
             recordUndo()
@@ -1316,7 +1365,8 @@ class EditCanvasView: NSView {
                 center: pending.start,
                 tip: tip,
                 number: numberCounter,
-                color: currentColor
+                color: currentColor,
+                size: currentNumberSize
             ))
             numberCounter += 1
             needsDisplay = true
@@ -1554,6 +1604,9 @@ class EditCanvasView: NSView {
             ?? externalBaseImage
             ?? overrideBaseImage
             ?? windowBaseImage {
+            if drawsTransparencyBackdrop, Self.hasAlphaChannel(image) {
+                BeautifyRenderer.drawCheckerboard(in: bounds)
+            }
             image.draw(in: NSRect(origin: .zero, size: bounds.size))
         }
 
@@ -1710,7 +1763,8 @@ class EditCanvasView: NSView {
                 center: pending.start,
                 tip: tip,
                 number: numberCounter,
-                color: currentColor
+                color: currentColor,
+                size: currentNumberSize
             )
             preview.draw(in: context, bounds: bounds)
         }
@@ -1739,6 +1793,16 @@ class EditCanvasView: NSView {
 
         if didClip {
             context.restoreGState()
+        }
+    }
+
+    static func hasAlphaChannel(_ image: NSImage) -> Bool {
+        guard let cgImage = image.cgImagePreservingBacking() else { return false }
+        switch cgImage.alphaInfo {
+        case .none, .noneSkipFirst, .noneSkipLast:
+            return false
+        default:
+            return true
         }
     }
 
@@ -2469,7 +2533,7 @@ class EditCanvasView: NSView {
         }
         return NSPoint(
             x: number.center.x,
-            y: number.center.y + NumberAnnotation.arrowMinDistance + 4
+            y: number.center.y + number.arrowMinDistance + 4
         )
     }
 
@@ -2544,7 +2608,7 @@ class EditCanvasView: NSView {
         let s = EditCanvasView.numberStepButtonSize
         let gap: CGFloat = 4          // spacing between the two buttons
         let dropBelow: CGFloat = 7    // clearance under the badge circle
-        let centerY = number.center.y - NumberAnnotation.radius - dropBelow - s / 2
+        let centerY = number.center.y - number.radius - dropBelow - s / 2
         let centerX = increment
             ? number.center.x + gap / 2 + s / 2
             : number.center.x - gap / 2 - s / 2
@@ -3124,7 +3188,7 @@ class EditCanvasView: NSView {
             // badge so the user can ditch the arrow without precisely
             // landing on the badge center.
             let dist = hypot(currentMouse.x - number.center.x, currentMouse.y - number.center.y)
-            if dist < NumberAnnotation.arrowMinDistance {
+            if dist < number.arrowMinDistance {
                 annotations[state.index] = number.withTip(nil)
             } else {
                 annotations[state.index] = number.withTip(currentMouse)
@@ -3754,14 +3818,11 @@ class EditCanvasView: NSView {
     }
 
     private static func isUndoKey(_ event: NSEvent) -> Bool {
-        commandShortcutCharacter(for: event) == "z"
+        EditorShortcutRegistry.eventMatches(event, action: .toolbar(.undo))
     }
 
     private static func isRedoKey(_ event: NSEvent) -> Bool {
-        let blockedModifiers: NSEvent.ModifierFlags = [.command, .control, .option]
-        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        guard modifiers.intersection(blockedModifiers).isEmpty else { return false }
-        return event.charactersIgnoringModifiers?.lowercased() == "z"
+        EditorShortcutRegistry.eventMatches(event, action: .toolbar(.redo))
     }
 
     private static func commandShortcutCharacter(for event: NSEvent) -> String? {

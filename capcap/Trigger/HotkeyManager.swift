@@ -973,15 +973,20 @@ final class HotkeyManager {
         return matches(event: event, keyCode: kc, modifiers: m)
     }
 
-    private static func matches(event: NSEvent, keyCode: UInt32, modifiers: UInt32) -> Bool {
+    static func carbonModifiers(from flags: NSEvent.ModifierFlags) -> UInt32 {
         let activeMask: NSEvent.ModifierFlags = [.command, .shift, .option, .control]
-        let mods = event.modifierFlags.intersection(activeMask)
+        let mods = flags.intersection(activeMask)
         var carbonMods: UInt32 = 0
         if mods.contains(.command) { carbonMods |= UInt32(cmdKey) }
         if mods.contains(.shift)   { carbonMods |= UInt32(shiftKey) }
         if mods.contains(.option)  { carbonMods |= UInt32(optionKey) }
         if mods.contains(.control) { carbonMods |= UInt32(controlKey) }
-        return UInt32(event.keyCode) == keyCode && carbonMods == modifiers
+        return carbonMods
+    }
+
+    private static func matches(event: NSEvent, keyCode: UInt32, modifiers: UInt32) -> Bool {
+        UInt32(event.keyCode) == keyCode
+            && carbonModifiers(from: event.modifierFlags) == modifiers
     }
 
     // MARK: - Conflict detection
@@ -1021,7 +1026,7 @@ final class HotkeyManager {
     /// against other global hotkeys as well.
     func hotkeyConflictMessage(forKeyCode keyCode: UInt32,
                                modifiers: UInt32,
-                               assigningTo slot: HotkeySlot) -> String? {
+                               assigningTo slot: HotkeySlot? = nil) -> String? {
         if slot != .screenshot {
             if let (kc, m) = currentHotkey(), kc == keyCode, m == modifiers {
                 return L10n.shortcutConflictScreenshot

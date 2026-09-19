@@ -218,14 +218,14 @@ public final class PermissionFlowController: ObservableObject {
 
         if let previousFrontmostApplicationPID,
            let application = NSRunningApplication(processIdentifier: previousFrontmostApplicationPID) {
-            application.activate(options: [.activateIgnoringOtherApps])
+            application.activate(options: [])
             return
         }
 
         guard let previousFrontmostApplicationBundleIdentifier else { return }
         NSRunningApplication.runningApplications(withBundleIdentifier: previousFrontmostApplicationBundleIdentifier)
             .first?
-            .activate(options: [.activateIgnoringOtherApps])
+            .activate(options: [])
     }
 
     private func presentPanel(_ panel: FloatingDropPanel?, for settingsFrame: CGRect) {

@@ -54,6 +54,9 @@ struct AgentWindowsOptions {
                 guard index + 1 < arguments.count else {
                     throw AgentCLIError.usage("Missing value for \(token)")
                 }
+                guard !arguments[index + 1].hasPrefix("--"), arguments[index + 1] != "-h" else {
+                    throw AgentCLIError.usage("Missing value for \(token)")
+                }
                 value = arguments[index + 1]
                 index += 2
             }
@@ -114,7 +117,9 @@ enum AgentWindowsLister {
 
         let windows: [AgentWindowInfo]
         if options.frontmostOnly, let frontmostPID {
-            windows = AgentWindowCatalog.frontmostWindow(forPID: frontmostPID).map { [$0] } ?? []
+            windows = filteredWindows(options: options).filter { $0.ownerPID == frontmostPID && $0.layer == 0 }.prefix(1).map { $0 }
+        } else if options.frontmostOnly {
+            windows = []
         } else {
             windows = filteredWindows(options: options)
         }
@@ -132,6 +137,7 @@ enum AgentWindowsLister {
             "ok": true,
             "command": "agent windows",
             "coordinateSpace": "global-cg",
+            "unit": "points",
             "origin": "top-left",
             "includesSystemSurfaces": options.includeSystem,
             "frontmost": frontmost,

@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "coordinateSpace": "pixels",
+  "origin": "top-left",
+  "imageSize": [
+    2498,
+    1672
+  ],
+  "annotations": [
+    {
+      "type": "rect",
+      "rect": [
+        1138,
+        979,
+        594,
+        227
+      ],
+      "strokeStyle": "rounded",
+      "color": "#6858EE",
+      "lineWidth": 6
+    },
+    {
+      "type": "text",
+      "at": [
+        1710,
+        343
+      ],
+      "text": "Ready for a closer look",
+      "fontSize": 32,
+      "color": "#6858EE"
+    },
+    {
+      "type": "arrow",
+      "from": [
+        1940,
+        402
+      ],
+      "to": [
+        1425,
+        570
+      ],
+      "controlPoint": [
+        1680,
+        450
+      ],
+      "style": "tapered",
+      "color": "#6858EE",
+      "lineWidth": 7
+    },
+    {
+      "type": "marker",
+      "points": [
+        [
+          520,
+          810
+        ],
+        [
+          1020,
+          810
+        ]
+      ],
+      "color": "#FFCC00",
+      "lineWidth": 5
+    }
+  ]
+}

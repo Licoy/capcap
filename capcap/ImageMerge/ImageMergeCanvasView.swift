@@ -447,7 +447,6 @@ final class ImageMergeCanvasView: NSView {
                 }
 
                 if dragged.maxX <= reference.minX {
-                    let currentGap = reference.minX - dragged.maxX
                     let delta = reference.minX - gapReference.gap - dragged.maxX
                     if abs(delta) <= threshold {
                         let snapped = dragged.offsetBy(dx: delta, dy: 0)
@@ -524,7 +523,6 @@ final class ImageMergeCanvasView: NSView {
                 }
 
                 if dragged.maxY <= reference.minY {
-                    let currentGap = reference.minY - dragged.maxY
                     let delta = reference.minY - gapReference.gap - dragged.maxY
                     if abs(delta) <= threshold {
                         let snapped = dragged.offsetBy(dx: 0, dy: delta)

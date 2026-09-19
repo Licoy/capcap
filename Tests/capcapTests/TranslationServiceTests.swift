@@ -3,6 +3,41 @@ import XCTest
 @testable import capcap
 
 final class TranslationServiceTests: XCTestCase {
+    func testAppleTranslationProviderHasNoRemoteConfigurationRequirements() {
+        XCTAssertTrue(TranslationProviderKind.apple.isDirectTranslationAPI)
+        XCTAssertFalse(TranslationProviderKind.apple.isAPIKeyRequired)
+        XCTAssertEqual(TranslationProviderKind.apple.defaultEndpoint, "")
+        XCTAssertEqual(TranslationProviderKind.apple.defaultModel, "")
+    }
+
+    func testAppleTranslationProviderFollowsSystemAvailability() {
+        if #available(macOS 15.0, *) {
+            XCTAssertTrue(TranslationProviderKind.apple.isAvailableOnCurrentSystem)
+            XCTAssertTrue(TranslationConfigStore.orderedKinds().contains(.apple))
+        } else {
+            XCTAssertFalse(TranslationProviderKind.apple.isAvailableOnCurrentSystem)
+            XCTAssertFalse(TranslationConfigStore.orderedKinds().contains(.apple))
+        }
+    }
+
+    func testAppleTranslationWithoutPanelSessionFailsClearly() async {
+        let stream = TranslationService.stream(
+            text: "Hello",
+            target: .chinese,
+            kind: .apple,
+            config: TranslationConfig()
+        )
+
+        do {
+            for try await _ in stream {}
+            XCTFail("Expected Apple Translation to require a panel session")
+        } catch TranslationError.appleTranslationUnavailable {
+            // Expected: macOS 15-25 sessions must be supplied by a hosted view.
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
     func testDeepSeekRequestDisablesThinkingMode() throws {
         let body = try requestBody(for: .deepseek)
         let thinking = try XCTUnwrap(body["thinking"] as? [String: String])

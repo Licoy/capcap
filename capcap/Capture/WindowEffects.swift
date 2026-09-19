@@ -16,6 +16,11 @@ enum WindowEffects {
         let offset: CGSize
     }
 
+    private struct AlphaMaskAnalysis {
+        let mask: CGImage
+        let visibleBounds: CGRect?
+    }
+
     /// Pixels-per-point of the image's backing bitmap (2 on Retina displays).
     private static func scale(of image: NSImage) -> CGFloat {
         guard let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
@@ -53,7 +58,11 @@ enum WindowEffects {
     @discardableResult
     static func clip(_ context: CGContext, toAlphaOf maskImage: NSImage, in rect: CGRect) -> Bool {
         guard let maskCG = maskImage.cgImagePreservingBacking(),
-              let alphaMask = alphaMask(from: maskCG, width: maskCG.width, height: maskCG.height)
+              let alphaMask = alphaMaskAnalysis(
+                from: maskCG,
+                width: maskCG.width,
+                height: maskCG.height
+              )?.mask
         else {
             return false
         }
@@ -67,6 +76,12 @@ enum WindowEffects {
     static func applyingAlphaMask(from maskImage: NSImage, to image: NSImage) -> NSImage? {
         guard let maskCG = maskImage.cgImagePreservingBacking(),
               hasAlpha(maskCG),
+              let maskAnalysis = alphaMaskAnalysis(
+                from: maskCG,
+                width: maskCG.width,
+                height: maskCG.height
+              ),
+              isReliableWindowAlphaMask(maskAnalysis),
               let cg = image.cgImagePreservingBacking()
         else {
             return nil
@@ -103,6 +118,93 @@ enum WindowEffects {
 
         guard let out = context.makeImage() else { return nil }
         return NSImage(cgImage: out, size: image.size)
+    }
+
+    /// ScreenCaptureKit can report the right window frame and output size for
+    /// an attached settings sheet while returning an alpha plane whose content
+    /// stops well before one edge. Borrowing that alpha as the WindowServer
+    /// silhouette then cuts valid pixels out of the frozen display crop.
+    ///
+    /// A normal rounded window still reaches every image edge somewhere along
+    /// that edge; only its corners are transparent. Reject only substantial
+    /// full-edge insets, while preserving real interior transparency and small
+    /// antialiasing/rounding differences.
+    private static func isReliableWindowAlphaMask(
+        _ analysis: AlphaMaskAnalysis
+    ) -> Bool {
+        guard let visibleBounds = analysis.visibleBounds else { return false }
+
+        let width = CGFloat(analysis.mask.width)
+        let height = CGFloat(analysis.mask.height)
+        let tolerance = max(4, ceil(min(width, height) * 0.01))
+        let edgeInsets = [
+            visibleBounds.minX,
+            visibleBounds.minY,
+            width - visibleBounds.maxX,
+            height - visibleBounds.maxY
+        ]
+        return edgeInsets.allSatisfy { $0 <= tolerance }
+    }
+
+    /// Shape pixels cropped from the frozen display as a clicked window.
+    ///
+    /// For an ordinary window, a reliable independent ScreenCaptureKit image
+    /// provides the most accurate system corner/transparency mask. Some
+    /// attached system sheets return an alpha plane with a substantial empty
+    /// edge even though the frozen display crop contains visible window pixels;
+    /// `applyingAlphaMask` rejects those malformed silhouettes. A
+    /// display-filling window is another special case: its frozen display crop
+    /// already defines the full visible target, while the independent-window
+    /// alpha can contain compositor-only transparent bands (notably full-screen
+    /// Chromium on macOS Tahoe). Applying either unrelated alpha byte-for-byte
+    /// punches holes into otherwise valid screen pixels and later clips
+    /// annotations to the same holes (issue #153).
+    ///
+    /// When the selected window spans the display width and at least 90% of its
+    /// height, keep the display crop and synthesize only the outer rounded
+    /// silhouette. This preserves the normal exact-mask path for ordinary and
+    /// partially off-screen windows.
+    static func compositedWindowImage(
+        snapshotImage: NSImage,
+        directWindowImage: NSImage?,
+        captureRect: CGRect,
+        displayBounds: CGRect
+    ) -> NSImage {
+        if shouldBorrowDirectWindowAlpha(
+            captureRect: captureRect,
+            displayBounds: displayBounds
+        ),
+           let directWindowImage,
+           let maskedImage = applyingAlphaMask(from: directWindowImage, to: snapshotImage) {
+            return maskedImage
+        }
+
+        return roundedCorners(snapshotImage)
+    }
+
+    static func shouldBorrowDirectWindowAlpha(
+        captureRect: CGRect,
+        displayBounds: CGRect
+    ) -> Bool {
+        let capture = captureRect.standardized
+        let display = displayBounds.standardized
+        guard capture.width > 0,
+              capture.height > 0,
+              display.width > 0,
+              display.height > 0,
+              !capture.isInfinite,
+              !display.isInfinite else {
+            return true
+        }
+
+        let edgeTolerance: CGFloat = 1
+        let spansDisplayWidth = capture.minX <= display.minX + edgeTolerance
+            && capture.maxX >= display.maxX - edgeTolerance
+        let visibleCapture = capture.intersection(display)
+        let fillsMostOfDisplayHeight = !visibleCapture.isNull
+            && visibleCapture.height >= display.height * 0.9
+
+        return !(spansDisplayWidth && fillsMostOfDisplayHeight)
     }
 
     private static func continuousCornerMask(
@@ -145,7 +247,11 @@ enum WindowEffects {
         return context.makeImage()
     }
 
-    private static func alphaMask(from source: CGImage, width: Int, height: Int) -> CGImage? {
+    private static func alphaMaskAnalysis(
+        from source: CGImage,
+        width: Int,
+        height: Int
+    ) -> AlphaMaskAnalysis? {
         guard width > 0, height > 0 else { return nil }
 
         let colorSpace = CGColorSpaceCreateDeviceRGB()
@@ -175,17 +281,28 @@ enum WindowEffects {
         guard drewSource else { return nil }
 
         var alpha = [UInt8](repeating: 0, count: width * height)
+        var minX = width
+        var minY = height
+        var maxX = -1
+        var maxY = -1
         for y in 0..<height {
             let rgbaRow = y * bytesPerRow
             let alphaRow = y * width
             for x in 0..<width {
-                alpha[alphaRow + x] = rgba[rgbaRow + x * bytesPerPixel + 3]
+                let value = rgba[rgbaRow + x * bytesPerPixel + 3]
+                alpha[alphaRow + x] = value
+                if value > 3 {
+                    minX = min(minX, x)
+                    minY = min(minY, y)
+                    maxX = max(maxX, x)
+                    maxY = max(maxY, y)
+                }
             }
         }
 
         let data = Data(alpha)
         guard let provider = CGDataProvider(data: data as CFData) else { return nil }
-        return CGImage(
+        guard let mask = CGImage(
             width: width,
             height: height,
             bitsPerComponent: 8,
@@ -197,7 +314,19 @@ enum WindowEffects {
             decode: nil,
             shouldInterpolate: true,
             intent: .defaultIntent
-        )
+        ) else {
+            return nil
+        }
+
+        let visibleBounds: CGRect? = maxX >= minX && maxY >= minY
+            ? CGRect(
+                x: minX,
+                y: minY,
+                width: maxX - minX + 1,
+                height: maxY - minY + 1
+            )
+            : nil
+        return AlphaMaskAnalysis(mask: mask, visibleBounds: visibleBounds)
     }
 
     private static func hasAlpha(_ image: CGImage) -> Bool {

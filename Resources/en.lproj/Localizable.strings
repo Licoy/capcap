@@ -15,7 +15,7 @@
 "pinAcrossSpaces" = "Show Pins Across Desktops";
 "pinAcrossSpacesHint" = "New pinned images appear on every desktop and full-screen Space";
 "historyCacheToggleLabel" = "Cache Screenshots";
-"historyCacheToggleHint" = "Store recent screenshots, picked colors, and upload links for quick reuse from the menu bar";
+"historyCacheToggleHint" = "Store recent screenshots, picked colors, and upload links for quick reuse from the history panel";
 "clipboardTextCacheToggleLabel" = "Cache Clipboard Text";
 "clipboardTextCacheToggleHint" = "Store copied text in history for quick reuse";
 "clipboardTextHistoryLimitLabel" = "Text History Limit";
@@ -25,7 +25,7 @@
 "historyPanelDialogMode" = "Dialog";
 "historyPanelDialogModeHint" = "Open a horizontal preview panel from the menu or shortcut";
 "historyPanelNotchMode" = "Notch";
-"historyPanelNotchModeHint" = "Hover near the top notch to expand, leave to hide";
+"historyPanelNotchModeHint" = "Open at the top notch by hovering or clicking, leave to hide";
 "countdownLabel" = "Countdown Seconds";
 "countdownHint" = "Hold ⌥ Option then double-tap ⌘ or press the screenshot shortcut to start a countdown before capture, Esc cancels";
 "countdownSecondsSuffix" = "s";
@@ -54,9 +54,9 @@
 "selectedImagePinShortcutHeader" = "Pin Selected Image";
 "selectedImagePinShortcutDefaultDisplay" = "Not set";
 "selectedImagePinShortcutClear" = "Clear Pin Selected Image Shortcut";
-"clipboardImagePinShortcutHeader" = "Pin Clipboard Image";
+"clipboardImagePinShortcutHeader" = "Pin Current or Clipboard Image";
 "clipboardImagePinShortcutDefaultDisplay" = "Not set";
-"clipboardImagePinShortcutClear" = "Clear Pin Clipboard Image Shortcut";
+"clipboardImagePinShortcutClear" = "Clear Pin Current or Clipboard Image Shortcut";
 "clipboardTextPinShortcutHeader" = "Pin Clipboard Text";
 "clipboardTextPinShortcutDefaultDisplay" = "Not set";
 "clipboardTextPinShortcutClear" = "Clear Pin Clipboard Text Shortcut";
@@ -66,6 +66,9 @@
 "pinFromFinderHint" = "Pinned Finder image, press X to close";
 "pinFromClipboardHint" = "Pinned clipboard image, press X to close";
 "pinFromClipboardTextHint" = "Pinned clipboard text, double-click to edit";
+"pinToolbarClose" = "Close pinned image";
+"pinToolbarCopy" = "Copy pinned image";
+"pinToolbarDrag" = "Drag pinned image";
 "pinToolbarEdit" = "Edit pinned image";
 "pinToolbarEditText" = "Edit text";
 
@@ -131,16 +134,24 @@
 "settings" = "Settings";
 "quitApp" = "Quit capcap";
 "historyMenu" = "History";
-"historyEmpty" = "No history yet";
 "historyClear" = "Clear History";
 "historyCleared" = "History cleared";
+"historyEmpty" = "No history yet";
 "historyShowInFinder" = "Show in Finder";
+"historyPanelLock" = "Lock History Panel";
+"historyPanelUnlock" = "Unlock History Panel";
+"historyPanelFavorite" = "Favorite";
+"historyPanelUnfavorite" = "Remove from Favorites";
+"historyPanelItemFavorited" = "Added to favorites";
+"historyPanelItemUnfavorited" = "Removed from favorites";
 "historyPanelMenu" = "History Panel";
 "historyPanelDeleteAll" = "Delete All History";
 "historyPanelDeleteSelectedOne" = "Delete %d Item";
 "historyPanelDeleteSelected" = "Delete %d Items";
 "historyPanelDeletedSelectedOne" = "Deleted %d Item";
 "historyPanelDeletedSelected" = "Deleted %d Items";
+"historyPanelFavoriteFailed" = "Could not change favorite";
+"historyDeletedSkippingFavorites" = "Items deleted: %d, favorites skipped: %d";
 "historyPanelFilterAll" = "All";
 "historyPanelFilterScreenshots" = "Screenshots";
 "historyPanelFilterGIF" = "GIF";
@@ -333,15 +344,28 @@
 "settingsQuit" = "Quit App";
 
 "toolbarSettingsPrimaryTitle" = "Main toolbar";
-"toolbarSettingsPrimaryHint" = "Tools appear above or below the selection";
+"toolbarSettingsPrimaryHint" = "Tools appear above or below the selection, drag to reposition, click to set a shortcut";
 "toolbarSettingsSideTitle" = "Side toolbar";
-"toolbarSettingsSideHint" = "Tools appear to the left or right of the selection";
+"toolbarSettingsSideHint" = "Tools appear to the left or right of the selection, drag to reposition, click to set a shortcut";
 "toolbarSettingsHiddenTitle" = "Hidden tools";
 "toolbarSettingsHiddenHint" = "Tools dragged here won't appear in any toolbar";
 "toolbarSettingsFootnote" = "Toolbars switch automatically between top/bottom and left/right based on the selection's position";
+"toolbarSettingsShortcutHint" = "Click a tool to record its shortcut, drag to reposition it, or right-click for more options";
+"toolbarSettingsShortcutRecording" = "Press a new shortcut for “%@” or press Esc to cancel";
+"toolbarSettingsShortcutRecord" = "Record Shortcut";
+"toolbarSettingsShortcutClear" = "Clear Shortcut";
+"toolbarSettingsShortcutRestore" = "Restore Default Shortcut";
+"toolbarSettingsShortcutResetAll" = "Reset Editor Shortcuts";
+"toolbarSettingsShortcutNone" = "Not Set";
+"toolbarSettingsShortcutUnavailable" = "N/A";
+"toolbarSettingsAdditionalShortcuts" = "Additional editor actions";
 "toolbarSettingsReset" = "Reset to Default";
 "toolbarSettingsCancel" = "Cancel";
 "toolbarSettingsApply" = "Apply";
+"editorShortcutSelect" = "Selection tool";
+"editorShortcutShapeFill" = "Toggle shape fill";
+"editorShortcutConflict" = "This shortcut is already assigned to “%@”";
+"editorShortcutReserved" = "This key is reserved for an editor system action and cannot be reassigned";
 
 /* About pane */
 "aboutTagline" = "Menu bar screenshot tool";
@@ -503,7 +527,7 @@
 "ocrTranslating" = "Translating";
 "ocrTranslateFailedPrefix" = "Failed";
 "ocrNoProviderTitle" = "No translation service configured";
-"ocrNoProviderHint" = "Add an AI service in Settings → Translation";
+"ocrNoProviderHint" = "Enable a provider in Settings → Translation";
 "ocrOpenSettings" = "Open Settings";
 "ocrLineCopied" = "Line copied";
 "copyImageTextCopying" = "Copying";
@@ -538,6 +562,8 @@
 "translationTestFailed" = "Test failed";
 "translationTestFailedTitle" = "Saved, but the connection test failed";
 "translationProviderCustom" = "Custom OpenAI-compatible";
+"translationAppleSubtitle" = "Uses Apple’s on-device models and may download language data";
+"translationErrAppleUnavailable" = "Apple Translation requires macOS 15 or later";
 "translationMoveUp" = "Move up";
 "translationMoveDown" = "Move down";
 
@@ -691,3 +717,15 @@
 "tipClickThrough" = "Click-Through";
 "captureClickThroughOn" = "Click-through on";
 "captureClickThroughOff" = "Click-through off";
+"historyNotchTriggerLabel" = "Notch activation";
+"historyNotchTriggerHover" = "Open on hover";
+"historyNotchTriggerClick" = "Open on click";
+
+/* General settings categories */
+"settingsGeneralBasic" = "Basics";
+"settingsGeneralCapture" = "Capture & Pin";
+"settingsGeneralRecording" = "Recording";
+"settingsGeneralHistory" = "History";
+"settingsGeneralFiles" = "Files & Output";
+
+"historyPreviewTextSaveFailed" = "Unable to save text, please try again";

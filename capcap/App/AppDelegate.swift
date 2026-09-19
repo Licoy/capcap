@@ -581,10 +581,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         PinLauncher.pinSelectedImagesIfAvailable()
     }
 
-    /// Pin-hotkey trigger: pin the clipboard image onto the screen. Skipped
-    /// while a capture overlay is up.
+    /// Contextual pin hotkey: pin the current edited screenshot while an
+    /// editor is active; otherwise pin the clipboard image.
     func handleClipboardImagePinTrigger() {
-        guard overlayController == nil, recordingEngine == nil else { return }
+        if let overlayController {
+            _ = overlayController.pinFromKeyboard()
+            return
+        }
+        guard recordingEngine == nil else { return }
         PinLauncher.pinClipboardImageIfAvailable()
     }
 

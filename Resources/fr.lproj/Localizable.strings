@@ -15,7 +15,7 @@
 "pinAcrossSpaces" = "Afficher les épingles sur tous les bureaux";
 "pinAcrossSpacesHint" = "Les nouvelles images épinglées apparaissent sur chaque bureau et espace plein écran";
 "historyCacheToggleLabel" = "Mettre les captures en cache";
-"historyCacheToggleHint" = "Enregistre les captures récentes, les couleurs prélevées et les liens téléversés pour les recopier depuis la barre de menus";
+"historyCacheToggleHint" = "Enregistre les captures récentes, les couleurs prélevées et les liens téléversés pour les recopier depuis le panneau d'historique";
 "clipboardTextCacheToggleLabel" = "Mettre le texte du presse-papiers en cache";
 "clipboardTextCacheToggleHint" = "Enregistre le texte copié dans l’historique pour le réutiliser rapidement";
 "clipboardTextHistoryLimitLabel" = "Limite de l’historique du texte";
@@ -25,7 +25,7 @@
 "historyPanelDialogMode" = "Dialogue";
 "historyPanelDialogModeHint" = "Ouvre un panneau d'aperçus horizontaux depuis le menu ou le raccourci";
 "historyPanelNotchMode" = "Encoche";
-"historyPanelNotchModeHint" = "Survolez l'encoche en haut pour développer, quittez pour masquer";
+"historyPanelNotchModeHint" = "Ouvrez l’encoche en haut au survol ou au clic, quittez pour masquer";
 "countdownLabel" = "Secondes du compte à rebours";
 "countdownHint" = "Maintenez ⌥ Option puis double-appuyez sur ⌘ ou utilisez le raccourci de capture pour lancer un compte à rebours avant la capture, Échap pour annuler";
 "countdownSecondsSuffix" = "s";
@@ -54,9 +54,9 @@
 "selectedImagePinShortcutHeader" = "Épingler l'image sélectionnée";
 "selectedImagePinShortcutDefaultDisplay" = "Non défini";
 "selectedImagePinShortcutClear" = "Effacer le raccourci d'épinglage de l'image sélectionnée";
-"clipboardImagePinShortcutHeader" = "Épingler l'image du presse-papiers";
+"clipboardImagePinShortcutHeader" = "Épingler l’image actuelle ou celle du presse-papiers";
 "clipboardImagePinShortcutDefaultDisplay" = "Non défini";
-"clipboardImagePinShortcutClear" = "Effacer le raccourci d'épinglage du presse-papiers";
+"clipboardImagePinShortcutClear" = "Effacer le raccourci d’épinglage de l’image actuelle ou du presse-papiers";
 "clipboardTextPinShortcutHeader" = "Épingler le texte du presse-papiers";
 "clipboardTextPinShortcutDefaultDisplay" = "Non défini";
 "clipboardTextPinShortcutClear" = "Effacer le raccourci d'épinglage du texte du presse-papiers";
@@ -66,6 +66,9 @@
 "pinFromFinderHint" = "Image Finder épinglée, appuyez sur X pour fermer";
 "pinFromClipboardHint" = "Image du presse-papiers épinglée, appuyez sur X pour fermer";
 "pinFromClipboardTextHint" = "Texte du presse-papiers épinglé, double-cliquez pour modifier";
+"pinToolbarClose" = "Fermer l'image épinglée";
+"pinToolbarCopy" = "Copier l'image épinglée";
+"pinToolbarDrag" = "Faire glisser l'image épinglée";
 "pinToolbarEdit" = "Modifier l'image épinglée";
 "pinToolbarEditText" = "Modifier le texte";
 
@@ -131,16 +134,24 @@
 "settings" = "Réglages";
 "quitApp" = "Quitter capcap";
 "historyMenu" = "Historique";
-"historyEmpty" = "Aucun historique";
 "historyClear" = "Effacer l'historique";
 "historyCleared" = "Historique effacé";
+"historyEmpty" = "Aucun historique";
 "historyShowInFinder" = "Afficher dans le Finder";
+"historyPanelLock" = "Verrouiller le panneau d’historique";
+"historyPanelUnlock" = "Déverrouiller le panneau d’historique";
+"historyPanelFavorite" = "Ajouter aux favoris";
+"historyPanelUnfavorite" = "Retirer des favoris";
+"historyPanelItemFavorited" = "Ajouté aux favoris";
+"historyPanelItemUnfavorited" = "Retiré des favoris";
 "historyPanelMenu" = "Panneau d'historique";
 "historyPanelDeleteAll" = "Supprimer tout l'historique";
 "historyPanelDeleteSelectedOne" = "Supprimer %d élément";
 "historyPanelDeleteSelected" = "Supprimer %d éléments";
 "historyPanelDeletedSelectedOne" = "%d élément supprimé";
 "historyPanelDeletedSelected" = "%d éléments supprimés";
+"historyPanelFavoriteFailed" = "Impossible de modifier les favoris";
+"historyDeletedSkippingFavorites" = "Éléments supprimés : %d, favoris ignorés : %d";
 "historyPanelFilterAll" = "Tout";
 "historyPanelFilterScreenshots" = "Captures";
 "historyPanelFilterGIF" = "GIF";
@@ -333,15 +344,28 @@
 "settingsQuit" = "Quitter l'application";
 
 "toolbarSettingsPrimaryTitle" = "Barre principale";
-"toolbarSettingsPrimaryHint" = "Les outils apparaissent au-dessus ou en dessous de la sélection";
+"toolbarSettingsPrimaryHint" = "Les outils apparaissent au-dessus ou en dessous de la sélection, faites glisser pour ajuster la position et cliquez pour définir un raccourci";
 "toolbarSettingsSideTitle" = "Barre latérale";
-"toolbarSettingsSideHint" = "Les outils apparaissent à gauche ou à droite de la sélection";
+"toolbarSettingsSideHint" = "Les outils apparaissent à gauche ou à droite de la sélection, faites glisser pour ajuster la position et cliquez pour définir un raccourci";
 "toolbarSettingsHiddenTitle" = "Outils masqués";
 "toolbarSettingsHiddenHint" = "Les outils déposés ici n'apparaissent dans aucune barre d'outils";
 "toolbarSettingsFootnote" = "Les barres d'outils basculent automatiquement entre haut/bas et gauche/droite selon la position de la sélection";
+"toolbarSettingsShortcutHint" = "Cliquez sur un outil pour enregistrer son raccourci, faites-le glisser pour le déplacer ou faites un clic droit pour plus d’options";
+"toolbarSettingsShortcutRecording" = "Appuyez sur un nouveau raccourci pour « %@ » ou sur Échap pour annuler";
+"toolbarSettingsShortcutRecord" = "Enregistrer le raccourci";
+"toolbarSettingsShortcutClear" = "Effacer le raccourci";
+"toolbarSettingsShortcutRestore" = "Rétablir le raccourci par défaut";
+"toolbarSettingsShortcutResetAll" = "Réinitialiser les raccourcis de l’éditeur";
+"toolbarSettingsShortcutNone" = "Non défini";
+"toolbarSettingsShortcutUnavailable" = "N/A";
+"toolbarSettingsAdditionalShortcuts" = "Actions d’édition supplémentaires";
 "toolbarSettingsReset" = "Réinitialiser";
 "toolbarSettingsCancel" = "Annuler";
 "toolbarSettingsApply" = "Appliquer";
+"editorShortcutSelect" = "Outil de sélection";
+"editorShortcutShapeFill" = "Changer le remplissage des formes";
+"editorShortcutConflict" = "Ce raccourci est déjà attribué à « %@ »";
+"editorShortcutReserved" = "Cette touche est réservée à une action système de l’éditeur et ne peut pas être réattribuée";
 
 /* About pane */
 "aboutTagline" = "Outil de capture d'écran dans la barre des menus";
@@ -503,7 +527,7 @@
 "ocrTranslating" = "Traduction";
 "ocrTranslateFailedPrefix" = "Échec";
 "ocrNoProviderTitle" = "Aucun service de traduction configuré";
-"ocrNoProviderHint" = "Ajoutez un service IA dans Réglages → Traduction";
+"ocrNoProviderHint" = "Activez un fournisseur dans Réglages → Traduction";
 "ocrOpenSettings" = "Ouvrir les réglages";
 "ocrLineCopied" = "Ligne copiée";
 "copyImageTextCopying" = "Copie";
@@ -538,6 +562,8 @@
 "translationTestFailed" = "Échec du test";
 "translationTestFailedTitle" = "Enregistré, mais le test de connexion a échoué";
 "translationProviderCustom" = "Personnalisé compatible OpenAI";
+"translationAppleSubtitle" = "Utilise les modèles Apple sur l’appareil et peut télécharger des données linguistiques";
+"translationErrAppleUnavailable" = "Apple Translation nécessite macOS 15 ou version ultérieure";
 "translationMoveUp" = "Déplacer vers le haut";
 "translationMoveDown" = "Déplacer vers le bas";
 
@@ -691,3 +717,15 @@
 "tipClickThrough" = "Clics traversants";
 "captureClickThroughOn" = "Clics traversants activés";
 "captureClickThroughOff" = "Clics traversants désactivés";
+"historyNotchTriggerLabel" = "Activation de l’encoche";
+"historyNotchTriggerHover" = "Ouvrir au survol";
+"historyNotchTriggerClick" = "Ouvrir au clic";
+
+/* General settings categories */
+"settingsGeneralBasic" = "Général";
+"settingsGeneralCapture" = "Capture et épingles";
+"settingsGeneralRecording" = "Enregistrement";
+"settingsGeneralHistory" = "Historique";
+"settingsGeneralFiles" = "Fichiers et sortie";
+
+"historyPreviewTextSaveFailed" = "Impossible d’enregistrer le texte, veuillez réessayer";

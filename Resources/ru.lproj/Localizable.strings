@@ -15,7 +15,7 @@
 "pinAcrossSpaces" = "Показывать закрепления на всех рабочих столах";
 "pinAcrossSpacesHint" = "Новые закрепленные изображения появляются на каждом рабочем столе и полноэкранном Space";
 "historyCacheToggleLabel" = "Кэшировать снимки";
-"historyCacheToggleHint" = "Сохраняет недавние снимки, выбранные цвета и ссылки загрузок для быстрого повторного копирования из строки меню";
+"historyCacheToggleHint" = "Сохраняет недавние снимки, выбранные цвета и ссылки загрузок для быстрого повторного копирования из панели истории";
 "clipboardTextCacheToggleLabel" = "Кэшировать текст буфера обмена";
 "clipboardTextCacheToggleHint" = "Сохраняет скопированный текст в истории для быстрого повторного использования";
 "clipboardTextHistoryLimitLabel" = "Лимит истории текста";
@@ -25,7 +25,7 @@
 "historyPanelDialogMode" = "Диалог";
 "historyPanelDialogModeHint" = "Открывает горизонтальную панель предпросмотра из меню или по сочетанию";
 "historyPanelNotchMode" = "Вырез";
-"historyPanelNotchModeHint" = "Наведение на верхний вырез раскрывает панель, выход скрывает";
+"historyPanelNotchModeHint" = "Открытие у верхнего выреза наведением или нажатием, скрытие при уходе курсора";
 "countdownLabel" = "Секунды обратного отсчёта";
 "countdownHint" = "Удерживайте ⌥ Option, затем дважды нажмите ⌘ или сочетание для снимка, чтобы запустить обратный отсчёт перед захватом, Esc — отмена";
 "countdownSecondsSuffix" = "с";
@@ -54,9 +54,9 @@
 "selectedImagePinShortcutHeader" = "Закрепить выбранное изображение";
 "selectedImagePinShortcutDefaultDisplay" = "Не задано";
 "selectedImagePinShortcutClear" = "Очистить сочетание закрепления выбранного изображения";
-"clipboardImagePinShortcutHeader" = "Закрепить изображение из буфера";
+"clipboardImagePinShortcutHeader" = "Закрепить текущее изображение или изображение из буфера";
 "clipboardImagePinShortcutDefaultDisplay" = "Не задано";
-"clipboardImagePinShortcutClear" = "Очистить сочетание закрепления изображения из буфера";
+"clipboardImagePinShortcutClear" = "Очистить сочетание закрепления текущего изображения или изображения из буфера";
 "clipboardTextPinShortcutHeader" = "Закрепить текст из буфера";
 "clipboardTextPinShortcutDefaultDisplay" = "Не задано";
 "clipboardTextPinShortcutClear" = "Очистить сочетание закрепления текста из буфера";
@@ -66,6 +66,9 @@
 "pinFromFinderHint" = "Изображение Finder закреплено, нажмите X, чтобы закрыть";
 "pinFromClipboardHint" = "Изображение из буфера закреплено, нажмите X, чтобы закрыть";
 "pinFromClipboardTextHint" = "Текст из буфера закреплен, дважды щелкните для редактирования";
+"pinToolbarClose" = "Закрыть закрепленное изображение";
+"pinToolbarCopy" = "Копировать закрепленное изображение";
+"pinToolbarDrag" = "Перетащить закрепленное изображение";
 "pinToolbarEdit" = "Редактировать закрепленное изображение";
 "pinToolbarEditText" = "Редактировать текст";
 
@@ -131,16 +134,24 @@
 "settings" = "Настройки";
 "quitApp" = "Завершить capcap";
 "historyMenu" = "История";
-"historyEmpty" = "История пуста";
 "historyClear" = "Очистить историю";
 "historyCleared" = "История очищена";
+"historyEmpty" = "История пуста";
 "historyShowInFinder" = "Показать в Finder";
+"historyPanelLock" = "Заблокировать панель истории";
+"historyPanelUnlock" = "Разблокировать панель истории";
+"historyPanelFavorite" = "Добавить в избранное";
+"historyPanelUnfavorite" = "Удалить из избранного";
+"historyPanelItemFavorited" = "Добавлено в избранное";
+"historyPanelItemUnfavorited" = "Удалено из избранного";
 "historyPanelMenu" = "Панель истории";
 "historyPanelDeleteAll" = "Удалить всю историю";
 "historyPanelDeleteSelectedOne" = "Удалить %d объект";
 "historyPanelDeleteSelected" = "Удалить объектов: %d";
 "historyPanelDeletedSelectedOne" = "Удалён %d объект";
 "historyPanelDeletedSelected" = "Удалено объектов: %d";
+"historyPanelFavoriteFailed" = "Не удалось изменить избранное";
+"historyDeletedSkippingFavorites" = "Удалено объектов: %d, избранных пропущено: %d";
 "historyPanelFilterAll" = "Все";
 "historyPanelFilterScreenshots" = "Снимки";
 "historyPanelFilterGIF" = "GIF";
@@ -333,15 +344,28 @@
 "settingsQuit" = "Завершить приложение";
 
 "toolbarSettingsPrimaryTitle" = "Основная панель";
-"toolbarSettingsPrimaryHint" = "Инструменты появляются над или под выделением";
+"toolbarSettingsPrimaryHint" = "Инструменты появляются над или под выделением, перетащите для изменения положения и нажмите для настройки сочетания клавиш";
 "toolbarSettingsSideTitle" = "Боковая панель";
-"toolbarSettingsSideHint" = "Инструменты появляются слева или справа от выделения";
+"toolbarSettingsSideHint" = "Инструменты появляются слева или справа от выделения, перетащите для изменения положения и нажмите для настройки сочетания клавиш";
 "toolbarSettingsHiddenTitle" = "Скрытые инструменты";
 "toolbarSettingsHiddenHint" = "Инструменты, перетащенные сюда, не появляются ни на одной панели";
 "toolbarSettingsFootnote" = "Панели автоматически переключаются между расположением сверху/снизу и слева/справа в зависимости от положения выделения";
+"toolbarSettingsShortcutHint" = "Нажмите инструмент для записи сочетания, перетащите его для перемещения или щёлкните правой кнопкой для дополнительных действий";
+"toolbarSettingsShortcutRecording" = "Нажмите новое сочетание для «%@» или Esc для отмены";
+"toolbarSettingsShortcutRecord" = "Записать сочетание";
+"toolbarSettingsShortcutClear" = "Очистить сочетание";
+"toolbarSettingsShortcutRestore" = "Восстановить сочетание по умолчанию";
+"toolbarSettingsShortcutResetAll" = "Сбросить сочетания редактора";
+"toolbarSettingsShortcutNone" = "Не задано";
+"toolbarSettingsShortcutUnavailable" = "N/A";
+"toolbarSettingsAdditionalShortcuts" = "Дополнительные действия редактора";
 "toolbarSettingsReset" = "Сбросить";
 "toolbarSettingsCancel" = "Отмена";
 "toolbarSettingsApply" = "Применить";
+"editorShortcutSelect" = "Инструмент выделения";
+"editorShortcutShapeFill" = "Переключить заливку фигуры";
+"editorShortcutConflict" = "Это сочетание уже назначено действию «%@»";
+"editorShortcutReserved" = "Эта клавиша зарезервирована для системного действия редактора и не может быть переназначена";
 
 /* About pane */
 "aboutTagline" = "Инструмент для снимков экрана в строке меню";
@@ -503,7 +527,7 @@
 "ocrTranslating" = "Перевод";
 "ocrTranslateFailedPrefix" = "Ошибка";
 "ocrNoProviderTitle" = "Служба перевода не настроена";
-"ocrNoProviderHint" = "Добавьте ИИ-службу в Настройки → Перевод";
+"ocrNoProviderHint" = "Включите службу в Настройки → Перевод";
 "ocrOpenSettings" = "Открыть настройки";
 "ocrLineCopied" = "Строка скопирована";
 "copyImageTextCopying" = "Копирование";
@@ -538,6 +562,8 @@
 "translationTestFailed" = "Проверка не пройдена";
 "translationTestFailedTitle" = "Сохранено, но проверка соединения не удалась";
 "translationProviderCustom" = "Свой совместимый с OpenAI";
+"translationAppleSubtitle" = "Использует модели Apple на устройстве и может загружать языковые данные";
+"translationErrAppleUnavailable" = "Для Apple Translation требуется macOS 15 или новее";
 "translationMoveUp" = "Переместить вверх";
 "translationMoveDown" = "Переместить вниз";
 
@@ -691,3 +717,15 @@
 "tipClickThrough" = "Сквозной клик";
 "captureClickThroughOn" = "Сквозной клик включён";
 "captureClickThroughOff" = "Сквозной клик выключен";
+"historyNotchTriggerLabel" = "Активация выреза";
+"historyNotchTriggerHover" = "Открывать при наведении";
+"historyNotchTriggerClick" = "Открывать по нажатию";
+
+/* General settings categories */
+"settingsGeneralBasic" = "Основные";
+"settingsGeneralCapture" = "Снимки и закрепление";
+"settingsGeneralRecording" = "Запись";
+"settingsGeneralHistory" = "История";
+"settingsGeneralFiles" = "Файлы и вывод";
+
+"historyPreviewTextSaveFailed" = "Не удалось сохранить текст, попробуйте ещё раз";

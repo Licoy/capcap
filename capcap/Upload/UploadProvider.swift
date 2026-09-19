@@ -57,7 +57,7 @@ enum UploadError: LocalizedError {
 
 /// Implementations live in TencentCOSUploader / QiniuUploader / AliyunOSSUploader
 /// / S3Uploader / R2Uploader.
-protocol UploaderProtocol {
+protocol UploaderProtocol: Sendable {
     static var kind: UploadProviderKind { get }
     /// Returns nil when the config is usable, otherwise a localized error message.
     static func validate(_ config: ProviderConfig) -> String?

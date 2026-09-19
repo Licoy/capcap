@@ -4,6 +4,7 @@ import CoreGraphics
 enum DetectedWindowTarget: Equatable, Sendable {
     case applicationWindow
     case menuBarComponent
+    case elevatedWindow
 }
 
 struct WindowDetectionContext: Sendable {
@@ -12,6 +13,13 @@ struct WindowDetectionContext: Sendable {
 }
 
 struct DetectedWindow: Sendable {
+    private static let elevatedLayers: Set<Int> = [
+        Int(CGWindowLevelForKey(.floatingWindow)),
+        Int(CGWindowLevelForKey(.modalPanelWindow)),
+        Int(CGWindowLevelForKey(.utilityWindow)),
+        Int(CGWindowLevelForKey(.popUpMenuWindow))
+    ]
+
     let name: String
     let windowID: CGWindowID
     let layer: Int
@@ -19,8 +27,10 @@ struct DetectedWindow: Sendable {
     let target: DetectedWindowTarget
 
     var usesCompositedScreenBackdrop: Bool {
-        target == .menuBarComponent
+        target == .menuBarComponent || layer >= 20
     }
+
+    static var selectableElevatedLayers: Set<Int> { elevatedLayers }
 }
 
 enum WindowDetectionError: LocalizedError, Sendable {
@@ -94,6 +104,13 @@ class WindowDetector {
                 displayBounds: context.displayBounds
             ) else { return nil }
 
+            // High-layer system overlays that fill most of the screen are
+            // typically invisible IME/backdrop surfaces, not capture targets.
+            if target == .elevatedWindow,
+               rect.width * rect.height > context.primaryScreenArea * 0.8 {
+                return nil
+            }
+
             let name = info[kCGWindowOwnerName as String] as? String ?? ""
             let windowID = info[kCGWindowNumber as String] as? CGWindowID ?? 0
             return DetectedWindow(
@@ -109,16 +126,19 @@ class WindowDetector {
     }
 
     /// Classifies only stable capture targets. Layer-0 app windows remain
-    /// selectable. At the status-window level, accept a single short window
-    /// aligned to the top of one display, while rejecting full menu bars and
-    /// other high-layer transient surfaces.
+    /// selectable, along with popup/utility panels. At the status-window
+    /// level, accept a single short window aligned to the top of one display,
+    /// while rejecting full menu bars, cursors, and other transients.
     static func targetType(
         layer: Int,
         frame: CGRect,
         displayBounds: [CGRect]
     ) -> DetectedWindowTarget? {
-        if layer == 0 {
+        if layer == 0 || layer == Int(CGWindowLevelForKey(.normalWindow)) {
             return .applicationWindow
+        }
+        if DetectedWindow.selectableElevatedLayers.contains(layer) {
+            return .elevatedWindow
         }
         guard layer == Int(CGWindowLevelForKey(.statusWindow)),
               frame.width > 1,

@@ -1349,6 +1349,7 @@ final class OCRTranslatePanel: NSPanel {
     private var dictionaryRunID = UUID()
     private var currentDictionaryWord: String?
     private var currentDictionaryProvider: TranslationProviderKind?
+    private var appleTranslationProvider: AppleTranslationSessionProviding?
     private var recognizedLines: [RecognizedTextLine] = []
     private var recognizedText = ""
     private var ocrReady = false
@@ -1470,6 +1471,19 @@ final class OCRTranslatePanel: NSPanel {
         scrollView.borderType = .noBorder
         root.addSubview(scrollView)
         clipView = scrollView.contentView
+
+        if let appleProvider = AppleTranslationSessionProviderFactory.makeProvider() {
+            appleTranslationProvider = appleProvider
+            let hostView = appleProvider.hostView
+            hostView.translatesAutoresizingMaskIntoConstraints = false
+            root.addSubview(hostView, positioned: .below, relativeTo: scrollView)
+            NSLayoutConstraint.activate([
+                hostView.topAnchor.constraint(equalTo: root.topAnchor),
+                hostView.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+                hostView.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+                hostView.bottomAnchor.constraint(equalTo: root.bottomAnchor),
+            ])
+        }
 
         docView = FlippedView()
         docView.translatesAutoresizingMaskIntoConstraints = false
@@ -1891,7 +1905,11 @@ final class OCRTranslatePanel: NSPanel {
         translationTasks[kind] = Task { @MainActor [weak self] in
             do {
                 let stream = TranslationService.stream(
-                    text: text, target: target, kind: kind, config: config
+                    text: text,
+                    target: target,
+                    kind: kind,
+                    config: config,
+                    appleProvider: self?.appleTranslationProvider
                 )
                 for try await delta in stream {
                     guard let self, self.isCurrentTranslation(kind: kind, runID: runID, attemptID: attemptID) else {
@@ -2252,6 +2270,7 @@ final class OCRTranslatePanel: NSPanel {
             self.outsideClickGlobalMonitor = nil
         }
         cancelTranslationTasks()
+        appleTranslationProvider?.cancel()
         languagePopover?.performClose(nil)
         isLiveTextMenuOpen = false
         orderOut(nil)

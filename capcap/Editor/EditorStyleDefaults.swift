@@ -25,6 +25,7 @@ enum EditorStyleDefaults {
 
     static var standardLineWidth: CGFloat { CGFloat(Defaults.lastEditorLineWidth) }
     static var markerLineWidth: CGFloat { CGFloat(Defaults.lastMarkerLineWidth) }
+    static var numberSize: CGFloat { CGFloat(Defaults.lastNumberSize) }
 
     private static func color(fromHex hex: String?) -> NSColor? {
         guard var trimmed = hex?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() else {

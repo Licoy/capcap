@@ -6,7 +6,9 @@ func tintedSymbol(_ name: String, pointSize: CGFloat, color: NSColor) -> NSImage
         return nil
     }
     let config = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .medium)
-    guard let symbol = base.withSymbolConfiguration(config) else { return nil }
+    // Match the editor's fixed Aa glyph in toolbar customization previews.
+    let localizedImage = name == "textformat" ? base.withLocale(Locale(identifier: "en")) : base
+    guard let symbol = localizedImage.withSymbolConfiguration(config) else { return nil }
     let tinted = NSImage(size: symbol.size, flipped: false) { rect in
         symbol.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1)
         color.set()
@@ -25,6 +27,13 @@ final class ToolbarItemTile: NSView {
     weak var grid: ToolbarSlotGridView?
     private var hoverTip: String?
     private var hoverTrackingArea: NSTrackingArea?
+    private var tooltipScrollObserver: NSObjectProtocol?
+    var isRecordingShortcut = false {
+        didSet {
+            refreshTooltip()
+            needsDisplay = true
+        }
+    }
 
     init(itemID: ToolbarItemID) {
         self.itemID = itemID
@@ -35,6 +44,12 @@ final class ToolbarItemTile: NSView {
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    deinit {
+        if let tooltipScrollObserver {
+            NotificationCenter.default.removeObserver(tooltipScrollObserver)
+        }
     }
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
@@ -49,6 +64,14 @@ final class ToolbarItemTile: NSView {
 
     func clearTooltip() {
         hoverTip = nil
+        dismissTooltip()
+    }
+
+    private func dismissTooltip() {
+        if let tooltipScrollObserver {
+            NotificationCenter.default.removeObserver(tooltipScrollObserver)
+            self.tooltipScrollObserver = nil
+        }
         ToolTipWindow.hide()
     }
 
@@ -70,6 +93,19 @@ final class ToolbarItemTile: NSView {
     override func mouseEntered(with event: NSEvent) {
         super.mouseEntered(with: event)
         guard let tip = hoverTip, let window else { return }
+        dismissTooltip()
+        // Scrolling can move the tile away without delivering mouseExited
+        // Cancel both visible and delayed tips when their screen anchor changes
+        if let clipView = enclosingScrollView?.contentView {
+            clipView.postsBoundsChangedNotifications = true
+            tooltipScrollObserver = NotificationCenter.default.addObserver(
+                forName: NSView.boundsDidChangeNotification,
+                object: clipView,
+                queue: .main
+            ) { [weak self] _ in
+                self?.dismissTooltip()
+            }
+        }
         let frameInWindow = convert(bounds, to: nil)
         let frameOnScreen = window.convertToScreen(frameInWindow)
         ToolTipWindow.show(text: tip, anchor: frameOnScreen)
@@ -77,17 +113,22 @@ final class ToolbarItemTile: NSView {
 
     override func mouseExited(with event: NSEvent) {
         super.mouseExited(with: event)
-        ToolTipWindow.hide()
+        dismissTooltip()
     }
 
     override func mouseDown(with event: NSEvent) {
-        ToolTipWindow.hide()
+        dismissTooltip()
         grid?.beginDrag(from: self, startEvent: event)
+    }
+
+    override func rightMouseDown(with event: NSEvent) {
+        dismissTooltip()
+        grid?.showShortcutMenu(for: self, event: event)
     }
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        if window == nil { ToolTipWindow.hide() }
+        if window == nil { dismissTooltip() }
     }
 
     private var iconColor: NSColor {
@@ -99,22 +140,86 @@ final class ToolbarItemTile: NSView {
     }
 
     override func draw(_ dirtyRect: NSRect) {
-        let body = NSBezierPath(roundedRect: bounds.insetBy(dx: 1, dy: 1), xRadius: 7, yRadius: 7)
+        let body = NSBezierPath(roundedRect: bounds.insetBy(dx: 1, dy: 1), xRadius: 8, yRadius: 8)
         NSColor.white.withAlphaComponent(0.08).setFill()
         body.fill()
-        NSColor.white.withAlphaComponent(0.10).setStroke()
-        body.lineWidth = 1
+        (isRecordingShortcut ? accentGreen : NSColor.white.withAlphaComponent(0.10)).setStroke()
+        body.lineWidth = isRecordingShortcut ? 2 : 1
         body.stroke()
 
+        let shortcutDisplay = isRecordingShortcut
+            ? "…"
+            : itemID.editorShortcutDisplay ?? L10n.toolbarSettingsShortcutUnavailable
         if let icon = tintedSymbol(itemID.symbolName, pointSize: 15, color: iconColor) {
             let size = icon.size
+            let centerY = bounds.maxY - 13.5
             icon.draw(in: NSRect(
                 x: bounds.midX - size.width / 2,
-                y: bounds.midY - size.height / 2,
+                y: centerY - size.height / 2,
                 width: size.width,
                 height: size.height
             ))
         }
+
+        drawShortcutBadge(shortcutDisplay)
+    }
+
+    private func drawShortcutBadge(_ display: String) {
+        let badgeRect = NSRect(x: 3, y: 3, width: bounds.width - 6, height: 13)
+        let badge = NSBezierPath(roundedRect: badgeRect, xRadius: 4.5, yRadius: 4.5)
+        (isRecordingShortcut ? accentGreen.withAlphaComponent(0.28) : NSColor.black.withAlphaComponent(0.48)).setFill()
+        badge.fill()
+
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        paragraph.lineBreakMode = .byClipping
+        let font = NSFont.monospacedSystemFont(ofSize: 8, weight: .semibold)
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: NSColor.white.withAlphaComponent(0.95),
+            .paragraphStyle: paragraph,
+        ]
+        let textRect = badgeRect.insetBy(dx: 2, dy: 0)
+        let fittedDisplay = Self.fittedShortcutDisplay(
+            display,
+            maximumWidth: textRect.width,
+            font: font
+        )
+        let textHeight = ceil((fittedDisplay as NSString).size(withAttributes: attributes).height)
+        (fittedDisplay as NSString).draw(
+            in: NSRect(
+                x: textRect.minX,
+                y: badgeRect.midY - textHeight / 2,
+                width: textRect.width,
+                height: textHeight
+            ),
+            withAttributes: attributes
+        )
+    }
+
+    private static func fittedShortcutDisplay(
+        _ display: String,
+        maximumWidth: CGFloat,
+        font: NSFont
+    ) -> String {
+        let singleLine = display
+            .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "\r", with: " ")
+        let measurementAttributes: [NSAttributedString.Key: Any] = [.font: font]
+        guard (singleLine as NSString).size(withAttributes: measurementAttributes).width > maximumWidth else {
+            return singleLine
+        }
+
+        let suffix = ".."
+        var prefix = ""
+        for character in singleLine {
+            let candidate = prefix + String(character) + suffix
+            if (candidate as NSString).size(withAttributes: measurementAttributes).width > maximumWidth {
+                break
+            }
+            prefix.append(character)
+        }
+        return prefix + suffix
     }
 }
 
@@ -123,7 +228,8 @@ final class ToolbarItemTile: NSView {
 /// A wrapping grid of tool tiles for one toolbar section, with drag-and-drop
 /// reordering both within the grid and across sibling grids.
 final class ToolbarSlotGridView: NSView {
-    static let tile: CGFloat = 34
+    static let tileWidth: CGFloat = 34
+    static let tileHeight: CGFloat = 44
     static let gap: CGFloat = 8
 
     let section: ToolbarSection
@@ -131,6 +237,8 @@ final class ToolbarSlotGridView: NSView {
 
     /// Fired after a drag-and-drop edit changes any grid's contents.
     var onLayoutChanged: (() -> Void)?
+    var onShortcutEdit: ((ToolbarItemID) -> Void)?
+    var onShortcutContextMenu: ((ToolbarItemID, NSView, NSEvent) -> Void)?
     /// Supplies all sibling grids so a drag can move tiles across sections.
     var gridProvider: (() -> [ToolbarSlotGridView])?
 
@@ -210,17 +318,24 @@ final class ToolbarSlotGridView: NSView {
     func refreshTooltips() {
         for tile in tiles {
             tile.refreshTooltip()
+            tile.needsDisplay = true
+        }
+    }
+
+    func setShortcutRecordingItem(_ item: ToolbarItemID?) {
+        for tile in tiles {
+            tile.isRecordingShortcut = tile.itemID == item
         }
     }
 
     // MARK: Geometry
 
     private func currentColumns() -> Int {
-        max(1, Int((bounds.width + Self.gap) / (Self.tile + Self.gap)))
+        max(1, Int((bounds.width + Self.gap) / (Self.tileWidth + Self.gap)))
     }
 
     private func rowHeight(rows: Int) -> CGFloat {
-        CGFloat(rows) * Self.tile + CGFloat(max(0, rows - 1)) * Self.gap
+        CGFloat(rows) * Self.tileHeight + CGFloat(max(0, rows - 1)) * Self.gap
     }
 
     /// Rows to display — at least 2, and always enough to show the drop bar.
@@ -255,18 +370,19 @@ final class ToolbarSlotGridView: NSView {
         let col = index % cols
         let row = index / cols
         return NSRect(
-            x: CGFloat(col) * (Self.tile + Self.gap),
-            y: CGFloat(row) * (Self.tile + Self.gap),
-            width: Self.tile,
-            height: Self.tile
+            x: CGFloat(col) * (Self.tileWidth + Self.gap),
+            y: CGFloat(row) * (Self.tileHeight + Self.gap),
+            width: Self.tileWidth,
+            height: Self.tileHeight
         )
     }
 
     /// Insertion index nearest a point in this grid's coordinate space.
     func insertionIndex(at point: NSPoint) -> Int {
-        let cell = Self.tile + Self.gap
-        let col = Int((point.x + Self.tile / 2) / cell)
-        let row = max(0, Int(point.y / cell))
+        let horizontalCell = Self.tileWidth + Self.gap
+        let verticalCell = Self.tileHeight + Self.gap
+        let col = Int((point.x + Self.tileWidth / 2) / horizontalCell)
+        let row = max(0, Int(point.y / verticalCell))
         let index = row * columns + min(max(0, col), columns)
         return min(max(0, index), items.count)
     }
@@ -292,7 +408,7 @@ final class ToolbarSlotGridView: NSView {
                 x: slot.minX - Self.gap / 2 - 1.5,
                 y: slot.minY,
                 width: 3,
-                height: Self.tile
+                height: Self.tileHeight
             )
             accentGreen.setFill()
             NSBezierPath(roundedRect: bar, xRadius: 1.5, yRadius: 1.5).fill()
@@ -367,7 +483,10 @@ final class ToolbarSlotGridView: NSView {
         for grid in grids { grid.dropIndicator = nil }
         NSCursor.arrow.set()
 
-        guard dragging else { return }  // a plain click — nothing moved
+        guard dragging else {
+            onShortcutEdit?(draggedID)
+            return
+        }
 
         let destGrid = targetGrid ?? sourceGrid
         var destItems = destGrid.items
@@ -383,6 +502,10 @@ final class ToolbarSlotGridView: NSView {
             initialFrames: initialFrame.map { [draggedID: $0] } ?? [:]
         )
         onLayoutChanged?()
+    }
+
+    func showShortcutMenu(for tile: ToolbarItemTile, event: NSEvent) {
+        onShortcutContextMenu?(tile.itemID, tile, event)
     }
 
     /// Finds the grid (and insertion index) under a window-space point.
@@ -403,7 +526,7 @@ final class ToolbarSlotGridView: NSView {
     private static func makeGhost(for id: ToolbarItemID) -> NSView {
         let ghost = ToolbarItemTile(itemID: id)
         ghost.clearTooltip()
-        ghost.frame = NSRect(x: 0, y: 0, width: tile, height: tile)
+        ghost.frame = NSRect(x: 0, y: 0, width: tileWidth, height: tileHeight)
         ghost.alphaValue = 0.95
         ghost.shadow = {
             let shadow = NSShadow()

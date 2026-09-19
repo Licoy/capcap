@@ -138,7 +138,7 @@ private struct HeaderDirectionIcon: View {
             .onAppear {
                 wigglePhase = true
             }
-            .onChange(of: isDragging) { dragging in
+            .onChange(of: isDragging) { _, dragging in
                 if dragging {
                     scalePhase = true
                     wigglePhase = false

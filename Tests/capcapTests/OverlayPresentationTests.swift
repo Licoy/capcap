@@ -4,9 +4,159 @@ import XCTest
 
 @MainActor
 final class OverlayPresentationTests: XCTestCase {
+    func testResumingSuspendedSelectionRestoresFrozenDesktopAcrossRepeatedSuspends() throws {
+        _ = NSApplication.shared
+        let provider = ControlledScreenSnapshotProvider()
+        var draft: OverlayWindowController.SuspendedEditDraft?
+        let controller = OverlayWindowController(
+            snapshotProvider: provider,
+            onSuspend: { draft = $0 },
+            onComplete: { _ in }
+        )
+        defer { controller.cancel() }
+        controller.activate()
+        let view = try XCTUnwrap(controller.activeSelectionViews.first)
+        let screen = try XCTUnwrap(view.window?.screen)
+        let displayID = try XCTUnwrap(
+            view.window?.screen?.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
+        )
+        let snapshot = makeImage()
+        provider.emit(.image(displayID: displayID, image: snapshot))
+        drainMainRunLoop()
+        let rect = selectionRect(in: view)
+        controller.selectionDidComplete(rect: rect, inView: view, isWindowSelection: false, windowID: nil)
+        controller.selectionMaskDidDoubleClick(inView: view)
+
+        for _ in 0..<2 {
+            let saved = try XCTUnwrap(draft)
+            XCTAssertTrue(saved.preSnapshot === snapshot)
+            let resumed = OverlayWindowController(
+                suspendedDraft: saved,
+                onSuspend: { draft = $0 },
+                onComplete: { _ in }
+            )
+            defer { resumed.cancel() }
+            resumed.activate()
+            let restoredView = try XCTUnwrap(resumed.activeSelectionViews.first {
+                $0.window?.screen == screen
+            })
+            XCTAssertTrue(resumed.hasActiveEditor)
+            let background = try XCTUnwrap(restoredView.backgroundSnapshot)
+            XCTAssertTrue(background.cgImage(forProposedRect: nil, context: nil, hints: nil) === snapshot)
+            resumed.selectionMaskDidDoubleClick(inView: restoredView)
+        }
+    }
+
     override func tearDown() {
         ToastWindow.dismiss()
         super.tearDown()
+    }
+
+    func testScrollCaptureExcludesSelectionOverlayAndHintThroughoutFinalization() {
+        _ = NSApplication.shared
+        let selectionWindow = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
+            styleMask: .borderless, backing: .buffered, defer: false
+        )
+        let hintWindow = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 100, height: 30),
+            styleMask: .borderless, backing: .buffered, defer: false
+        )
+        let selection = SelectionView(frame: selectionWindow.contentView!.bounds)
+        selectionWindow.contentView = selection
+        selection.scrollCaptureActive = true
+
+        let excluded = EditWindowController.scrollCaptureExcludedWindowNumbers(
+            selectionWindow: selection.window, hintWindow: hintWindow
+        )
+        XCTAssertGreaterThan(selectionWindow.windowNumber, 0)
+        XCTAssertGreaterThan(hintWindow.windowNumber, 0)
+        XCTAssertEqual(Set(excluded), Set([
+            CGWindowID(selectionWindow.windowNumber), CGWindowID(hintWindow.windowNumber)
+        ]))
+
+        // stopAndStitch captures once more after ordinary overlay drawing resumes.
+        selection.scrollCaptureActive = false
+        XCTAssertEqual(excluded, EditWindowController.scrollCaptureExcludedWindowNumbers(
+            selectionWindow: selection.window, hintWindow: hintWindow
+        ))
+    }
+
+    func testReenablingSelectionInteractionInvalidatesHandleDisplay() {
+        let selectionView = DisplayInvalidationTrackingSelectionView(
+            frame: NSRect(x: 0, y: 0, width: 500, height: 400)
+        )
+        selectionView.updateSelectionRect(NSRect(x: 100, y: 80, width: 240, height: 180))
+
+        let initialInvalidationCount = selectionView.displayInvalidationCount
+        selectionView.selectionInteractionEnabled = false
+        XCTAssertGreaterThan(selectionView.displayInvalidationCount, initialInvalidationCount)
+
+        let disabledInvalidationCount = selectionView.displayInvalidationCount
+        selectionView.selectionInteractionEnabled = true
+        XCTAssertGreaterThan(selectionView.displayInvalidationCount, disabledInvalidationCount)
+    }
+
+    func testWindowCaptureEditorActivatesHandlesOnInitialPresentation() throws {
+        _ = NSApplication.shared
+        let previousBeautifyAutoEnabled = Defaults.beautifyAutoEnabled
+        Defaults.beautifyAutoEnabled = false
+        defer { Defaults.beautifyAutoEnabled = previousBeautifyAutoEnabled }
+
+        let selectionView = SelectionView(frame: NSRect(x: 0, y: 0, width: 1000, height: 800))
+        let selectionRect = NSRect(x: 160, y: 120, width: 480, height: 320)
+        selectionView.updateSelectionRect(selectionRect)
+        let controller = EditWindowController(
+            captureRect: selectionRect,
+            screen: try XCTUnwrap(NSScreen.main),
+            selectionRect: selectionRect,
+            selectionViewRect: selectionRect,
+            hostSelectionView: selectionView,
+            windowBaseImage: NSImage(size: selectionRect.size),
+            isWindowCapture: true,
+            onComplete: { _ in }
+        )
+        controller.show()
+        defer { controller.tearDown() }
+
+        let chrome = try XCTUnwrap(
+            selectionView.subviews.compactMap { $0 as? SelectionChromeOverlay }.first
+        )
+        XCTAssertTrue(chrome.isActiveAndVisible)
+        XCTAssertEqual(chrome.selectionRectInView, selectionRect)
+        XCTAssertTrue(selectionView.selectionInteractionEnabled)
+    }
+
+    func testSelectionChromeIsHiddenThroughoutScrollCaptureLifecycle() {
+        XCTAssertTrue(
+            EditWindowController.shouldShowSelectionChrome(
+                hasPreviewImage: false,
+                isScrollCaptureBusy: false,
+                isCropping: false
+            )
+        )
+        XCTAssertFalse(
+            EditWindowController.shouldShowSelectionChrome(
+                hasPreviewImage: false,
+                isScrollCaptureBusy: true,
+                isCropping: false
+            ),
+            "The green dashed border and handles must not be captured in scroll frames"
+        )
+        XCTAssertFalse(
+            EditWindowController.shouldShowSelectionChrome(
+                hasPreviewImage: false,
+                isScrollCaptureBusy: false,
+                isCropping: true
+            )
+        )
+        XCTAssertFalse(
+            EditWindowController.shouldShowSelectionChrome(
+                hasPreviewImage: true,
+                isScrollCaptureBusy: false,
+                isCropping: false
+            )
+        )
     }
 
     func testOverlayIsInteractiveBeforeTwoSecondPreparationFinishes() {
@@ -653,6 +803,60 @@ final class OverlayPresentationTests: XCTestCase {
         controller.cancel()
     }
 
+    func testMissingSnapshotCallbackTimesOutAndRejectsLateImage() throws {
+        _ = NSApplication.shared
+        let provider = ControlledScreenSnapshotProvider()
+        let controller = OverlayWindowController(
+            snapshotProvider: provider, snapshotTimeout: 0.02, onComplete: { _ in }
+        )
+        controller.activate()
+        let view = try XCTUnwrap(controller.activeSelectionViews.first)
+        let displayID = try XCTUnwrap(provider.targets.first?.displayID)
+        controller.selectionDidComplete(
+            rect: selectionRect(in: view), inView: view,
+            isWindowSelection: false, windowID: nil
+        )
+        RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+        XCTAssertTrue(controller.isCaptureSessionEnded)
+        XCTAssertFalse(controller.isWaitingForSnapshot)
+        provider.emit(.image(displayID: displayID, image: makeImage()))
+        drainMainRunLoop()
+        XCTAssertFalse(controller.hasActiveEditor)
+    }
+
+    func testSlowWindowCaptureFallsBackToFrozenSnapshot() throws {
+        _ = NSApplication.shared
+        let provider = ControlledScreenSnapshotProvider()
+        let controller = OverlayWindowController(
+            snapshotProvider: provider,
+            windowSnapshotLoader: { _ in .success([]) },
+            windowImageLoader: { _, _ in
+                await withCheckedContinuation { continuation in
+                    DispatchQueue.global().asyncAfter(deadline: .now() + 0.3) {
+                        continuation.resume(returning: nil)
+                    }
+                }
+            },
+            windowCaptureTimeout: 0.02,
+            onComplete: { _ in }
+        )
+        controller.activate()
+        defer { controller.cancel() }
+        let view = try XCTUnwrap(controller.activeSelectionViews.first)
+        let displayID = try XCTUnwrap(provider.targets.first?.displayID)
+        provider.emit(.image(displayID: displayID, image: makeImage()))
+        drainMainRunLoop()
+        controller.selectionDidComplete(
+            rect: selectionRect(in: view), inView: view,
+            isWindowSelection: true, windowID: 42
+        )
+        RunLoop.main.run(until: Date().addingTimeInterval(0.15))
+        XCTAssertFalse(controller.isWaitingForWindowCapture)
+        XCTAssertTrue(controller.hasActiveEditor)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+        XCTAssertTrue(controller.hasActiveEditor)
+    }
+
     func testSelectedDisplayFailureEndsSessionWithoutSynchronousFallback() throws {
         _ = NSApplication.shared
         let provider = ControlledScreenSnapshotProvider()
@@ -987,6 +1191,15 @@ final class OverlayPresentationTests: XCTestCase {
         RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
     }
 
+}
+
+private final class DisplayInvalidationTrackingSelectionView: SelectionView {
+    private(set) var displayInvalidationCount = 0
+
+    override func setNeedsDisplay(_ invalidRect: NSRect) {
+        displayInvalidationCount += 1
+        super.setNeedsDisplay(invalidRect)
+    }
 }
 
 private final class ControlledScreenSnapshotProvider: ScreenSnapshotProviding {
