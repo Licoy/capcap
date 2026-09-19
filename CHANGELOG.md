@@ -11,8 +11,9 @@ preserved from upstream history for reference.
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-09-19
+
 ### Added
-- Remember the last screenshot save folder when choosing a location, with a settings toggle that is off by default
 - Port upstream history favorites, Apple on-device translation, configurable editor shortcuts, Agent schema/validate, adjustable number size, and settings panes
 - Restore pin click-through on the upstream pin toolbar rewrite
 
@@ -22,6 +23,11 @@ preserved from upstream history for reference.
 
 ### Changed
 - Keep menu-bar component capture while adopting upstream popup/utility window targeting
+
+## [1.1.1] - 2026-08-13
+
+### Added
+- Remember the last screenshot save folder when choosing a location, with a settings toggle that is off by default
 
 ## [1.0.0] - 2026-08-08
 
