@@ -17,6 +17,7 @@ preserved from upstream history for reference.
 - Restore pin click-through on the upstream pin toolbar rewrite
 
 ### Fixed
+- Restore status-bar extra hover selection on macOS 27 where extras are hosted by MenuBarAgent instead of CG windows
 - Port upstream capture and annotation bugfixes from realskyrin/capcap 1.7.5–1.7.15 including even capture dimensions, GIF timing, mosaic re-pixelation, scroll-capture overlay exclusion, and popup-menu capture targets
 
 ### Changed

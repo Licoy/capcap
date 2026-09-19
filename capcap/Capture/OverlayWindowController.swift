@@ -523,7 +523,11 @@ class OverlayWindowController {
         let snapshotLoader = windowSnapshotLoader
         let context = triggerContext
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let result = snapshotLoader(detectionContext)
+            var snapshotContext = detectionContext
+            snapshotContext.menuBarExtras = DispatchQueue.main.sync {
+                MenuBarExtraCatalog.frames(displayBounds: displayBounds)
+            }
+            let result = snapshotLoader(snapshotContext)
             context?.mark(.windowEnumerationReady)
             MainRunLoopScheduler.perform {
                 guard let self,

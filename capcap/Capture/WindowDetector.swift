@@ -10,6 +10,7 @@ enum DetectedWindowTarget: Equatable, Sendable {
 struct WindowDetectionContext: Sendable {
     let primaryScreenArea: CGFloat
     let displayBounds: [CGRect]
+    var menuBarExtras: [CGRect] = []
 }
 
 struct DetectedWindow: Sendable {
@@ -122,7 +123,34 @@ class WindowDetector {
             )
         }
 
-        return .success(detectedWindows)
+        return .success(mergingMenuBarExtras(context.menuBarExtras, into: detectedWindows))
+    }
+
+    static func mergingMenuBarExtras(
+        _ extras: [CGRect],
+        into windows: [DetectedWindow]
+    ) -> [DetectedWindow] {
+        let extraWindows = extras.enumerated().map { index, frame in
+            DetectedWindow(
+                name: "Menu Extra",
+                windowID: syntheticMenuBarExtraWindowID(index: index, frame: frame),
+                layer: Int(CGWindowLevelForKey(.statusWindow)),
+                frame: frame,
+                target: .menuBarComponent
+            )
+        }
+        return extraWindows + windows
+    }
+
+    private static func syntheticMenuBarExtraWindowID(index: Int, frame: CGRect) -> CGWindowID {
+        var hasher = Hasher()
+        hasher.combine(index)
+        hasher.combine(Int(frame.minX.rounded()))
+        hasher.combine(Int(frame.minY.rounded()))
+        hasher.combine(Int(frame.width.rounded()))
+        hasher.combine(Int(frame.height.rounded()))
+        let bits = UInt32(truncatingIfNeeded: hasher.finalize())
+        return 0xC000_0000 | (bits & 0x3FFF_FFFF)
     }
 
     /// Classifies only stable capture targets. Layer-0 app windows remain
@@ -140,23 +168,14 @@ class WindowDetector {
         if DetectedWindow.selectableElevatedLayers.contains(layer) {
             return .elevatedWindow
         }
-        guard layer == Int(CGWindowLevelForKey(.statusWindow)),
-              frame.width > 1,
-              frame.height > 1,
-              frame.height <= 64
+        let statusLikeLayers: Set<Int> = [
+            Int(CGWindowLevelForKey(.statusWindow)),
+            Int(CGWindowLevelForKey(.mainMenuWindow))
+        ]
+        guard statusLikeLayers.contains(layer),
+              MenuBarExtraGeometry.isIndividualExtra(frame: frame, displayBounds: displayBounds)
         else { return nil }
-
-        let owningDisplay = displayBounds.first { display in
-            guard display.width > 1, display.height > 1 else { return false }
-            let isTopAligned = abs(frame.minY - display.minY) <= 1
-            let isFullyContained = frame.minX >= display.minX
-                && frame.maxX <= display.maxX
-                && frame.minY >= display.minY
-                && frame.maxY <= display.maxY
-            let isIndividualComponent = frame.width < display.width * 0.8
-            return isTopAligned && isFullyContained && isIndividualComponent
-        }
-        return owningDisplay == nil ? nil : .menuBarComponent
+        return .menuBarComponent
     }
 
     /// Commit a previously-created value snapshot to this detector.
