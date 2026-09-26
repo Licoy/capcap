@@ -96,7 +96,7 @@ extension ToolbarItemID {
         case .pen:           return "pencil.tip"
         case .marker:        return "highlighter"
         case .spotlight:     return "rectangle.inset.filled"
-        case .mosaic:        return "square.grid.3x3"
+        case .mosaic:        return "checkerboard.rectangle"
         case .eraser:        return "eraser"
         case .magnifier:     return "plus.magnifyingglass"
         case .numbered:      return "1.circle"
