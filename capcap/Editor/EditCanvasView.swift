@@ -127,7 +127,7 @@ class EditCanvasView: NSView {
     var currentFontSize: CGFloat = CGFloat(Defaults.lastTextFontSize) {
         didSet {
             guard let field = activeTextField else { return }
-            field.font = NSFont.systemFont(ofSize: currentFontSize, weight: .bold)
+            field.font = TextFontResolver.font(family: field.fontFamily, size: currentFontSize)
             field.sizeToFitText()
         }
     }
@@ -292,7 +292,7 @@ class EditCanvasView: NSView {
             return magnifier.translatedPreservingSourceFocus(by: delta)
         }
         if let text = annotation as? TextAnnotation {
-            return text.translatedBodyPreservingCalloutTip(by: delta)
+            return text.translatedBodyPreservingCalloutTip(by: delta).clearingWatermarkPin()
         }
         if let mosaic = annotation as? MosaicAnnotation {
             return translatedMosaic(mosaic, by: delta)
@@ -470,6 +470,7 @@ class EditCanvasView: NSView {
                 secondCalloutTip: annotation.secondCalloutTip,
                 initialText: annotation.text,
                 rotation: annotation.rotation,
+                fontFamily: annotation.fontFamily,
                 replacingIndex: index
             )
         }
@@ -541,6 +542,7 @@ class EditCanvasView: NSView {
         undoStack = state.undoStack
         redoStack = state.redoStack
         setSelectedIndexes(state.selectedIndexes, primary: state.primarySelectedIndex)
+        relayoutPinnedWatermark()
         needsDisplay = true
         notifyHistoryStateChanged()
         refreshCursorAtCurrentLocation()
@@ -586,6 +588,7 @@ class EditCanvasView: NSView {
         annotations = snapshot.annotations
         numberCounter = snapshot.numberCounter
         setSelectedIndexes(selectedIndexes, primary: primarySelectedIndex)
+        relayoutPinnedWatermark()
     }
 
     /// Push current state onto the undo stack and clear the redo stack.
@@ -679,7 +682,7 @@ class EditCanvasView: NSView {
             if let mosaic = annotation as? MosaicAnnotation {
                 annotations[idx] = translatedMosaic(mosaic, by: delta)
             } else {
-                annotations[idx] = annotation.translated(by: delta)
+                annotations[idx] = detachWatermark(annotation.translated(by: delta))
             }
         }
         needsDisplay = true
@@ -740,7 +743,7 @@ class EditCanvasView: NSView {
             if let mosaic = source as? MosaicAnnotation {
                 return translatedMosaic(mosaic, by: offset)
             }
-            return source.translated(by: offset)
+            return detachWatermark(source.translated(by: offset))
         }
         let firstNewIndex = annotations.count
         recordUndo()
@@ -1000,7 +1003,9 @@ class EditCanvasView: NSView {
     private func annotationsEqualEnough(_ a: Annotation, _ b: Annotation) -> Bool {
         if let a = a as? TextAnnotation, let b = b as? TextAnnotation {
             return a.text == b.text && a.origin == b.origin
-                && a.fontSize == b.fontSize && a.rotation == b.rotation
+                && a.fontSize == b.fontSize && a.fontFamily == b.fontFamily
+                && a.watermarkPinID == b.watermarkPinID
+                && a.rotation == b.rotation
                 && a.color == b.color && a.hasStroke == b.hasStroke
                 && a.hasCallout == b.hasCallout
                 && a.calloutTip == b.calloutTip
@@ -1394,7 +1399,8 @@ class EditCanvasView: NSView {
                     color: currentColor,
                     hasStroke: currentTextStroke,
                     hasCallout: currentTextCallout,
-                    calloutTip: calloutTip
+                    calloutTip: calloutTip,
+                    fontFamily: Defaults.textFontFamily
                 )
             }
             return
@@ -1775,6 +1781,7 @@ class EditCanvasView: NSView {
                 origin: newTextOrigin(forClickAt: pending.start, fontSize: currentFontSize),
                 color: currentColor,
                 fontSize: currentFontSize,
+                fontFamily: Defaults.textFontFamily,
                 hasStroke: currentTextStroke,
                 hasCallout: true,
                 calloutTip: pending.current == pending.start ? nil : pending.current
@@ -1814,6 +1821,7 @@ class EditCanvasView: NSView {
             origin: field.annotationOrigin,
             color: field.annotationColor,
             fontSize: fontSize,
+            fontFamily: field.fontFamily,
             rotation: field.rotation,
             hasStroke: field.hasStroke,
             hasCallout: field.hasCallout,
@@ -1970,13 +1978,64 @@ class EditCanvasView: NSView {
         cancelInFlightInteraction()
         previewImage = image
         setFrameSize(image.size)
+        relayoutPinnedWatermark()
         needsDisplay = true
     }
 
     func updateViewportSize(_ size: NSSize) {
         guard !hasPreviewImage else { return }
         setFrameSize(size)
+        relayoutPinnedWatermark()
         needsDisplay = true
+    }
+
+    private var didAttemptWatermarkSeed = false
+    private var seededWatermarkTemplate: WatermarkTemplate?
+
+    func seedWatermarkIfNeeded() {
+        guard !didAttemptWatermarkSeed else {
+            relayoutPinnedWatermark()
+            return
+        }
+        didAttemptWatermarkSeed = true
+        guard let template = Defaults.selectedWatermarkTemplate,
+              let annotation = WatermarkLayout.seededAnnotation(
+                enabled: Defaults.watermarkEnabled,
+                allowsSeeding: true,
+                template: template,
+                canvasSize: bounds.size
+              )
+        else { return }
+        var snapshot = template
+        snapshot.fontFamily = annotation.fontFamily
+        seededWatermarkTemplate = snapshot
+        annotations.append(annotation)
+        needsDisplay = true
+    }
+
+    private func relayoutPinnedWatermark() {
+        let updated = WatermarkLayout.relayout(
+            annotations,
+            templates: watermarkTemplatesForRelayout(),
+            canvasSize: bounds.size
+        )
+        annotations = updated
+    }
+
+    private func watermarkTemplatesForRelayout() -> [WatermarkTemplate] {
+        var templates = Defaults.watermarkTemplates
+        guard let seededWatermarkTemplate else { return templates }
+        if let index = templates.firstIndex(where: { $0.id == seededWatermarkTemplate.id }) {
+            templates[index] = seededWatermarkTemplate
+        } else {
+            templates.append(seededWatermarkTemplate)
+        }
+        return templates
+    }
+
+    private func detachWatermark(_ annotation: Annotation) -> Annotation {
+        guard let text = annotation as? TextAnnotation, text.watermarkPinID != nil else { return annotation }
+        return text.clearingWatermarkPin()
     }
 
     /// Keep annotations anchored to the same screen content when the capture
@@ -2219,7 +2278,7 @@ class EditCanvasView: NSView {
     }
 
     private func newTextOrigin(forClickAt point: NSPoint, fontSize: CGFloat) -> NSPoint {
-        let font = TextAnnotation.font(forSize: fontSize)
+        let font = TextAnnotation.font(forSize: fontSize, family: Defaults.textFontFamily)
         return NSPoint(
             x: point.x,
             y: point.y - TextAnnotation.lineHeight(for: font)
@@ -2236,9 +2295,11 @@ class EditCanvasView: NSView {
         secondCalloutTip: NSPoint? = nil,
         initialText: String = "",
         rotation: CGFloat = 0,
+        fontFamily: String? = nil,
         replacingIndex: Int? = nil
     ) {
-        let font = NSFont.systemFont(ofSize: fontSize, weight: .bold)
+        let resolvedFamily = TextFontResolver.normalizedFamily(fontFamily)
+        let font = TextFontResolver.font(family: resolvedFamily, size: fontSize)
         let lineHeight = TextAnnotation.lineHeight(for: font)
 
         // Capture the pre-edit state BEFORE we remove a re-edited annotation
@@ -2280,6 +2341,7 @@ class EditCanvasView: NSView {
 
         let field = EditableTextField(frame: fieldRect)
         field.font = font
+        field.fontFamily = resolvedFamily
         field.annotationColor = color
         field.hasStroke = hasStroke
         field.hasCallout = hasCallout
@@ -2327,12 +2389,13 @@ class EditCanvasView: NSView {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let wasReEdit = editingOriginalIndex != nil
         if !trimmed.isEmpty {
-            let font = field.font ?? NSFont.systemFont(ofSize: currentFontSize, weight: .bold)
+            let font = field.font ?? TextFontResolver.font(family: field.fontFamily, size: currentFontSize)
             let newAnnotation = TextAnnotation(
                 text: text,
                 origin: field.annotationOrigin,
                 color: field.annotationColor,
                 fontSize: font.pointSize,
+                fontFamily: field.fontFamily,
                 rotation: field.rotation,
                 hasStroke: field.hasStroke,
                 hasCallout: field.hasCallout,
@@ -3870,6 +3933,8 @@ final class EditableTextField: NSTextField, NSTextFieldDelegate {
     /// shows plain text; the outline is rendered on the committed
     /// `TextAnnotation`, which adds it without shifting the glyphs.
     var hasStroke: Bool = false
+    /// Logical family from settings or the annotation being re-edited. nil is system bold.
+    var fontFamily: String?
     var annotationColor: NSColor = EditorStyleDefaults.primaryColor {
         didSet {
             updateAppearanceForCurrentMode()

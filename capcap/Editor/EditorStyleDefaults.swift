@@ -27,12 +27,19 @@ enum EditorStyleDefaults {
     static var markerLineWidth: CGFloat { CGFloat(Defaults.lastMarkerLineWidth) }
     static var numberSize: CGFloat { CGFloat(Defaults.lastNumberSize) }
 
-    private static func color(fromHex hex: String?) -> NSColor? {
+    static func normalizedHex(_ hex: String?) -> String? {
         guard var trimmed = hex?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() else {
             return nil
         }
         if trimmed.hasPrefix("#") { trimmed.removeFirst() }
-        guard trimmed.count == 6, let value = UInt32(trimmed, radix: 16) else { return nil }
+        guard trimmed.count == 6, UInt32(trimmed, radix: 16) != nil else { return nil }
+        return "#\(trimmed)"
+    }
+
+    static func color(fromHex hex: String?) -> NSColor? {
+        guard let normalized = normalizedHex(hex), let value = UInt32(normalized.dropFirst(), radix: 16) else {
+            return nil
+        }
         let r = CGFloat((value >> 16) & 0xFF) / 255.0
         let g = CGFloat((value >> 8) & 0xFF) / 255.0
         let b = CGFloat(value & 0xFF) / 255.0

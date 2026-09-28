@@ -422,6 +422,7 @@ private struct AgentAnnotationSpec: Decodable {
     let rotationDegrees: Double?
     let rotationRadians: Double?
     let fontSize: Double?
+    let fontFamily: String?
     let stroke: Bool?
     let callout: Bool?
     let tip: AgentPoint?
@@ -485,9 +486,10 @@ private struct AgentAnnotationSpec: Decodable {
                 throw AgentCLIError.failure("Text annotation is missing text")
             }
             let resolvedFontSize = try positive(fontSize, fallback: 24, name: "fontSize")
+            let resolvedFamily = TextFontResolver.normalizedFamily(fontFamily)
             let size = TextAnnotation.editorSize(
                 for: text,
-                font: TextAnnotation.font(forSize: resolvedFontSize)
+                font: TextAnnotation.font(forSize: resolvedFontSize, family: resolvedFamily)
             )
             let topLeft = at ?? rect?.originPoint
             guard let topLeft else {
@@ -498,6 +500,7 @@ private struct AgentAnnotationSpec: Decodable {
                 origin: mapper.textOrigin(topLeft: topLeft, textSize: size),
                 color: try resolvedColor(default: AgentColor.defaultRed),
                 fontSize: resolvedFontSize,
+                fontFamily: resolvedFamily,
                 rotation: resolvedRotation(),
                 hasStroke: stroke ?? false,
                 hasCallout: callout ?? false,

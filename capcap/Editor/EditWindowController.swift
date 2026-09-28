@@ -307,6 +307,7 @@ class EditWindowController {
         onRecordingSelection: ((NSRect, NSScreen) -> Void)? = nil,
         onRequestFocusReturn: (() -> Void)? = nil,
         keepsHostWindowAcrossSpaces: Bool = false,
+        seedsWatermark: Bool = false,
         onComplete: @escaping (NSImage?) -> Void
     ) {
         self.captureRect = captureRect
@@ -329,9 +330,14 @@ class EditWindowController {
         self.isWindowCapture = isWindowCapture
         self.onRecordingSelection = onRecordingSelection
         self.onRequestFocusReturn = onRequestFocusReturn
+        self.seedsWatermark = seedsWatermark
         self.onComplete = onComplete
         self.pickedColorSwatch = Self.color(fromHex: Defaults.lastPickedColorHex)
     }
+
+    /// Fresh screen and window captures place the selected watermark once.
+    /// Preset-image editing, history, and suspended drafts leave this false.
+    private let seedsWatermark: Bool
 
     /// Wired by OverlayWindowController after construction so the toolbar
     /// click-through button can toggle the capture overlay's mouse pass-through.
@@ -484,6 +490,9 @@ class EditWindowController {
         // redraw.
         repositionFloatingChrome()
         updateHistoryButtons(canUndo: canvas.canUndo, canRedo: canvas.canRedo)
+        if seedsWatermark {
+            canvas.seedWatermarkIfNeeded()
+        }
         if Defaults.beautifyAutoEnabled {
             // Apply beautify silently so the preset/padding/shadow row does
             // not open and block the capture. User can open controls later

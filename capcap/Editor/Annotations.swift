@@ -2223,6 +2223,10 @@ struct TextAnnotation: Annotation {
     let origin: NSPoint
     let color: NSColor
     let fontSize: CGFloat
+    /// nil keeps the system bold face. A stored family is resolved again at draw time.
+    var fontFamily: String? = nil
+    /// Set only on a watermark that should stay pinned to its template corner.
+    var watermarkPinID: UUID? = nil
     var rotation: CGFloat = 0
     /// When true the glyphs get a black-or-white outline picked for maximum
     /// contrast against `color`, so the text reads against any background.
@@ -2255,8 +2259,8 @@ struct TextAnnotation: Annotation {
     /// covers the inner half, so the visible outline is roughly half of this.
     static let strokeWidthPercent: CGFloat = 6.0
 
-    static func font(forSize size: CGFloat) -> NSFont {
-        NSFont.systemFont(ofSize: size, weight: .bold)
+    static func font(forSize size: CGFloat, family: String? = nil) -> NSFont {
+        TextFontResolver.font(family: family, size: size)
     }
 
     /// Light fills (white / yellow / green) get a black outline; every other
@@ -2334,7 +2338,7 @@ struct TextAnnotation: Annotation {
     /// trailing-caret padding + line leading (which made the box look skewed
     /// toward bottom-left of the text).
     var textBounds: NSRect {
-        let font = TextAnnotation.font(forSize: fontSize)
+        let font = TextAnnotation.font(forSize: fontSize, family: fontFamily)
         let attrs: [NSAttributedString.Key: Any] = [.font: font]
         let lines = TextAnnotation.lines(for: text)
         let lineHeight = TextAnnotation.lineHeight(for: font)
@@ -2357,7 +2361,7 @@ struct TextAnnotation: Annotation {
     }
 
     var textBlockRect: NSRect {
-        let font = TextAnnotation.font(forSize: fontSize)
+        let font = TextAnnotation.font(forSize: fontSize, family: fontFamily)
         let attrs: [NSAttributedString.Key: Any] = [.font: font]
         let lines = TextAnnotation.lines(for: text)
         let measuredWidth = lines
@@ -2444,7 +2448,7 @@ struct TextAnnotation: Annotation {
     }
 
     func draw(in context: CGContext, bounds: NSRect) {
-        let font = TextAnnotation.font(forSize: fontSize)
+        let font = TextAnnotation.font(forSize: fontSize, family: fontFamily)
         let lines = TextAnnotation.lines(for: text)
         let lineHeight = TextAnnotation.lineHeight(for: font)
         NSGraphicsContext.saveGraphicsState()
@@ -2844,6 +2848,8 @@ struct TextAnnotation: Annotation {
             origin: NSPoint(x: origin.x + delta.x, y: origin.y + delta.y),
             color: color,
             fontSize: fontSize,
+            fontFamily: fontFamily,
+            watermarkPinID: watermarkPinID,
             rotation: rotation,
             hasStroke: hasStroke,
             hasCallout: hasCallout,
@@ -2860,6 +2866,8 @@ struct TextAnnotation: Annotation {
             origin: NSPoint(x: origin.x + delta.x, y: origin.y + delta.y),
             color: color,
             fontSize: fontSize,
+            fontFamily: fontFamily,
+            watermarkPinID: watermarkPinID,
             rotation: rotation,
             hasStroke: hasStroke,
             hasCallout: hasCallout,
@@ -2875,6 +2883,7 @@ struct TextAnnotation: Annotation {
     func withRotation(_ rotation: CGFloat) -> Annotation {
         var copy = self
         copy.rotation = rotation
+        copy.watermarkPinID = nil
         return copy
     }
 
@@ -2884,6 +2893,7 @@ struct TextAnnotation: Annotation {
             origin: origin,
             color: color,
             fontSize: fontSize,
+            fontFamily: fontFamily,
             rotation: rotation,
             hasStroke: hasStroke,
             hasCallout: hasCallout,
@@ -2896,24 +2906,34 @@ struct TextAnnotation: Annotation {
     func withStroke(_ hasStroke: Bool) -> TextAnnotation {
         var copy = self
         copy.hasStroke = hasStroke
+        copy.watermarkPinID = nil
         return copy
     }
 
     func withCallout(_ hasCallout: Bool) -> TextAnnotation {
         var copy = self
         copy.hasCallout = hasCallout
+        copy.watermarkPinID = nil
         return copy
     }
 
     func withCalloutTip(_ tip: NSPoint?) -> TextAnnotation {
         var copy = self
         copy.calloutTip = tip
+        copy.watermarkPinID = nil
         return copy
     }
 
     func withSecondCalloutTip(_ tip: NSPoint?) -> TextAnnotation {
         var copy = self
         copy.secondCalloutTip = tip
+        copy.watermarkPinID = nil
+        return copy
+    }
+
+    func clearingWatermarkPin() -> TextAnnotation {
+        var copy = self
+        copy.watermarkPinID = nil
         return copy
     }
 
@@ -2921,8 +2941,8 @@ struct TextAnnotation: Annotation {
     /// grow downward in canvas coords, so the origin shifts by the full text
     /// block height delta to keep the cap line steady.
     func withFontSize(_ fontSize: CGFloat) -> Annotation {
-        let oldFont = TextAnnotation.font(forSize: self.fontSize)
-        let newFont = TextAnnotation.font(forSize: fontSize)
+        let oldFont = TextAnnotation.font(forSize: self.fontSize, family: fontFamily)
+        let newFont = TextAnnotation.font(forSize: fontSize, family: fontFamily)
         let oldHeight = TextAnnotation.editorSize(for: text, font: oldFont).height
         let newHeight = TextAnnotation.editorSize(for: text, font: newFont).height
         let newOrigin = NSPoint(x: origin.x, y: origin.y + (oldHeight - newHeight))
@@ -2931,6 +2951,7 @@ struct TextAnnotation: Annotation {
             origin: newOrigin,
             color: color,
             fontSize: fontSize,
+            fontFamily: fontFamily,
             rotation: rotation,
             hasStroke: hasStroke,
             hasCallout: hasCallout,

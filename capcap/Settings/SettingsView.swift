@@ -350,6 +350,7 @@ class SettingsView: NSView {
     private var toolbarPane: ToolbarSettingsPane?
     private var uploadPane: UploadSettingsPane?
     private var filenameRuleCard: FilenameRuleCard?
+    private var captureTextWatermarkSettings: CaptureTextWatermarkSettings?
     private var screenshotQualityTitleLabel: NSTextField!
     private var screenshotQualitySubtitleLabel: NSTextField!
     private var screenshotQualityUploadTitleLabel: NSTextField!
@@ -824,6 +825,10 @@ class SettingsView: NSView {
         buildWindowShadowCard(into: capture)
         buildBeautifyDefaultsCard(into: capture)
         updateBeautifyControlsEnabled()
+        let textWatermark = CaptureTextWatermarkSettings()
+        captureTextWatermarkSettings = textWatermark
+        capture.addArrangedSubview(textWatermark)
+        textWatermark.widthAnchor.constraint(equalTo: capture.widthAnchor).isActive = true
         let pinCard = CardView()
         let pinInner = verticalInnerStack()
         pinCard.addSubview(pinInner)
@@ -5795,6 +5800,7 @@ class SettingsView: NSView {
         beautifyPresetTitleLabel?.stringValue = L10n.beautifyDefaultPresetLabel
         beautifyPaddingTitleLabel?.stringValue = L10n.beautifyDefaultPaddingLabel
         beautifyShadowTitleLabel?.stringValue = L10n.beautifyShadowEffect
+        captureTextWatermarkSettings?.refreshLocalization()
         beautifyAutoSwitch?.state = Defaults.beautifyAutoEnabled ? .on : .off
         updateBeautifyControlsEnabled()
         beautifyPaddingSlider?.doubleValue = Defaults.lastBeautifyPadding

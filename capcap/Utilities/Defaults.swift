@@ -557,6 +557,42 @@ enum L10n {
     // Text tool
     static var textStrokeEffect: String { s("textStrokeEffect") }
     static var textCalloutEffect: String { s("textCalloutEffect") }
+    static var textFontSectionTitle: String { s("textFontSectionTitle") }
+    static var textFontLabel: String { s("textFontLabel") }
+    static var textFontSystemDefault: String { s("textFontSystemDefault") }
+    static var textFontHint: String { s("textFontHint") }
+    static var watermarkSectionTitle: String { s("watermarkSectionTitle") }
+    static var watermarkToggleLabel: String { s("watermarkToggleLabel") }
+    static var watermarkToggleHint: String { s("watermarkToggleHint") }
+    static var watermarkAdd: String { s("watermarkAdd") }
+    static var watermarkDelete: String { s("watermarkDelete") }
+    static var watermarkDuplicate: String { s("watermarkDuplicate") }
+    static var watermarkNameLabel: String { s("watermarkNameLabel") }
+    static var watermarkTextLabel: String { s("watermarkTextLabel") }
+    static var watermarkTextPlaceholder: String { s("watermarkTextPlaceholder") }
+    static var watermarkFontLabel: String { s("watermarkFontLabel") }
+    static var watermarkFontFollowText: String { s("watermarkFontFollowText") }
+    static var watermarkSizeLabel: String { s("watermarkSizeLabel") }
+    static var watermarkColorLabel: String { s("watermarkColorLabel") }
+    static var watermarkStrokeLabel: String { s("watermarkStrokeLabel") }
+    static var watermarkOpacityLabel: String { s("watermarkOpacityLabel") }
+    static var watermarkPositionLabel: String { s("watermarkPositionLabel") }
+    static var watermarkMarginLabel: String { s("watermarkMarginLabel") }
+    static var watermarkPreviewLabel: String { s("watermarkPreviewLabel") }
+    static var watermarkEmptyTextHint: String { s("watermarkEmptyTextHint") }
+    static var watermarkAnchorTopLeft: String { s("watermarkAnchorTopLeft") }
+    static var watermarkAnchorTop: String { s("watermarkAnchorTop") }
+    static var watermarkAnchorTopRight: String { s("watermarkAnchorTopRight") }
+    static var watermarkAnchorLeft: String { s("watermarkAnchorLeft") }
+    static var watermarkAnchorCenter: String { s("watermarkAnchorCenter") }
+    static var watermarkAnchorRight: String { s("watermarkAnchorRight") }
+    static var watermarkAnchorBottomLeft: String { s("watermarkAnchorBottomLeft") }
+    static var watermarkAnchorBottom: String { s("watermarkAnchorBottom") }
+    static var watermarkAnchorBottomRight: String { s("watermarkAnchorBottomRight") }
+
+    static func watermarkTemplateName(_ index: Int) -> String {
+        String(format: s("watermarkTemplateNameFormat"), index)
+    }
 
     // Shape tool
     static var shapeFillEffect: String { s("shapeFillEffect") }
@@ -1987,6 +2023,54 @@ struct Defaults {
     static var lastTextCallout: Bool {
         get { defaults.bool(forKey: "lastTextCallout") }
         set { defaults.set(newValue, forKey: "lastTextCallout") }
+    }
+
+    /// Family for newly created text annotations. nil keeps system bold.
+    static var textFontFamily: String? {
+        get { TextFontResolver.normalizedFamily(defaults.string(forKey: "textFontFamily")) }
+        set {
+            if let family = TextFontResolver.normalizedFamily(newValue) {
+                defaults.set(family, forKey: "textFontFamily")
+            } else {
+                defaults.removeObject(forKey: "textFontFamily")
+            }
+        }
+    }
+
+    static var watermarkEnabled: Bool {
+        get { defaults.bool(forKey: "watermarkEnabled") }
+        set { defaults.set(newValue, forKey: "watermarkEnabled") }
+    }
+
+    static var watermarkTemplates: [WatermarkTemplate] {
+        get {
+            guard let data = defaults.data(forKey: "watermarkTemplates") else { return [] }
+            return WatermarkTemplate.normalizedList(WatermarkTemplate.decodedList(from: data))
+        }
+        set {
+            let normalized = WatermarkTemplate.normalizedList(newValue)
+            guard let data = try? JSONEncoder().encode(normalized), !normalized.isEmpty else {
+                defaults.removeObject(forKey: "watermarkTemplates")
+                return
+            }
+            defaults.set(data, forKey: "watermarkTemplates")
+        }
+    }
+
+    static var selectedWatermarkTemplateID: String? {
+        get { defaults.string(forKey: "selectedWatermarkTemplateID") }
+        set {
+            if let newValue, UUID(uuidString: newValue) != nil {
+                defaults.set(newValue, forKey: "selectedWatermarkTemplateID")
+            } else {
+                defaults.removeObject(forKey: "selectedWatermarkTemplateID")
+            }
+        }
+    }
+
+    static var selectedWatermarkTemplate: WatermarkTemplate? {
+        guard let raw = selectedWatermarkTemplateID, let id = UUID(uuidString: raw) else { return nil }
+        return watermarkTemplates.first { $0.id == id }
     }
 
     /// Last rectangle/ellipse fill mode. Migrates the previous checkbox

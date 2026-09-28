@@ -2114,7 +2114,8 @@ extension OverlayWindowController: SelectionViewDelegate {
                 preSnapshot: preSnapshot,
                 overrideBaseImage: presetImage,
                 windowBaseImage: windowBaseImage,
-                isWindowCapture: shouldApplyWindowEffects
+                isWindowCapture: shouldApplyWindowEffects,
+                seedsWatermark: presetImage == nil
             )
         case .textRecognition, .copyImageText, .screenshotTranslation:
             completeImmediateAction(request, preSnapshot: preSnapshot, windowBaseImage: windowBaseImage)
@@ -2185,7 +2186,8 @@ extension OverlayWindowController: SelectionViewDelegate {
         preSnapshot: CGImage?,
         overrideBaseImage: NSImage?,
         windowBaseImage: NSImage?,
-        isWindowCapture: Bool
+        isWindowCapture: Bool,
+        seedsWatermark: Bool = false
     ) {
         activeEditorContext = ActiveEditorContext(
             captureRect: captureRect,
@@ -2211,7 +2213,8 @@ extension OverlayWindowController: SelectionViewDelegate {
             isWindowCapture: isWindowCapture,
             onRecordingSelection: onRecordingSelection,
             onRequestFocusReturn: onRequestFocusReturn,
-            keepsHostWindowAcrossSpaces: keepsEditorAcrossSpaces
+            keepsHostWindowAcrossSpaces: keepsEditorAcrossSpaces,
+            seedsWatermark: seedsWatermark
         ) { [weak self] finalImage in
             self?.tearDown()
             self?.onComplete(finalImage)
